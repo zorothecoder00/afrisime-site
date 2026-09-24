@@ -1,0 +1,49 @@
+---
+import type { orders } from '../../db/schema';
+import { formatDate, formatPrice, ORDER_STATUS_LABELS } from '../../lib/format';
+
+interface Props {
+  rows: (typeof orders.$inferSelect)[];
+  empty?: string;
+}
+const { rows, empty = 'Aucune commande.' } = Astro.props;
+---
+
+{
+  rows.length === 0 ? (
+    <p class="card p-6 text-sm text-muted">{empty}</p>
+  ) : (
+    <div class="card overflow-x-auto">
+      <table class="w-full min-w-[680px] text-left text-sm">
+        <thead class="border-b border-line bg-canvas text-muted">
+          <tr>
+            <th class="px-4 py-3 font-semibold">Numéro</th>
+            <th class="px-4 py-3 font-semibold">Date</th>
+            <th class="px-4 py-3 font-semibold">Client</th>
+            <th class="px-4 py-3 font-semibold">Statut</th>
+            <th class="px-4 py-3 text-right font-semibold">Total</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-line">
+          {rows.map((o) => (
+            <tr class="hover:bg-brand-50">
+              <td class="px-4 py-3 font-semibold">
+                <a href={`/admin/commandes/${o.number}`} class="text-brand-800 underline">
+                  {o.number}
+                </a>
+                {!o.erpSyncedAt && <span class="badge badge-sur-commande ml-2">ERP en attente</span>}
+              </td>
+              <td class="px-4 py-3">{formatDate(o.createdAt)}</td>
+              <td class="px-4 py-3">
+                {o.customer.name}
+                <span class="block text-muted">{o.customer.phone}</span>
+              </td>
+              <td class="px-4 py-3">{ORDER_STATUS_LABELS[o.status]}</td>
+              <td class="px-4 py-3 text-right font-semibold">{formatPrice(o.total)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}

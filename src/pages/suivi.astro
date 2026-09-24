@@ -1,0 +1,92 @@
+---
+// Suivi de commande sans compte (cahier des charges §8) : numéro de commande + téléphone.
+import Layout from '../layouts/Layout.astro';
+import PageHero from '../components/PageHero.astro';
+import OrderProgress from '../components/OrderProgress.astro';
+import Field from '../components/ui/Field.astro';
+import { SITE } from '../data/site';
+import { formatDate, formatPrice, ORDER_STATUS_LABELS } from '../lib/format';
+import { findOrderForTracking } from '../lib/orders';
+import { rateLimit } from '../lib/server';
+import { clean } from '../lib/validation';
+
+export const prerender = false;
+
+let result: Awaited<ReturnType<typeof findOrderForTracking>>;
+let error = '';
+let number = '';
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  number = clean(form.get('number'), 40);
+  const phone = clean(form.get('phone'), 30);
+  // Limite les essais pour empêcher de deviner des numéros de commande.
+  if (!(await rateLimit(`suivi:${Astro.clientAddress}`, 10))) error = 'Trop de recherches. Réessayez dans une minute.';
+  else if (!number || !phone) error = 'Indiquez le numéro de commande et le téléphone.';
+  else {
+    result = await findOrderForTracking(number, phone);
+    if (!result) error = 'Aucune commande ne correspond. Vérifiez le numéro (ex. AFS-20260924-ABC123) et le téléphone utilisé lors de la commande.';
+  }
+}
+Astro.response.headers.set('Cache-Control', 'no-store');
+---
+
+<Layout title="Suivre ma commande" noindex>
+  <PageHero
+    title="Suivre ma commande"
+    intro="Saisissez le numéro reçu à la confirmation et le téléphone utilisé pour commander."
+    breadcrumbs={[{ label: 'Suivre ma commande' }]}
+  />
+
+  <div class="container-page grid max-w-3xl gap-6 py-12">
+    <form method="post" class="card grid gap-4 p-6 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+      <Field name="number" label="Numéro de commande" required placeholder="AFS-20260924-ABC123" value={number} />
+      <Field name="phone" label="Téléphone" type="tel" required autocomplete="tel" inputmode="tel" />
+      <button type="submit" class="btn btn-primary">Rechercher</button>
+    </form>
+
+    {error && <p class="alert alert-error" role="alert">{error}</p>}
+
+    {
+      result && (
+        <section class="card p-6" aria-labelledby="titre-commande">
+          <div class="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 id="titre-commande" class="text-xl">Commande {result.row.number}</h2>
+            <p class="text-sm text-muted">Passée le {formatDate(result.row.createdAt)}</p>
+          </div>
+          <div class="mt-5">
+            <OrderProgress status={result.row.status} />
+          </div>
+          <ul class="mt-6 divide-y divide-line border-t border-line text-sm">
+            {result.lines.map((line) => (
+              <li class="flex justify-between gap-4 py-2">
+                <span>
+                  {line.quantity} × {line.name}
+                </span>
+                <span class="shrink-0">{formatPrice(line.unitPrice * line.quantity)}</span>
+              </li>
+            ))}
+          </ul>
+          <p class="mt-3 flex justify-between border-t border-line pt-3 font-bold">
+            <span>Total</span>
+            <span>{formatPrice(result.row.total)}</span>
+          </p>
+          {/* Les notes du back-office sont internes : le client ne voit que les statuts. */}
+          <h3 class="mt-6 text-base">Historique</h3>
+          <ul class="mt-2 space-y-1 text-sm text-muted">
+            {result.events.map(({ event: e }) => (
+              <li>
+                {e.createdAt.toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })} — {ORDER_STATUS_LABELS[e.status]}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )
+    }
+
+    <p class="text-sm text-muted">
+      Vous avez un compte ? Retrouvez toutes vos commandes dans <a href="/compte" class="font-semibold underline">Mon compte</a>. Une
+      question : <a href={SITE.contact.phoneHref} class="font-semibold underline">{SITE.contact.phone}</a>.
+    </p>
+  </div>
+</Layout>

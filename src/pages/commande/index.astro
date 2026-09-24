@@ -160,6 +160,19 @@ const steps = ['Panier', 'Coordonnées', 'Livraison', 'Paiement', 'Confirmation'
   const field = (name: string) => form.elements.namedItem(name) as HTMLInputElement | RadioNodeList;
   const value = (name: string) => String((field(name) as HTMLInputElement)?.value ?? '').trim();
 
+  // Client connecté : coordonnées pré-remplies depuis son compte (champs encore vides seulement).
+  fetch('/api/auth/get-session')
+    .then((res) => (res.ok ? res.json() : null))
+    .then((session: { user?: { name?: string; email?: string; phone?: string | null } } | null) => {
+      const user = session?.user;
+      if (!user) return;
+      for (const [name, val] of [['name', user.name], ['email', user.email], ['phone', user.phone]] as const) {
+        const input = field(name) as HTMLInputElement | null;
+        if (input && !input.value && val) input.value = val;
+      }
+    })
+    .catch(() => {});
+
   function setError(name: string, message: string | null) {
     const slot = form.querySelector<HTMLElement>(`[data-error-for="${name}"]`);
     const input = form.elements.namedItem(name);

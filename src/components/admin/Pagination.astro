@@ -1,0 +1,30 @@
+---
+// Pagination des listes du back-office : conserve les filtres de l'URL.
+interface Props {
+  total: number;
+  page: number;
+  pageSize: number;
+}
+const { total, page, pageSize } = Astro.props;
+const pages = Math.max(1, Math.ceil(total / pageSize));
+const link = (n: number) => {
+  const url = new URL(Astro.url);
+  url.searchParams.set('page', String(n));
+  return url.pathname + url.search;
+};
+---
+
+<div class="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm">
+  <p class="text-muted">{total} résultat{total > 1 ? 's' : ''}</p>
+  {
+    pages > 1 && (
+      <nav aria-label="Pagination" class="flex items-center gap-2">
+        {page > 1 && <a href={link(page - 1)} class="btn btn-secondary btn-sm">Précédent</a>}
+        <span>
+          Page {page} / {pages}
+        </span>
+        {page < pages && <a href={link(page + 1)} class="btn btn-secondary btn-sm">Suivant</a>}
+      </nav>
+    )
+  }
+</div>

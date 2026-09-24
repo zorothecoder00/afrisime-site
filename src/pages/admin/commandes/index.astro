@@ -1,0 +1,57 @@
+---
+import AdminLayout from '../../../components/AdminLayout.astro';
+import OrdersTable from '../../../components/admin/OrdersTable.astro';
+import Pagination from '../../../components/admin/Pagination.astro';
+import { ORDER_STATUS_LABELS } from '../../../lib/format';
+import { listOrders } from '../../../lib/orders';
+import { can } from '../../../lib/roles';
+import { clean } from '../../../lib/validation';
+
+export const prerender = false;
+
+if (!can(Astro.locals.user!.role, { order: ['read'] })) return new Response('Accès refusé.', { status: 403 });
+
+const PAGE_SIZE = 25;
+const params = Astro.url.searchParams;
+const status = params.get('statut') ?? '';
+const erpPending = params.get('erp') === 'attente';
+const q = clean(params.get('q'), 80);
+const page = Math.max(1, Number(params.get('page')) || 1);
+
+const { rows, total } = await listOrders({
+  status: status in ORDER_STATUS_LABELS ? status : undefined,
+  erpPending,
+  q: q || undefined,
+  limit: PAGE_SIZE,
+  offset: (page - 1) * PAGE_SIZE,
+});
+---
+
+<AdminLayout title="Commandes">
+  <form method="get" class="card grid gap-3 p-4 sm:grid-cols-[1fr_220px_auto_auto] sm:items-end">
+    <label class="block">
+      <span class="label">Recherche</span>
+      <input type="search" name="q" value={q} placeholder="Numéro, nom, téléphone, e-mail" class="input" />
+    </label>
+    <label class="block">
+      <span class="label">Statut</span>
+      <select name="statut" class="input">
+        <option value="">Tous</option>
+        {Object.entries(ORDER_STATUS_LABELS).map(([value, label]) => <option value={value} selected={value === status}>{label}</option>)}
+      </select>
+    </label>
+    <label class="flex items-center gap-2 pb-3 text-sm">
+      <input type="checkbox" name="erp" value="attente" checked={erpPending} class="accent-brand-700" />
+      Non transmises à l'ERP
+    </label>
+    <div class="flex gap-2">
+      <button type="submit" class="btn btn-primary">Filtrer</button>
+      <a href="/admin/commandes" class="btn btn-ghost">Effacer</a>
+    </div>
+  </form>
+
+  <div class="mt-6">
+    <OrdersTable rows={rows} empty="Aucune commande ne correspond à ces critères." />
+    <Pagination total={total} page={page} pageSize={PAGE_SIZE} />
+  </div>
+</AdminLayout>

@@ -43,6 +43,16 @@ export const ORDER_STATUS_LABELS = {
   annulee: 'Annulée',
 } as const;
 
+export const LEAD_TYPE_LABELS = {
+  b2b: 'Devis B2B',
+  fournisseur: 'Fournisseur',
+  partenaire: 'Partenaire',
+  contact: 'Contact',
+  newsletter: 'Newsletter',
+  investisseur: 'Investisseur',
+  candidature: 'Candidature',
+} as const;
+
 export const LEAD_STATUS_LABELS = {
   nouveau: 'Nouveau',
   qualifie: 'Qualifié',

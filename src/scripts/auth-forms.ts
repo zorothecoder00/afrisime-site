@@ -32,6 +32,16 @@ export function safeReturn(fallback = '/compte'): string {
   return value && value.startsWith('/') && !value.startsWith('//') && !value.startsWith('/\\') ? value : fallback;
 }
 
+/** Après connexion ou inscription : le panier sera fusionné avec celui du compte à la page suivante. */
+export function goAfterLogin(url = safeReturn()) {
+  try {
+    sessionStorage.removeItem('afs-cart-sync');
+  } catch {
+    /* stockage indisponible : rien à effacer */
+  }
+  location.href = url;
+}
+
 export function showStatus(form: HTMLElement, kind: 'error' | 'success', message: string) {
   const status = form.querySelector<HTMLElement>('[data-form-status]');
   if (!status) return;

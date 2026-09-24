@@ -1,0 +1,32 @@
+---
+// Frise d'avancement d'une commande, pour le client (suivi) et le back-office.
+import Icon from './ui/Icon.astro';
+import { ORDER_STATUS_LABELS } from '../lib/format';
+import type { OrderStatus } from '../lib/orders';
+
+interface Props {
+  status: OrderStatus;
+}
+const { status } = Astro.props;
+const STEPS: OrderStatus[] = ['confirmee', 'en-preparation', 'expediee', 'livree'];
+const current = status === 'en-attente-paiement' ? -1 : STEPS.indexOf(status);
+---
+
+{
+  status === 'annulee' ? (
+    <p class="alert alert-error">Cette commande a été annulée.</p>
+  ) : (
+    <ol class="grid grid-cols-4 gap-2 text-center text-xs font-semibold sm:text-sm" aria-label="Avancement de la commande">
+      {STEPS.map((step, i) => (
+        <li
+          class:list={['rounded-xl border px-1 py-2.5', i <= current ? 'border-brand-700 bg-brand-50 text-brand-800' : 'border-line bg-white text-muted']}
+          aria-current={i === current ? 'step' : undefined}
+        >
+          {i <= current && <Icon name="check" size={14} class="mr-1 inline" />}
+          {ORDER_STATUS_LABELS[step]}
+        </li>
+      ))}
+    </ol>
+  )
+}
+{status === 'en-attente-paiement' && <p class="alert alert-info mt-3">Commande enregistrée, en attente de paiement.</p>}

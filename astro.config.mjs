@@ -30,6 +30,8 @@ export default defineConfig({
       DATABASE_URL: envField.string({ context: 'server', access: 'secret' }),
       BETTER_AUTH_SECRET: envField.string({ context: 'server', access: 'secret', min: 32 }),
       BETTER_AUTH_URL: envField.string({ context: 'server', access: 'secret', url: true }),
+      // Secret partagé avec l'ERP pour le webhook des statuts de commande (facultatif).
+      ERP_WEBHOOK_SECRET: envField.string({ context: 'server', access: 'secret', optional: true, min: 32 }),
     },
   },
 });

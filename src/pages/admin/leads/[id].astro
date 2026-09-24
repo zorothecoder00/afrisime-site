@@ -1,0 +1,154 @@
+---
+import AdminLayout from '../../../components/AdminLayout.astro';
+import { audit } from '../../../lib/audit';
+import { formatDate, LEAD_STATUS_LABELS, LEAD_TYPE_LABELS } from '../../../lib/format';
+import { assignableStaff, getLeadDetail, updateLead, type LeadStatus } from '../../../lib/leads';
+import { can } from '../../../lib/roles';
+import { clean } from '../../../lib/validation';
+
+export const prerender = false;
+
+const me = Astro.locals.user!;
+if (!can(me.role, { lead: ['read'] })) return new Response('Accès refusé.', { status: 403 });
+const canUpdate = can(me.role, { lead: ['update'] });
+
+const id = Astro.params.id!;
+const [initial, staff] = await Promise.all([getLeadDetail(id), canUpdate ? assignableStaff() : []]);
+if (!initial) return new Response('Demande introuvable.', { status: 404 });
+
+let error = '';
+if (Astro.request.method === 'POST') {
+  if (!canUpdate) return new Response('Accès refusé.', { status: 403 });
+  const form = await Astro.request.formData();
+  const status = String(form.get('status'));
+  const assignedTo = String(form.get('assignedTo') ?? '');
+  const note = clean(form.get('note'), 2000);
+
+  if (!(status in LEAD_STATUS_LABELS)) error = 'Statut inconnu.';
+  else if (assignedTo && !staff.some((s) => s.id === assignedTo)) error = 'Cette personne ne peut pas traiter les leads.';
+  else {
+    await updateLead(id, { status: status as LeadStatus, assignedTo: assignedTo || null, note }, me.id);
+    await audit({ actorId: me.id, action: 'lead-suivi', target: id, details: { status, assignedTo: assignedTo || null }, ipAddress: Astro.clientAddress });
+    return Astro.redirect(`/admin/leads/${id}?ok=1`, 303);
+  }
+}
+
+const { lead, events } = initial;
+const PIPELINE = Object.keys(LEAD_STATUS_LABELS) as LeadStatus[];
+const current = PIPELINE.indexOf(lead.status);
+---
+
+<AdminLayout title={lead.company ? `${lead.name} · ${lead.company}` : lead.name} back={{ label: 'Leads', href: '/admin/leads' }}>
+  {Astro.url.searchParams.has('ok') && <p class="alert alert-success mb-6">Suivi enregistré.</p>}
+  {error && <p class="alert alert-error mb-6" role="alert">{error}</p>}
+
+  <ol class="grid grid-cols-3 gap-2 text-center text-xs font-semibold sm:grid-cols-6 sm:text-sm" aria-label="Étape commerciale">
+    {
+      PIPELINE.map((step, i) => (
+        <li
+          class:list={['rounded-xl border px-1 py-2.5', i <= current ? 'border-brand-700 bg-brand-50 text-brand-800' : 'border-line bg-white text-muted']}
+          aria-current={i === current ? 'step' : undefined}
+        >
+          {LEAD_STATUS_LABELS[step]}
+        </li>
+      ))
+    }
+  </ol>
+
+  <div class="mt-6 grid gap-6 lg:grid-cols-[1fr_340px]">
+    <div class="space-y-6">
+      <section class="card p-5" aria-labelledby="titre-demande">
+        <h2 id="titre-demande" class="text-lg">Demande</h2>
+        <p class="mt-1 text-sm text-muted">
+          {LEAD_TYPE_LABELS[lead.type as keyof typeof LEAD_TYPE_LABELS] ?? lead.type} · reçue le {formatDate(lead.createdAt)} · source : {lead.source}
+        </p>
+        <p class="mt-4 whitespace-pre-line">{lead.need}</p>
+        {
+          Object.keys(lead.details).length > 0 && (
+            <dl class="mt-4 grid gap-2 border-t border-line pt-4 text-sm sm:grid-cols-2">
+              {Object.entries(lead.details).map(([key, value]) => (
+                <div>
+                  <dt class="text-muted">{key}</dt>
+                  <dd class="font-semibold">{value}</dd>
+                </div>
+              ))}
+            </dl>
+          )
+        }
+      </section>
+
+      <section class="card p-5" aria-labelledby="titre-historique">
+        <h2 id="titre-historique" class="text-lg">Historique</h2>
+        {
+          events.length === 0 ? (
+            <p class="mt-2 text-sm text-muted">Aucun suivi pour le moment.</p>
+          ) : (
+            <ol class="mt-3 space-y-3 text-sm">
+              {events.map(({ event, actorName, assigneeName }) => (
+                <li class="border-l-2 border-brand-200 pl-3">
+                  <p class="text-muted">
+                    {event.createdAt.toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })}
+                    {actorName && ` · ${actorName}`}
+                  </p>
+                  {event.status && <p class="font-semibold">Statut : {LEAD_STATUS_LABELS[event.status]}</p>}
+                  {assigneeName && <p class="font-semibold">Attribué à {assigneeName}</p>}
+                  {event.note && <p class="mt-1 whitespace-pre-line">{event.note}</p>}
+                </li>
+              ))}
+            </ol>
+          )
+        }
+      </section>
+    </div>
+
+    <aside class="space-y-6">
+      <section class="card p-5" aria-labelledby="titre-contact">
+        <h2 id="titre-contact" class="text-lg">Contact</h2>
+        <dl class="mt-3 space-y-2 text-sm">
+          <div><dt class="text-muted">Nom</dt><dd class="font-semibold">{lead.name}</dd></div>
+          {lead.company && <div><dt class="text-muted">Entreprise</dt><dd class="font-semibold">{lead.company}</dd></div>}
+          {lead.phone && <div><dt class="text-muted">Téléphone</dt><dd><a href={`tel:${lead.phone}`} class="font-semibold underline">{lead.phone}</a></dd></div>}
+          {lead.email && <div><dt class="text-muted">E-mail</dt><dd class="break-all"><a href={`mailto:${lead.email}`} class="underline">{lead.email}</a></dd></div>}
+          <div><dt class="text-muted">Responsable</dt><dd class="font-semibold">{lead.assigneeName ?? 'Non attribué'}</dd></div>
+          <div><dt class="text-muted">CRM</dt><dd>{lead.crmSyncedAt ? 'Transmis' : 'Non transmis'}</dd></div>
+        </dl>
+      </section>
+
+      {
+        canUpdate && (
+          <section class="card p-5" aria-labelledby="titre-suivi">
+            <h2 id="titre-suivi" class="text-lg">Suivi commercial</h2>
+            <form method="post" class="mt-3 space-y-3">
+              <label class="block">
+                <span class="label">Statut</span>
+                <select name="status" class="input">
+                  {PIPELINE.map((s) => (
+                    <option value={s} selected={s === lead.status}>
+                      {LEAD_STATUS_LABELS[s]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label class="block">
+                <span class="label">Responsable</span>
+                <select name="assignedTo" class="input">
+                  <option value="">Non attribué</option>
+                  {staff.map((s) => (
+                    <option value={s.id} selected={s.id === lead.assignedTo}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label class="block">
+                <span class="label">Note <span class="font-normal text-muted">(appel, devis envoyé…)</span></span>
+                <textarea name="note" rows="3" maxlength="2000" class="input" />
+              </label>
+              <button type="submit" class="btn btn-primary w-full">Enregistrer</button>
+            </form>
+          </section>
+        )
+      }
+    </aside>
+  </div>
+</AdminLayout>

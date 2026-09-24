@@ -1,0 +1,60 @@
+---
+// Mise en page du back-office : barre d'en-tête et navigation selon les permissions du rôle.
+import Layout from '../layouts/Layout.astro';
+import { can, ROLE_LABELS, type RoleName } from '../lib/roles';
+
+interface Props {
+  title: string;
+  /** Lien de retour affiché au-dessus du titre (pages de détail). */
+  back?: { label: string; href: string };
+}
+const { title, back } = Astro.props;
+const me = Astro.locals.user!;
+const path = Astro.url.pathname;
+
+const nav = [
+  { label: 'Tableau de bord', href: '/admin', show: true },
+  { label: 'Commandes', href: '/admin/commandes', show: can(me.role, { order: ['read'] }) },
+  { label: 'Leads', href: '/admin/leads', show: can(me.role, { lead: ['read'] }) },
+].filter((item) => item.show);
+const isActive = (href: string) => (href === '/admin' ? path === '/admin' || path === '/admin/' : path.startsWith(href));
+---
+
+<Layout title={`${title} · Back-office`} noindex>
+  <div class="border-b border-line bg-brand-950 text-white">
+    <div class="container-page flex flex-wrap items-center justify-between gap-3 pt-5">
+      <p class="text-xs font-bold uppercase tracking-[0.14em] text-brand-200">Back-office AfriSime</p>
+      <p class="text-sm text-brand-100">{me.name} · {ROLE_LABELS[me.role as RoleName]}</p>
+    </div>
+    <nav aria-label="Navigation du back-office" class="container-page mt-3 flex gap-1 overflow-x-auto">
+      {
+        nav.map((item) => (
+          <a
+            href={item.href}
+            class:list={[
+              'whitespace-nowrap rounded-t-lg px-4 py-2.5 text-sm font-semibold',
+              isActive(item.href) ? 'bg-canvas text-brand-900' : 'text-brand-100 hover:bg-brand-900',
+            ]}
+            aria-current={isActive(item.href) ? 'page' : undefined}
+          >
+            {item.label}
+          </a>
+        ))
+      }
+    </nav>
+  </div>
+
+  <div class="container-page py-8">
+    {
+      back && (
+        <a href={back.href} class="text-sm font-semibold text-brand-700 underline">
+          ← {back.label}
+        </a>
+      )
+    }
+    <h1 class="mt-1 text-2xl sm:text-3xl">{title}</h1>
+    <div class="mt-6">
+      <slot />
+    </div>
+  </div>
+</Layout>

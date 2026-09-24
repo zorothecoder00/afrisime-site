@@ -26,7 +26,7 @@ if (Astro.locals.user) return Astro.redirect('/compte');
 
 <script>
   import { authClient } from '../../lib/auth-client';
-  import { bindForm, errorMessage, safeReturn } from '../../scripts/auth-forms';
+  import { bindForm, errorMessage, goAfterLogin, safeReturn } from '../../scripts/auth-forms';
 
   // Conserver l'adresse de retour si le visiteur passe par l'inscription.
   document.querySelectorAll<HTMLAnchorElement>('[data-keep-return]').forEach((a) => (a.search = location.search));
@@ -43,6 +43,6 @@ if (Astro.locals.user) return Astro.redirect('/compte');
       location.href = `/compte/verification?retour=${encodeURIComponent(safeReturn())}`;
       return;
     }
-    location.href = safeReturn();
+    goAfterLogin();
   });
 </script>

@@ -1,0 +1,67 @@
+---
+import AdminLayout from '../../../components/AdminLayout.astro';
+import LeadsTable from '../../../components/admin/LeadsTable.astro';
+import Pagination from '../../../components/admin/Pagination.astro';
+import { LEAD_STATUS_LABELS, LEAD_TYPE_LABELS } from '../../../lib/format';
+import { listLeads } from '../../../lib/leads';
+import { can } from '../../../lib/roles';
+import { clean } from '../../../lib/validation';
+
+export const prerender = false;
+
+const me = Astro.locals.user!;
+if (!can(me.role, { lead: ['read'] })) return new Response('Accès refusé.', { status: 403 });
+
+const PAGE_SIZE = 25;
+const params = Astro.url.searchParams;
+const status = params.get('statut') ?? '';
+const type = params.get('type') ?? '';
+const mine = params.get('moi') === '1';
+const q = clean(params.get('q'), 80);
+const page = Math.max(1, Number(params.get('page')) || 1);
+
+const { rows, total } = await listLeads({
+  status: status in LEAD_STATUS_LABELS ? status : undefined,
+  type: type in LEAD_TYPE_LABELS ? type : undefined,
+  mine: mine ? me.id : undefined,
+  q: q || undefined,
+  limit: PAGE_SIZE,
+  offset: (page - 1) * PAGE_SIZE,
+});
+---
+
+<AdminLayout title="Leads">
+  <form method="get" class="card grid gap-3 p-4 md:grid-cols-[1fr_180px_180px_auto_auto] md:items-end">
+    <label class="block">
+      <span class="label">Recherche</span>
+      <input type="search" name="q" value={q} placeholder="Nom, entreprise, téléphone, e-mail" class="input" />
+    </label>
+    <label class="block">
+      <span class="label">Type</span>
+      <select name="type" class="input">
+        <option value="">Tous</option>
+        {Object.entries(LEAD_TYPE_LABELS).map(([value, label]) => <option value={value} selected={value === type}>{label}</option>)}
+      </select>
+    </label>
+    <label class="block">
+      <span class="label">Statut</span>
+      <select name="statut" class="input">
+        <option value="">Tous</option>
+        {Object.entries(LEAD_STATUS_LABELS).map(([value, label]) => <option value={value} selected={value === status}>{label}</option>)}
+      </select>
+    </label>
+    <label class="flex items-center gap-2 pb-3 text-sm">
+      <input type="checkbox" name="moi" value="1" checked={mine} class="accent-brand-700" />
+      Mes leads
+    </label>
+    <div class="flex gap-2">
+      <button type="submit" class="btn btn-primary">Filtrer</button>
+      <a href="/admin/leads" class="btn btn-ghost">Effacer</a>
+    </div>
+  </form>
+
+  <div class="mt-6">
+    <LeadsTable rows={rows} empty="Aucune demande ne correspond à ces critères." />
+    <Pagination total={total} page={page} pageSize={PAGE_SIZE} />
+  </div>
+</AdminLayout>

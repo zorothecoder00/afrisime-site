@@ -215,3 +215,51 @@ export const auditLog = pgTable(
   },
   (t) => [index('audit_log_actor_idx').on(t.actorId), index('audit_log_created_idx').on(t.createdAt)],
 );
+
+/* ───────── Historiques et panier sauvegardé ───────── */
+
+/** Historique des statuts d'une commande (création, back-office, ERP). */
+export const orderEvents = pgTable(
+  'order_events',
+  {
+    id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+    orderId: text('order_id')
+      .notNull()
+      .references(() => orders.id, { onDelete: 'cascade' }),
+    status: orderStatus('status').notNull(),
+    note: text('note'),
+    /** Null pour les changements automatiques (création, ERP). */
+    actorId: text('actor_id').references(() => user.id, { onDelete: 'set null' }),
+    source: text('source').notNull(), // site | back-office | erp
+    createdAt: createdAt(),
+  },
+  (t) => [index('order_events_order_idx').on(t.orderId)],
+);
+
+/** Suivi commercial d'un lead : changements de statut, attribution, notes. */
+export const leadEvents = pgTable(
+  'lead_events',
+  {
+    id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+    leadId: text('lead_id')
+      .notNull()
+      .references(() => leads.id, { onDelete: 'cascade' }),
+    status: leadStatus('status'),
+    assignedTo: text('assigned_to').references(() => user.id, { onDelete: 'set null' }),
+    note: text('note'),
+    actorId: text('actor_id').references(() => user.id, { onDelete: 'set null' }),
+    createdAt: createdAt(),
+  },
+  (t) => [index('lead_events_lead_idx').on(t.leadId)],
+);
+
+export type SavedCartItem = { productId: string; variantId: string; quantity: number };
+
+/** Panier d'un client connecté, retrouvé sur tous ses appareils. */
+export const carts = pgTable('carts', {
+  userId: text('user_id')
+    .primaryKey()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  items: jsonb('items').$type<SavedCartItem[]>().notNull().default([]),
+  updatedAt: updatedAt(),
+});

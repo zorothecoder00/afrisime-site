@@ -68,3 +68,8 @@ export async function sendPasswordResetLink(email: string, url: string) {
   if (import.meta.env.DEV) console.info(`[notification] réinitialisation du mot de passe pour ${email} : ${url}`);
   else console.warn(`[notification] aucun prestataire d'e-mails : lien de réinitialisation non envoyé à ${email}`);
 }
+
+export async function notifyOrderStatus(order: { number: string; phone: string; status: string }) {
+  // À brancher sur le prestataire retenu (SMS, WhatsApp Business, e-mail).
+  console.info(`[notification] commande ${order.number} → ${order.status} (${order.phone})`);
+}

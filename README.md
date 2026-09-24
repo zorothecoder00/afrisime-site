@@ -21,9 +21,10 @@ npm run build
 | `src/content/media/` | Articles de la section Média (Markdown) |
 | `src/content.config.ts` | Schémas des collections. Pour brancher un CMS ou l'ERP, remplacer le loader d'une collection |
 | `src/pages/` | Pages du site ; `boutique/[slug]` génère une page par produit |
-| `src/pages/api/` | `orders` (commandes), `leads` (B2B, fournisseurs, contact, newsletter) et `auth/*` (authentification), exécutés côté serveur |
+| `src/pages/api/` | `orders` (commandes), `leads` (B2B, fournisseurs, contact, newsletter), `cart` (panier sauvegardé), `auth/*` (authentification) et `erp/order-status` (webhook ERP), exécutés côté serveur |
 | `src/pages/compte/` | Espace client : connexion, inscription, mot de passe, double authentification, commandes |
-| `src/pages/admin/` | Back-office (équipe AfriSime, double authentification obligatoire) |
+| `src/pages/suivi.astro` | Suivi de commande sans compte (numéro + téléphone) |
+| `src/pages/admin/` | Back-office (équipe AfriSime, double authentification obligatoire) : tableau de bord, commandes, leads |
 | `src/db/` | Schéma PostgreSQL (Drizzle) ; migrations SQL dans `drizzle/` |
 | `src/lib/` | Logique partagée : authentification et rôles, prix et totaux, recherche, validation, intégrations ERP/CRM |
 | `src/middleware.ts` | Lecture de la session et protection de `/compte` et `/admin` |
@@ -67,6 +68,20 @@ ERP_API_URL=          ERP_API_TOKEN=          (facultatif)
 ```
 
 Sans les variables CRM/ERP, commandes et leads sont enregistrés en base et l'envoi est seulement journalisé (`src/lib/integrations.ts`).
+
+### Webhook ERP → site (statuts de commande)
+
+L'ERP met à jour le statut d'une commande avec le secret `ERP_WEBHOOK_SECRET` (32 caractères minimum) :
+
+```http
+POST /api/erp/order-status
+Authorization: Bearer <ERP_WEBHOOK_SECRET>
+Content-Type: application/json
+
+{ "number": "AFS-20260924-ABC123", "status": "expediee", "note": "facultatif" }
+```
+
+Statuts : `en-attente-paiement`, `confirmee`, `en-preparation`, `expediee`, `livree`, `annulee`. Sans secret configuré, le webhook répond 503.
 
 ## Avant la mise en ligne
 

@@ -112,9 +112,12 @@ const STATUS_TONE: Record<string, string> = {
 
 <script>
   import { authClient } from '../../lib/auth-client';
+  import { cart } from '../../scripts/cart';
 
   document.querySelector('[data-logout]')?.addEventListener('click', async () => {
     await authClient.signOut();
+    // Le panier reste sauvegardé sur le compte, mais disparaît de cet appareil (appareil partagé).
+    cart.forget();
     location.href = '/';
   });
 </script>

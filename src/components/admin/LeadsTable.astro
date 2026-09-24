@@ -1,0 +1,50 @@
+---
+import type { leads } from '../../db/schema';
+import { formatDate, LEAD_STATUS_LABELS, LEAD_TYPE_LABELS } from '../../lib/format';
+
+interface Props {
+  rows: (typeof leads.$inferSelect & { assigneeName?: string | null })[];
+  empty?: string;
+}
+const { rows, empty = 'Aucune demande.' } = Astro.props;
+---
+
+{
+  rows.length === 0 ? (
+    <p class="card p-6 text-sm text-muted">{empty}</p>
+  ) : (
+    <div class="card overflow-x-auto">
+      <table class="w-full min-w-[760px] text-left text-sm">
+        <thead class="border-b border-line bg-canvas text-muted">
+          <tr>
+            <th class="px-4 py-3 font-semibold">Date</th>
+            <th class="px-4 py-3 font-semibold">Type</th>
+            <th class="px-4 py-3 font-semibold">Contact</th>
+            <th class="px-4 py-3 font-semibold">Besoin</th>
+            <th class="px-4 py-3 font-semibold">Statut</th>
+            <th class="px-4 py-3 font-semibold">Responsable</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-line">
+          {rows.map((l) => (
+            <tr class="hover:bg-brand-50">
+              <td class="px-4 py-3">{formatDate(l.createdAt)}</td>
+              <td class="px-4 py-3 font-semibold">{LEAD_TYPE_LABELS[l.type as keyof typeof LEAD_TYPE_LABELS] ?? l.type}</td>
+              <td class="px-4 py-3">
+                <a href={`/admin/leads/${l.id}`} class="font-semibold text-brand-800 underline">
+                  {l.company ? `${l.name} · ${l.company}` : l.name}
+                </a>
+                <span class="block text-muted">{l.phone ?? l.email}</span>
+              </td>
+              <td class="max-w-xs truncate px-4 py-3" title={l.need}>
+                {l.need}
+              </td>
+              <td class="px-4 py-3">{LEAD_STATUS_LABELS[l.status]}</td>
+              <td class="px-4 py-3 text-muted">{l.assigneeName ?? '—'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}

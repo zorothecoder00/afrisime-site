@@ -1,0 +1,185 @@
+---
+import AdminLayout from '../../../components/AdminLayout.astro';
+import OrderProgress from '../../../components/OrderProgress.astro';
+import { DELIVERY_ZONES, PAYMENT_METHODS } from '../../../data/site';
+import { audit } from '../../../lib/audit';
+import { formatPrice, ORDER_STATUS_LABELS } from '../../../lib/format';
+import { notifyOrderStatus, sendOrderToErp } from '../../../lib/integrations';
+import { getOrderDetail, markOrderSynced, ORDER_TRANSITIONS, setOrderStatus, toOrder, type OrderStatus } from '../../../lib/orders';
+import { can } from '../../../lib/roles';
+import { clean } from '../../../lib/validation';
+
+export const prerender = false;
+
+const me = Astro.locals.user!;
+if (!can(me.role, { order: ['read'] })) return new Response('Accès refusé.', { status: 403 });
+const canUpdate = can(me.role, { order: ['update'] });
+
+const number = Astro.params.number!;
+let detail = await getOrderDetail(number);
+if (!detail) return new Response('Commande introuvable.', { status: 404 });
+
+let error = '';
+// Formulaires du back-office (même origine vérifiée par Astro : security.checkOrigin).
+if (Astro.request.method === 'POST') {
+  if (!canUpdate) return new Response('Accès refusé.', { status: 403 });
+  const form = await Astro.request.formData();
+  const action = form.get('action');
+
+  if (action === 'status') {
+    const next = String(form.get('status')) as OrderStatus;
+    const note = clean(form.get('note'), 500);
+    if (!ORDER_TRANSITIONS[detail.row.status].includes(next)) {
+      error = `Passage de « ${ORDER_STATUS_LABELS[detail.row.status]} » à ce statut impossible.`;
+    } else if (!(await setOrderStatus(detail.row.id, next, { source: 'back-office', actorId: me.id, note, from: detail.row.status }))) {
+      error = 'La commande a été modifiée entre-temps. Vérifiez son statut actuel ci-dessous.';
+    } else {
+      await audit({ actorId: me.id, action: 'commande-statut', target: number, details: { from: detail.row.status, to: next }, ipAddress: Astro.clientAddress });
+      await notifyOrderStatus({ number, phone: detail.row.customer.phone, status: next }).catch(console.error);
+      return Astro.redirect(`/admin/commandes/${number}?ok=statut`, 303);
+    }
+  }
+
+  if (action === 'erp') {
+    try {
+      if (await sendOrderToErp(toOrder(detail.row, detail.lines))) {
+        await markOrderSynced(number);
+        await audit({ actorId: me.id, action: 'commande-renvoi-erp', target: number, ipAddress: Astro.clientAddress });
+        return Astro.redirect(`/admin/commandes/${number}?ok=erp`, 303);
+      }
+      error = "L'intégration ERP n'est pas configurée (ERP_API_URL) : rien n'a été envoyé.";
+    } catch (err) {
+      console.error(err);
+      error = "L'ERP n'a pas répondu. Réessayez plus tard.";
+    }
+  }
+  detail = (await getOrderDetail(number))!;
+}
+
+const { row, lines, events } = detail;
+const nextStatuses = ORDER_TRANSITIONS[row.status];
+const zone = DELIVERY_ZONES.find((z) => z.id === row.deliveryZone);
+const payment = PAYMENT_METHODS.find((p) => p.id === row.paymentMethod);
+const ok = Astro.url.searchParams.get('ok');
+const SOURCE_LABELS: Record<string, string> = { site: 'Site', 'back-office': 'Back-office', erp: 'ERP' };
+---
+
+<AdminLayout title={`Commande ${row.number}`} back={{ label: 'Commandes', href: '/admin/commandes' }}>
+  {ok === 'statut' && <p class="alert alert-success mb-6">Statut mis à jour.</p>}
+  {ok === 'erp' && <p class="alert alert-success mb-6">Commande transmise à l'ERP.</p>}
+  {error && <p class="alert alert-error mb-6" role="alert">{error}</p>}
+
+  <OrderProgress status={row.status} />
+
+  <div class="mt-6 grid gap-6 lg:grid-cols-[1fr_340px]">
+    <div class="space-y-6">
+      <section class="card p-5" aria-labelledby="titre-articles">
+        <h2 id="titre-articles" class="text-lg">Articles</h2>
+        <table class="mt-3 w-full text-sm">
+          <tbody class="divide-y divide-line">
+            {
+              lines.map((l) => (
+                <tr>
+                  <td class="py-2">
+                    {l.name}
+                    <span class="block text-muted">{l.sku}</span>
+                  </td>
+                  <td class="py-2 text-right whitespace-nowrap">
+                    {l.quantity} × {formatPrice(l.unitPrice)}
+                  </td>
+                  <td class="py-2 pl-4 text-right font-semibold whitespace-nowrap">{formatPrice(l.unitPrice * l.quantity)}</td>
+                </tr>
+              ))
+            }
+          </tbody>
+        </table>
+        <dl class="mt-3 space-y-1 border-t border-line pt-3 text-sm">
+          <div class="flex justify-between"><dt>Sous-total</dt><dd>{formatPrice(row.subtotal)}</dd></div>
+          {row.discount > 0 && <div class="flex justify-between"><dt>Remise {row.promoCode && `(${row.promoCode})`}</dt><dd>− {formatPrice(row.discount)}</dd></div>}
+          <div class="flex justify-between"><dt>Livraison</dt><dd>{row.delivery ? formatPrice(row.delivery) : 'Gratuite'}</dd></div>
+          <div class="flex justify-between text-base font-bold"><dt>Total</dt><dd>{formatPrice(row.total)}</dd></div>
+        </dl>
+      </section>
+
+      <section class="card p-5" aria-labelledby="titre-historique">
+        <h2 id="titre-historique" class="text-lg">Historique</h2>
+        <ol class="mt-3 space-y-3 text-sm">
+          {
+            events.map(({ event, actorName }) => (
+              <li class="border-l-2 border-brand-200 pl-3">
+                <p class="font-semibold">{ORDER_STATUS_LABELS[event.status]}</p>
+                <p class="text-muted">
+                  {event.createdAt.toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })} · {SOURCE_LABELS[event.source] ?? event.source}
+                  {actorName && ` · ${actorName}`}
+                </p>
+                {event.note && <p class="mt-1">{event.note}</p>}
+              </li>
+            ))
+          }
+        </ol>
+      </section>
+    </div>
+
+    <aside class="space-y-6">
+      {
+        canUpdate && nextStatuses.length > 0 && (
+          <section class="card p-5" aria-labelledby="titre-statut">
+            <h2 id="titre-statut" class="text-lg">Changer le statut</h2>
+            <form method="post" class="mt-3 space-y-3">
+              <input type="hidden" name="action" value="status" />
+              <label class="block">
+                <span class="label">Nouveau statut</span>
+                <select name="status" class="input" required>
+                  {nextStatuses.map((s) => <option value={s}>{ORDER_STATUS_LABELS[s]}</option>)}
+                </select>
+              </label>
+              <label class="block">
+                <span class="label">Note interne <span class="font-normal text-muted">(facultatif)</span></span>
+                <textarea name="note" rows="2" maxlength="500" class="input" />
+              </label>
+              <button type="submit" class="btn btn-primary w-full">Enregistrer</button>
+            </form>
+          </section>
+        )
+      }
+
+      <section class="card p-5" aria-labelledby="titre-client">
+        <h2 id="titre-client" class="text-lg">Client</h2>
+        <dl class="mt-3 space-y-2 text-sm">
+          <div><dt class="text-muted">Nom</dt><dd class="font-semibold">{row.customer.name}</dd></div>
+          <div><dt class="text-muted">Téléphone</dt><dd><a href={`tel:${row.customer.phone}`} class="font-semibold underline">{row.customer.phone}</a></dd></div>
+          <div><dt class="text-muted">E-mail</dt><dd class="break-all">{row.customer.email}</dd></div>
+          <div><dt class="text-muted">Compte</dt><dd>{row.userId ? 'Client connecté' : 'Commande sans compte'}</dd></div>
+        </dl>
+      </section>
+
+      <section class="card p-5" aria-labelledby="titre-livraison">
+        <h2 id="titre-livraison" class="text-lg">Livraison et paiement</h2>
+        <dl class="mt-3 space-y-2 text-sm">
+          <div><dt class="text-muted">Mode</dt><dd class="font-semibold">{zone?.label ?? row.deliveryZone}</dd></div>
+          {row.deliveryZone !== 'retrait' && <div><dt class="text-muted">Adresse</dt><dd>{row.customer.address}, {row.customer.city}</dd></div>}
+          <div><dt class="text-muted">Paiement</dt><dd class="font-semibold">{payment?.label ?? row.paymentMethod}</dd></div>
+        </dl>
+      </section>
+
+      <section class="card p-5" aria-labelledby="titre-erp">
+        <h2 id="titre-erp" class="text-lg">ERP</h2>
+        {
+          row.erpSyncedAt ? (
+            <p class="mt-2 text-sm">Transmise le {row.erpSyncedAt.toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })}.</p>
+          ) : (
+            <div>
+              <p class="mt-2 text-sm text-warning">Pas encore transmise à l'ERP.</p>
+              {canUpdate && (
+                <form method="post" class="mt-3">
+                  <input type="hidden" name="action" value="erp" />
+                  <button type="submit" class="btn btn-secondary btn-sm">Renvoyer à l'ERP</button>
+                </form>
+              )}
+            </div>
+          )
+        }
+      </section>
+    </aside>
+  </div>
+</AdminLayout>

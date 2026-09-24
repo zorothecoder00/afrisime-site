@@ -1,5 +1,5 @@
-// Panier visiteur, stocké dans le navigateur. Quand les comptes clients seront en place,
-// le panier d'un client connecté sera synchronisé côté serveur.
+// Panier stocké dans le navigateur. Pour un client connecté, il est aussi sauvegardé
+// sur son compte (/api/cart) et retrouvé sur ses autres appareils.
 import { track } from './analytics';
 
 export type CartItem = {
@@ -25,7 +25,7 @@ function read(): CartItem[] {
   }
 }
 
-function write(items: CartItem[]) {
+function write(items: CartItem[], sync = true) {
   memoryCart = items;
   try {
     localStorage.setItem(KEY, JSON.stringify(items));
@@ -33,6 +33,7 @@ function write(items: CartItem[]) {
     /* navigation privée ou stockage bloqué : le panier reste en mémoire */
   }
   document.dispatchEvent(new CustomEvent('afs:cart', { detail: items }));
+  if (sync) schedulePush();
 }
 
 export const cart = {
@@ -62,7 +63,82 @@ export const cart = {
   clear() {
     write([]);
   },
+  /** À la déconnexion : vide ce navigateur sans toucher au panier sauvegardé du compte. */
+  forget() {
+    signedIn = false;
+    sessionState(null);
+    write([], false);
+  },
 };
+
+/* ───────── Synchronisation avec le compte ───────── */
+
+// « visiteur » en sessionStorage : pas de compte, inutile de réinterroger le serveur
+// à chaque page. La page de connexion efface cet état.
+export const SYNC_STATE_KEY = 'afs-cart-sync';
+let signedIn = false;
+let pushTimer: ReturnType<typeof setTimeout> | undefined;
+
+function sessionState(value?: string | null) {
+  try {
+    if (value === undefined) return sessionStorage.getItem(SYNC_STATE_KEY);
+    if (value === null) sessionStorage.removeItem(SYNC_STATE_KEY);
+    else sessionStorage.setItem(SYNC_STATE_KEY, value);
+  } catch {
+    /* stockage indisponible : on réinterrogera le serveur */
+  }
+  return null;
+}
+
+const toSaved = (items: CartItem[]) => items.map(({ productId, variantId, quantity }) => ({ productId, variantId, quantity }));
+
+async function push() {
+  const res = await fetch('/api/cart', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ items: toSaved(read()) }),
+    keepalive: true, // l'envoi aboutit même si le visiteur change de page
+  }).catch(() => null);
+  if (res?.status === 401) signedIn = false;
+}
+
+function schedulePush() {
+  if (!signedIn) return;
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(push, 500);
+}
+
+/** Au chargement : fusionne le panier du navigateur avec celui du compte (quantité la plus grande). */
+async function pull() {
+  if (sessionState() === 'visiteur') return;
+  const res = await fetch('/api/cart').catch(() => null);
+  if (!res) return;
+  if (res.status === 401) {
+    sessionState('visiteur');
+    return;
+  }
+  if (!res.ok) return;
+  const { items: saved } = (await res.json()) as { items: CartItem[] };
+  signedIn = true;
+
+  const merged = [...saved];
+  for (const local of read()) {
+    const same = merged.find((i) => i.productId === local.productId && i.variantId === local.variantId);
+    if (same) same.quantity = Math.max(same.quantity, local.quantity);
+    else merged.push(local);
+  }
+  if (JSON.stringify(toSaved(merged)) === JSON.stringify(toSaved(saved))) {
+    write(saved, false); // déjà à jour : on reprend simplement les prix du catalogue
+    return;
+  }
+  // Le serveur valide la fusion et renvoie les lignes avec les prix du catalogue.
+  const put = await fetch('/api/cart', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ items: toSaved(merged) }),
+  }).catch(() => null);
+  write(put?.ok ? ((await put.json()) as { items: CartItem[] }).items : merged, false);
+}
 
 function renderCount() {
   const n = cart.count();
@@ -124,3 +200,4 @@ document.addEventListener('click', (event) => {
 document.addEventListener('afs:cart', renderCount);
 window.addEventListener('storage', (e) => e.key === KEY && renderCount());
 renderCount();
+pull();
