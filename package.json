@@ -9,16 +9,31 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:migrate:prod": "node --env-file=.env.production.bak node_modules/drizzle-kit/bin.cjs migrate",
+    "db:studio": "drizzle-kit studio",
+    "admin:create": "tsx scripts/create-admin.ts",
+    "admin:create:prod": "tsx --env-file=.env.production.bak scripts/create-admin.ts"
   },
   "dependencies": {
     "@astrojs/sitemap": "^3.7.4",
     "@astrojs/vercel": "^11.0.11",
     "@tailwindcss/vite": "^4.3.3",
     "astro": "^7.3.5",
-    "tailwindcss": "^4.3.3"
+    "better-auth": "^1.7.6",
+    "drizzle-orm": "^0.45.3",
+    "postgres": "^3.4.9",
+    "tailwindcss": "^4.3.3",
+    "uqr": "^0.1.3"
   },
   "allowScripts": {
     "esbuild": true
+  },
+  "devDependencies": {
+    "dotenv": "^18.0.3",
+    "drizzle-kit": "^0.31.11",
+    "tsx": "^4.23.15"
   }
 }

@@ -1,4 +1,7 @@
 import type { APIRoute } from 'astro';
+import { eq } from 'drizzle-orm';
+import { leads } from '../../db/schema';
+import { db } from '../../lib/db';
 import { sendLeadToCrm, type Lead } from '../../lib/integrations';
 import { isSameOrigin, json, newId, rateLimit } from '../../lib/server';
 import { clean, isValidEmail, isValidPhone } from '../../lib/validation';
@@ -8,9 +11,9 @@ export const prerender = false;
 const TYPES: Lead['type'][] = ['b2b', 'fournisseur', 'partenaire', 'contact', 'newsletter', 'investisseur', 'candidature'];
 const KNOWN_FIELDS = new Set(['type', 'source', 'name', 'phone', 'email', 'company', 'need', 'consent', 'website']);
 
-export const POST: APIRoute = async ({ request, clientAddress }) => {
+export const POST: APIRoute = async ({ request, clientAddress, locals }) => {
   if (!isSameOrigin(request)) return json({ error: 'Origine non autorisée.' }, 403);
-  if (!rateLimit(`leads:${clientAddress}`, 8)) {
+  if (!(await rateLimit(`leads:${clientAddress}`, 8))) {
     return json({ error: 'Trop de demandes. Réessayez dans une minute.' }, 429);
   }
 
@@ -64,10 +67,17 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
   };
 
   try {
-    await sendLeadToCrm(lead);
+    await db.insert(leads).values({ ...lead, createdAt: new Date(lead.createdAt), userId: locals.user?.id ?? null });
   } catch (err) {
     console.error(err);
-    return json({ error: "Votre demande n'a pas pu être transmise. Réessayez ou appelez-nous." }, 502);
+    return json({ error: "Votre demande n'a pas pu être transmise. Réessayez ou appelez-nous." }, 500);
+  }
+
+  // Le lead est enregistré : un échec du CRM ne fait pas échouer la demande (crm_synced_at reste vide).
+  try {
+    if (await sendLeadToCrm(lead)) await db.update(leads).set({ crmSyncedAt: new Date() }).where(eq(leads.id, lead.id));
+  } catch (err) {
+    console.error(err);
   }
 
   return json({ ok: true, id: lead.id }, 201);

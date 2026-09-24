@@ -1,0 +1,54 @@
+---
+import AuthShell from '../../components/AuthShell.astro';
+import Field from '../../components/ui/Field.astro';
+
+export const prerender = false;
+---
+
+<AuthShell title="Vérification en deux étapes" intro="Saisissez le code à 6 chiffres affiché dans votre application d'authentification.">
+  <form class="space-y-4" data-verify novalidate>
+    <p data-form-status hidden tabindex="-1"></p>
+    <div data-mode="totp">
+      <Field name="code" label="Code à 6 chiffres" required autocomplete="one-time-code" inputmode="numeric" />
+    </div>
+    <div data-mode="backup" hidden>
+      <Field name="backup" label="Code de secours" autocomplete="off" hint="Un des codes fournis lors de l'activation. Chaque code ne sert qu'une fois." />
+    </div>
+    <label class="flex items-center gap-2 text-sm">
+      <input type="checkbox" name="trust" class="accent-brand-700" />
+      Faire confiance à cet appareil pendant 30 jours
+    </label>
+    <button type="submit" class="btn btn-primary w-full">Valider</button>
+    <button type="button" class="btn btn-ghost btn-sm w-full" data-toggle-mode>Utiliser un code de secours</button>
+  </form>
+</AuthShell>
+
+<script>
+  import { authClient } from '../../lib/auth-client';
+  import { bindForm, errorMessage, safeReturn } from '../../scripts/auth-forms';
+
+  const form = document.querySelector<HTMLFormElement>('form[data-verify]')!;
+  const totp = form.querySelector<HTMLElement>('[data-mode="totp"]')!;
+  const backup = form.querySelector<HTMLElement>('[data-mode="backup"]')!;
+  const toggle = form.querySelector<HTMLButtonElement>('[data-toggle-mode]')!;
+
+  toggle.addEventListener('click', () => {
+    const useBackup = backup.hidden;
+    backup.hidden = !useBackup;
+    totp.hidden = useBackup;
+    toggle.textContent = useBackup ? "Utiliser l'application d'authentification" : 'Utiliser un code de secours';
+    form.querySelector<HTMLInputElement>(`[name="${useBackup ? 'backup' : 'code'}"]`)?.focus();
+  });
+
+  bindForm(form, async (data) => {
+    const trustDevice = !!data.get('trust');
+    const { error } = backup.hidden
+      ? await authClient.twoFactor.verifyTotp({ code: String(data.get('code') ?? '').replace(/\s/g, ''), trustDevice })
+      : await authClient.twoFactor.verifyBackupCode({ code: String(data.get('backup') ?? '').trim(), trustDevice });
+    if (error) {
+      if (error.code === 'INVALID_TWO_FACTOR_COOKIE') location.href = `/compte/connexion?retour=${encodeURIComponent(safeReturn())}`;
+      return errorMessage(error);
+    }
+    location.href = safeReturn();
+  });
+</script>

@@ -1,0 +1,45 @@
+---
+import AuthShell from '../../components/AuthShell.astro';
+import Field from '../../components/ui/Field.astro';
+
+export const prerender = false;
+
+// Better Auth renvoie ici avec ?token=… ou ?error=INVALID_TOKEN si le lien est invalide.
+const token = Astro.url.searchParams.get('token');
+const invalid = !token || Astro.url.searchParams.has('error');
+---
+
+<AuthShell title="Nouveau mot de passe">
+  {
+    invalid ? (
+      <div>
+        <p class="alert alert-error">Ce lien n'est plus valide ou a expiré.</p>
+        <a href="/compte/mot-de-passe-oublie" class="btn btn-primary mt-6 w-full">Demander un nouveau lien</a>
+      </div>
+    ) : (
+      <form class="space-y-4" data-reset data-token={token} novalidate>
+        <p data-form-status hidden tabindex="-1" />
+        <Field name="password" label="Nouveau mot de passe" type="password" required autocomplete="new-password" hint="10 caractères minimum." />
+        <Field name="confirm" label="Confirmez le mot de passe" type="password" required autocomplete="new-password" />
+        <button type="submit" class="btn btn-primary w-full">Enregistrer</button>
+      </form>
+    )
+  }
+</AuthShell>
+
+<script>
+  import { authClient } from '../../lib/auth-client';
+  import { bindForm, errorMessage } from '../../scripts/auth-forms';
+
+  const form = document.querySelector<HTMLFormElement>('form[data-reset]');
+  if (form) {
+    bindForm(form, async (data) => {
+      const password = String(data.get('password') ?? '');
+      if (password.length < 10) return 'Le mot de passe doit contenir au moins 10 caractères.';
+      if (password !== data.get('confirm')) return 'Les deux mots de passe ne correspondent pas.';
+      const { error } = await authClient.resetPassword({ newPassword: password, token: form.dataset.token! });
+      if (error) return errorMessage(error);
+      location.href = '/compte/connexion?reinitialise=1';
+    });
+  }
+</script>

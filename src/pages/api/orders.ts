@@ -2,17 +2,18 @@ import type { APIRoute } from 'astro';
 import { getCollection } from 'astro:content';
 import { DELIVERY_ZONES, PAYMENT_METHODS } from '../../data/site';
 import { notifyCustomer, sendOrderToErp, type Order, type OrderLine } from '../../lib/integrations';
-import { computeTotals } from '../../lib/pricing';
-import { getIdempotent, isSameOrigin, json, newId, rateLimit, setIdempotent } from '../../lib/server';
+import { computeTotals, isValidPromoCode } from '../../lib/pricing';
+import { findOrderByIdempotencyKey, markOrderSynced, saveOrder } from '../../lib/orders';
+import { isSameOrigin, json, newId, rateLimit } from '../../lib/server';
 import { clean, isValidEmail, isValidPhone } from '../../lib/validation';
 
 export const prerender = false;
 
 const MAX_QTY = 999;
 
-export const POST: APIRoute = async ({ request, clientAddress }) => {
+export const POST: APIRoute = async ({ request, clientAddress, locals }) => {
   if (!isSameOrigin(request)) return json({ error: 'Origine non autorisée.' }, 403);
-  if (!rateLimit(`orders:${clientAddress}`, 5)) {
+  if (!(await rateLimit(`orders:${clientAddress}`, 5))) {
     return json({ error: 'Trop de tentatives. Réessayez dans une minute.' }, 429);
   }
 
@@ -26,8 +27,8 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
   // Un double clic ou un rechargement renvoie la même commande au lieu d'en créer une seconde.
   const idemKey = clean(body.idempotencyKey, 80);
   if (!idemKey) return json({ error: 'Clé de commande manquante.' }, 400);
-  const previous = getIdempotent(idemKey);
-  if (previous) return json(previous, 200);
+  const previous = await findOrderByIdempotencyKey(idemKey);
+  if (previous) return json({ ok: true, order: previous }, 200);
 
   const customer = {
     name: clean(body.customer?.name, 120),
@@ -73,28 +74,38 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
   if (!lines.length && !errors.items) errors.items = 'Votre panier est vide.';
   if (Object.keys(errors).length) return json({ error: 'Certains champs sont à corriger.', errors }, 422);
 
-  const order: Order = {
+  const promoCode = clean(body.promoCode, 40);
+  const draft: Order = {
     number: newId('AFS'),
     status: payment!.id === 'livraison' ? 'confirmee' : 'en-attente-paiement',
     customer,
     lines,
     deliveryZone: zone!.id,
     paymentMethod: payment!.id,
-    totals: computeTotals(lines, zone!.id, clean(body.promoCode, 40)),
+    totals: computeTotals(lines, zone!.id, promoCode),
     createdAt: new Date().toISOString(),
   };
 
+  let saved;
   try {
-    await sendOrderToErp(order);
-    await notifyCustomer(order);
+    saved = await saveOrder(draft, idemKey, locals.user?.id ?? null, isValidPromoCode(promoCode) ? promoCode.toUpperCase() : null);
   } catch (err) {
     console.error(err);
-    return json({ error: "La commande n'a pas pu être enregistrée. Aucun paiement n'a été effectué." }, 502);
+    return json({ error: "La commande n'a pas pu être enregistrée. Aucun paiement n'a été effectué." }, 500);
   }
+  const { order, created } = saved;
+  if (!created) return json({ ok: true, order }, 200);
+
+  // La commande est enregistrée : un échec de l'ERP ou des notifications ne la bloque pas.
+  // Elle reste marquée « non synchronisée » (erp_synced_at vide) pour être renvoyée.
+  try {
+    if (await sendOrderToErp(order)) await markOrderSynced(order.number);
+  } catch (err) {
+    console.error(err);
+  }
+  await notifyCustomer(order).catch(console.error);
 
   // En production : rediriger vers la page du prestataire de paiement si
   // status === 'en-attente-paiement', puis confirmer via son webhook.
-  const response = { ok: true, order };
-  setIdempotent(idemKey, response);
-  return json(response, 201);
+  return json({ ok: true, order }, 201);
 };

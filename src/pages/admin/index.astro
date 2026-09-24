@@ -1,0 +1,157 @@
+---
+// Tableau de bord du back-office. Accès : équipe AfriSime avec double authentification
+// (contrôlé par src/middleware.ts). Chaque bloc dépend des permissions du rôle.
+import { count, desc, eq, sql } from 'drizzle-orm';
+import Layout from '../../layouts/Layout.astro';
+import { leads, orders, user as users } from '../../db/schema';
+import { db } from '../../lib/db';
+import { formatDate, formatPrice, LEAD_STATUS_LABELS, ORDER_STATUS_LABELS } from '../../lib/format';
+import { can, ROLE_LABELS, type RoleName } from '../../lib/roles';
+
+export const prerender = false;
+
+const me = Astro.locals.user!;
+const canOrders = can(me.role, { order: ['read'] });
+const canLeads = can(me.role, { lead: ['read'] });
+const canUsers = can(me.role, { user: ['list'] });
+
+const today = sql`${orders.createdAt} >= date_trunc('day', now())`;
+
+const [orderStats, leadStats, userStats, recentOrders, recentLeads] = await Promise.all([
+  canOrders
+    ? db
+        .select({
+          total: count(),
+          today: sql<number>`count(*) filter (where ${today})`.mapWith(Number),
+          revenueToday: sql<number>`coalesce(sum(${orders.total}) filter (where ${today} and ${orders.status} <> 'annulee'), 0)`.mapWith(Number),
+          notSynced: sql<number>`count(*) filter (where ${orders.erpSyncedAt} is null)`.mapWith(Number),
+        })
+        .from(orders)
+        .then((r) => r[0])
+    : null,
+  canLeads ? db.select({ total: count() }).from(leads).where(eq(leads.status, 'nouveau')).then((r) => r[0]) : null,
+  canUsers ? db.select({ total: count() }).from(users).then((r) => r[0]) : null,
+  canOrders ? db.select().from(orders).orderBy(desc(orders.createdAt)).limit(8) : [],
+  canLeads ? db.select().from(leads).orderBy(desc(leads.createdAt)).limit(8) : [],
+]);
+
+const stats = [
+  orderStats && { label: "Commandes aujourd'hui", value: String(orderStats.today) },
+  orderStats && { label: "Chiffre d'affaires du jour", value: formatPrice(orderStats.revenueToday) },
+  orderStats && { label: "Non transmises à l'ERP", value: String(orderStats.notSynced) },
+  leadStats && { label: 'Nouveaux leads', value: String(leadStats.total) },
+  userStats && { label: 'Comptes', value: String(userStats.total) },
+].filter(Boolean) as { label: string; value: string }[];
+---
+
+<Layout title="Back-office" noindex>
+  <div class="border-b border-line bg-brand-950 text-white">
+    <div class="container-page flex flex-wrap items-center justify-between gap-3 py-6">
+      <div>
+        <p class="text-xs font-bold uppercase tracking-[0.14em] text-brand-200">Back-office</p>
+        <h1 class="mt-1 text-2xl text-white">Tableau de bord</h1>
+      </div>
+      <p class="text-sm text-brand-100">{me.name} · {ROLE_LABELS[me.role as RoleName]}</p>
+    </div>
+  </div>
+
+  <div class="container-page space-y-10 py-10">
+    <ul class="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+      {
+        stats.map((s) => (
+          <li class="card p-4">
+            <p class="text-sm text-muted">{s.label}</p>
+            <p class="mt-1 text-2xl font-extrabold text-brand-900">{s.value}</p>
+          </li>
+        ))
+      }
+    </ul>
+
+    {
+      canOrders && (
+        <section aria-labelledby="titre-commandes">
+          <h2 id="titre-commandes" class="text-xl">Dernières commandes</h2>
+          {recentOrders.length === 0 ? (
+            <p class="card mt-3 p-6 text-sm text-muted">Aucune commande pour le moment.</p>
+          ) : (
+            <div class="card mt-3 overflow-x-auto">
+              <table class="w-full min-w-[640px] text-left text-sm">
+                <thead class="border-b border-line bg-canvas text-muted">
+                  <tr>
+                    <th class="px-4 py-3 font-semibold">Numéro</th>
+                    <th class="px-4 py-3 font-semibold">Date</th>
+                    <th class="px-4 py-3 font-semibold">Client</th>
+                    <th class="px-4 py-3 font-semibold">Statut</th>
+                    <th class="px-4 py-3 text-right font-semibold">Total</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-line">
+                  {recentOrders.map((o) => (
+                    <tr>
+                      <td class="px-4 py-3 font-semibold">
+                        {o.number}
+                        {!o.erpSyncedAt && <span class="badge badge-sur-commande ml-2">ERP en attente</span>}
+                      </td>
+                      <td class="px-4 py-3">{formatDate(o.createdAt)}</td>
+                      <td class="px-4 py-3">
+                        {o.customer.name}
+                        <span class="block text-muted">{o.customer.phone}</span>
+                      </td>
+                      <td class="px-4 py-3">{ORDER_STATUS_LABELS[o.status]}</td>
+                      <td class="px-4 py-3 text-right font-semibold">{formatPrice(o.total)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )
+    }
+
+    {
+      canLeads && (
+        <section aria-labelledby="titre-leads">
+          <h2 id="titre-leads" class="text-xl">Derniers leads</h2>
+          {recentLeads.length === 0 ? (
+            <p class="card mt-3 p-6 text-sm text-muted">Aucune demande pour le moment.</p>
+          ) : (
+            <div class="card mt-3 overflow-x-auto">
+              <table class="w-full min-w-[640px] text-left text-sm">
+                <thead class="border-b border-line bg-canvas text-muted">
+                  <tr>
+                    <th class="px-4 py-3 font-semibold">Date</th>
+                    <th class="px-4 py-3 font-semibold">Type</th>
+                    <th class="px-4 py-3 font-semibold">Contact</th>
+                    <th class="px-4 py-3 font-semibold">Besoin</th>
+                    <th class="px-4 py-3 font-semibold">Statut</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-line">
+                  {recentLeads.map((l) => (
+                    <tr>
+                      <td class="px-4 py-3">{formatDate(l.createdAt)}</td>
+                      <td class="px-4 py-3 font-semibold">{l.type}</td>
+                      <td class="px-4 py-3">
+                        {l.company ? `${l.name} · ${l.company}` : l.name}
+                        <span class="block text-muted">{l.phone ?? l.email}</span>
+                      </td>
+                      <td class="max-w-xs truncate px-4 py-3" title={l.need}>
+                        {l.need}
+                      </td>
+                      <td class="px-4 py-3">{LEAD_STATUS_LABELS[l.status]}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )
+    }
+
+    <p class="text-sm text-muted">
+      Gestion détaillée des commandes, leads, contenus et utilisateurs : prochaine étape du back-office.
+    </p>
+  </div>
+</Layout>

@@ -1,0 +1,107 @@
+---
+import AuthShell from '../../components/AuthShell.astro';
+import Field from '../../components/ui/Field.astro';
+
+export const prerender = false;
+
+if (Astro.locals.user) return Astro.redirect('/compte');
+---
+
+<AuthShell title="Créer un compte" intro="Suivez vos commandes et recommandez en quelques clics. La commande sans compte reste possible.">
+  <form class="space-y-4" data-signup novalidate>
+    <p data-form-status hidden tabindex="-1"></p>
+
+    <fieldset>
+      <legend class="label">Vous êtes</legend>
+      <div class="grid grid-cols-2 gap-2">
+        <label class="card flex cursor-pointer items-center gap-2 p-3 has-checked:border-brand-600 has-checked:bg-brand-50">
+          <input type="radio" name="accountType" value="particulier" checked class="accent-brand-700" />
+          <span class="text-sm font-semibold">Particulier</span>
+        </label>
+        <label class="card flex cursor-pointer items-center gap-2 p-3 has-checked:border-brand-600 has-checked:bg-brand-50">
+          <input type="radio" name="accountType" value="pro" class="accent-brand-700" />
+          <span class="text-sm font-semibold">Professionnel</span>
+        </label>
+      </div>
+    </fieldset>
+
+    <Field name="name" label="Nom complet" required autocomplete="name" />
+    <div data-company hidden>
+      <Field name="company" label="Raison sociale" required autocomplete="organization" />
+    </div>
+    <Field name="phone" label="Téléphone" type="tel" required autocomplete="tel" inputmode="tel" placeholder="90 00 00 00" hint="Pour vous prévenir de la livraison." />
+    <Field name="email" label="Adresse e-mail" type="email" required autocomplete="email" inputmode="email" />
+    <Field name="password" label="Mot de passe" type="password" required autocomplete="new-password" hint="10 caractères minimum." />
+
+    <label class="flex items-start gap-2 text-sm">
+      <input type="checkbox" name="terms" class="mt-1 accent-brand-700" />
+      <span>
+        J'accepte les <a href="/legal/cgv" class="font-semibold underline" target="_blank">conditions générales</a> et la
+        <a href="/legal/confidentialite" class="font-semibold underline" target="_blank">politique de confidentialité</a>.
+      </span>
+    </label>
+    <p class="field-error" data-error-for="terms" hidden aria-live="polite"></p>
+
+    <button type="submit" class="btn btn-primary w-full">Créer mon compte</button>
+  </form>
+  <p class="mt-6 text-center text-sm text-muted">
+    Déjà un compte ? <a href="/compte/connexion" class="font-semibold text-brand-700 underline" data-keep-return>Se connecter</a>
+  </p>
+</AuthShell>
+
+<script>
+  import { authClient } from '../../lib/auth-client';
+  import { isValidEmail, isValidPhone } from '../../lib/validation';
+  import { bindForm, errorMessage, safeReturn } from '../../scripts/auth-forms';
+
+  document.querySelectorAll<HTMLAnchorElement>('[data-keep-return]').forEach((a) => (a.search = location.search));
+
+  const form = document.querySelector<HTMLFormElement>('form[data-signup]')!;
+  const companyBlock = form.querySelector<HTMLElement>('[data-company]')!;
+  form.addEventListener('change', () => {
+    companyBlock.hidden = new FormData(form).get('accountType') !== 'pro';
+  });
+
+  function setError(name: string, message: string | null) {
+    const slot = form.querySelector<HTMLElement>(`[data-error-for="${name}"]`);
+    const input = form.elements.namedItem(name) as HTMLInputElement | null;
+    if (slot) {
+      slot.textContent = message ?? '';
+      slot.hidden = !message;
+    }
+    if (input && 'setAttribute' in input) {
+      if (message) input.setAttribute('aria-invalid', 'true');
+      else input.removeAttribute('aria-invalid');
+    }
+  }
+
+  bindForm(form, async (data) => {
+    const value = (key: string) => String(data.get(key) ?? '').trim();
+    const isPro = value('accountType') === 'pro';
+    const checks: [string, string | null][] = [
+      ['name', value('name').length < 2 ? 'Indiquez votre nom.' : null],
+      ['company', isPro && value('company').length < 2 ? 'Indiquez la raison sociale.' : null],
+      ['phone', !isValidPhone(value('phone')) ? 'Numéro de téléphone invalide.' : null],
+      ['email', !isValidEmail(value('email')) ? 'Adresse e-mail invalide.' : null],
+      ['password', String(data.get('password') ?? '').length < 10 ? '10 caractères minimum.' : null],
+      ['terms', !data.get('terms') ? 'Votre accord est nécessaire pour créer un compte.' : null],
+    ];
+    checks.forEach(([name, message]) => setError(name, message));
+    const firstError = checks.find(([, message]) => message);
+    if (firstError) {
+      (form.elements.namedItem(firstError[0]) as HTMLElement | null)?.focus();
+      return 'Certains champs sont à corriger.';
+    }
+
+    const { error } = await authClient.signUp.email({
+      name: value('name'),
+      email: value('email'),
+      password: String(data.get('password')),
+      phone: value('phone'),
+      accountType: isPro ? 'pro' : 'particulier',
+      company: isPro ? value('company') : undefined,
+    });
+    if (error) return errorMessage(error);
+    location.href = safeReturn();
+  });
+</script>

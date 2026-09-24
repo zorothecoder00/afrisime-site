@@ -1,0 +1,48 @@
+---
+import AuthShell from '../../components/AuthShell.astro';
+import Field from '../../components/ui/Field.astro';
+
+export const prerender = false;
+
+// Déjà connecté : inutile d'afficher le formulaire.
+if (Astro.locals.user) return Astro.redirect('/compte');
+---
+
+<AuthShell title="Connexion" intro="Retrouvez vos commandes, vos adresses et vos devis.">
+  <form class="space-y-4" data-login novalidate>
+    {Astro.url.searchParams.has('reinitialise') && <p class="alert alert-success">Mot de passe modifié. Connectez-vous avec le nouveau.</p>}
+    <p data-form-status hidden tabindex="-1"></p>
+    <Field name="email" label="Adresse e-mail" type="email" required autocomplete="email" inputmode="email" />
+    <Field name="password" label="Mot de passe" type="password" required autocomplete="current-password" />
+    <p class="text-right text-sm">
+      <a href="/compte/mot-de-passe-oublie" class="font-semibold text-brand-700 underline">Mot de passe oublié ?</a>
+    </p>
+    <button type="submit" class="btn btn-primary w-full">Se connecter</button>
+  </form>
+  <p class="mt-6 text-center text-sm text-muted">
+    Pas encore de compte ? <a href="/compte/inscription" class="font-semibold text-brand-700 underline" data-keep-return>Créer un compte</a>
+  </p>
+</AuthShell>
+
+<script>
+  import { authClient } from '../../lib/auth-client';
+  import { bindForm, errorMessage, safeReturn } from '../../scripts/auth-forms';
+
+  // Conserver l'adresse de retour si le visiteur passe par l'inscription.
+  document.querySelectorAll<HTMLAnchorElement>('[data-keep-return]').forEach((a) => (a.search = location.search));
+
+  const form = document.querySelector<HTMLFormElement>('form[data-login]')!;
+  bindForm(form, async (data) => {
+    const { data: result, error } = await authClient.signIn.email({
+      email: String(data.get('email') ?? '').trim(),
+      password: String(data.get('password') ?? ''),
+    });
+    if (error) return errorMessage(error);
+    // Compte protégé par double authentification : étape de vérification du code.
+    if (result && 'twoFactorRedirect' in result && result.twoFactorRedirect) {
+      location.href = `/compte/verification?retour=${encodeURIComponent(safeReturn())}`;
+      return;
+    }
+    location.href = safeReturn();
+  });
+</script>

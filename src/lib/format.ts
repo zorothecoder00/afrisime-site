@@ -33,3 +33,21 @@ export const ARTICLE_TYPE_LABELS = {
   evenement: 'Événement',
   communique: 'Communiqué',
 } as const;
+
+export const ORDER_STATUS_LABELS = {
+  'en-attente-paiement': 'En attente de paiement',
+  confirmee: 'Confirmée',
+  'en-preparation': 'En préparation',
+  expediee: 'Expédiée',
+  livree: 'Livrée',
+  annulee: 'Annulée',
+} as const;
+
+export const LEAD_STATUS_LABELS = {
+  nouveau: 'Nouveau',
+  qualifie: 'Qualifié',
+  devis: 'Devis envoyé',
+  negociation: 'Négociation',
+  commande: 'Commande',
+  cloture: 'Clôturé',
+} as const;

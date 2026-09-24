@@ -1,0 +1,120 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import PageHero from '../../components/PageHero.astro';
+import Icon from '../../components/ui/Icon.astro';
+import { SITE } from '../../data/site';
+import { formatDate, formatPrice, ORDER_STATUS_LABELS } from '../../lib/format';
+import { listOrdersForUser } from '../../lib/orders';
+import { isStaff, ROLE_LABELS, type RoleName } from '../../lib/roles';
+
+export const prerender = false;
+
+const user = Astro.locals.user!;
+const staff = isStaff(user.role);
+const orders = await listOrdersForUser(user.id);
+
+const STATUS_TONE: Record<string, string> = {
+  'en-attente-paiement': 'badge-sur-commande',
+  confirmee: 'badge-nouveau',
+  'en-preparation': 'badge-nouveau',
+  expediee: 'badge-nouveau',
+  livree: 'badge-populaire',
+  annulee: 'badge-rupture',
+};
+---
+
+<Layout title="Mon compte" noindex>
+  <PageHero title={`Bonjour ${user.name.split(' ')[0]}`} breadcrumbs={[{ label: 'Mon compte' }]}>
+    <div class="mt-4 flex flex-wrap gap-2">
+      {staff && <a href="/admin" class="btn btn-accent btn-sm">Back-office</a>}
+      <a href="/compte/securite" class="btn btn-secondary btn-sm">Sécurité du compte</a>
+      <button type="button" class="btn btn-ghost btn-sm" data-logout>Se déconnecter</button>
+    </div>
+  </PageHero>
+
+  <div class="container-page grid gap-8 py-12 lg:grid-cols-[1fr_320px]">
+    <section aria-labelledby="titre-commandes">
+      {Astro.url.searchParams.has('securite') && <p class="alert alert-success mb-6">Double authentification activée.</p>}
+      <h2 id="titre-commandes" class="text-2xl">Mes commandes</h2>
+      {
+        orders.length === 0 ? (
+          <div class="card mt-4 p-8 text-center">
+            <Icon name="box" size={36} class="mx-auto text-muted" />
+            <p class="mt-3 font-semibold">Aucune commande pour le moment.</p>
+            <p class="mt-1 text-sm text-muted">Les commandes passées en étant connecté apparaîtront ici avec leur statut.</p>
+            <a href="/boutique" class="btn btn-primary mt-5">Découvrir la boutique</a>
+          </div>
+        ) : (
+          <ul class="mt-4 space-y-3">
+            {orders.map((order) => (
+              <li class="card p-5">
+                <details>
+                  <summary class="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3">
+                    <span>
+                      <span class="block font-bold text-brand-900">{order.number}</span>
+                      <span class="text-sm text-muted">
+                        {formatDate(new Date(order.createdAt))} · {order.lines.length} article{order.lines.length > 1 ? 's' : ''}
+                      </span>
+                    </span>
+                    <span class="flex items-center gap-3">
+                      <span class:list={['badge', STATUS_TONE[order.status]]}>{ORDER_STATUS_LABELS[order.status]}</span>
+                      <strong>{formatPrice(order.totals.total)}</strong>
+                    </span>
+                  </summary>
+                  <ul class="mt-4 divide-y divide-line border-t border-line text-sm">
+                    {order.lines.map((line) => (
+                      <li class="flex justify-between gap-4 py-2">
+                        <span>
+                          {line.quantity} × {line.name}
+                        </span>
+                        <span class="shrink-0">{formatPrice(line.unitPrice * line.quantity)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              </li>
+            ))}
+          </ul>
+        )
+      }
+    </section>
+
+    <aside class="space-y-4">
+      <section class="card p-5" aria-labelledby="titre-profil">
+        <h2 id="titre-profil" class="text-lg">Mes informations</h2>
+        <dl class="mt-3 space-y-2 text-sm">
+          <div><dt class="text-muted">Nom</dt><dd class="font-semibold">{user.name}</dd></div>
+          <div><dt class="text-muted">E-mail</dt><dd class="font-semibold break-all">{user.email}</dd></div>
+          {user.phone && <div><dt class="text-muted">Téléphone</dt><dd class="font-semibold">{user.phone}</dd></div>}
+          <div>
+            <dt class="text-muted">Type de compte</dt>
+            <dd class="font-semibold">
+              {staff ? ROLE_LABELS[user.role as RoleName] : user.accountType === 'pro' ? `Professionnel${user.company ? ` · ${user.company}` : ''}` : 'Particulier'}
+            </dd>
+          </div>
+        </dl>
+      </section>
+      {
+        user.accountType === 'pro' && !staff && (
+          <a href="/b2b#devis" class="card block p-5 hover:border-brand-600">
+            <Icon name="building" class="text-brand-600" />
+            <p class="mt-2 font-bold">Prix professionnels</p>
+            <p class="mt-1 text-sm text-muted">Un commercial valide votre compte pro et vous propose des tarifs volume.</p>
+          </a>
+        )
+      }
+      <p class="text-sm text-muted">
+        Une question sur une commande ? <a href={SITE.contact.phoneHref} class="font-semibold underline">{SITE.contact.phone}</a>
+      </p>
+    </aside>
+  </div>
+</Layout>
+
+<script>
+  import { authClient } from '../../lib/auth-client';
+
+  document.querySelector('[data-logout]')?.addEventListener('click', async () => {
+    await authClient.signOut();
+    location.href = '/';
+  });
+</script>

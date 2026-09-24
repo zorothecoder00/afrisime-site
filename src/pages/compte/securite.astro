@@ -1,0 +1,145 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import PageHero from '../../components/PageHero.astro';
+import Field from '../../components/ui/Field.astro';
+import { isStaff } from '../../lib/roles';
+
+export const prerender = false;
+
+const user = Astro.locals.user!;
+const staff = isStaff(user.role);
+const mandatory = staff && !user.twoFactorEnabled;
+---
+
+<Layout title="Sécurité du compte" noindex>
+  <PageHero title="Sécurité du compte" breadcrumbs={[{ label: 'Mon compte', href: '/compte' }, { label: 'Sécurité' }]} />
+
+  <div class="container-page grid max-w-3xl gap-6 py-12">
+    {
+      mandatory && (
+        <p class="alert alert-info">
+          La double authentification est obligatoire pour les comptes de l'équipe AfriSime. Activez-la pour accéder au back-office.
+        </p>
+      )
+    }
+
+    <section class="card p-6" aria-labelledby="titre-2fa">
+      <h2 id="titre-2fa" class="text-xl">Double authentification</h2>
+      {
+        user.twoFactorEnabled ? (
+          <div>
+            <p class="mt-2 text-muted">
+              <strong class="text-brand-700">Activée.</strong> Un code de votre application d'authentification vous est demandé à chaque connexion.
+            </p>
+            {!staff && (
+              <form class="mt-4 space-y-4" data-disable-2fa novalidate>
+                <p data-form-status hidden tabindex="-1" />
+                <Field name="password" label="Mot de passe actuel" type="password" required autocomplete="current-password" />
+                <button type="submit" class="btn btn-secondary">Désactiver</button>
+              </form>
+            )}
+          </div>
+        ) : (
+          <div>
+            <p class="mt-2 text-muted">
+              Protégez votre compte avec un code temporaire généré par une application comme Google Authenticator, Microsoft Authenticator ou
+              2FAS.
+            </p>
+            <form class="mt-4 space-y-4" data-enable-2fa novalidate>
+              <p data-form-status hidden tabindex="-1" />
+              <Field name="password" label="Mot de passe actuel" type="password" required autocomplete="current-password" />
+              <button type="submit" class="btn btn-primary">Activer</button>
+            </form>
+
+            <div class="mt-6 space-y-5" data-setup hidden>
+              <ol class="list-decimal space-y-2 pl-5 text-sm">
+                <li>Scannez ce QR code avec votre application d'authentification.</li>
+                <li>Conservez les codes de secours en lieu sûr : ils permettent de vous connecter si vous perdez votre téléphone.</li>
+                <li>Saisissez le code à 6 chiffres affiché par l'application pour terminer.</li>
+              </ol>
+              <div class="flex flex-col gap-5 sm:flex-row">
+                <div class="size-44 shrink-0 rounded-xl border border-line bg-white p-2" data-qr />
+                <div class="min-w-0">
+                  <p class="text-sm text-muted">Impossible de scanner ? Saisissez cette clé :</p>
+                  <code class="mt-1 block break-all rounded-lg bg-canvas p-2 text-sm" data-secret />
+                  <p class="mt-4 text-sm font-semibold">Codes de secours</p>
+                  <ul class="mt-1 grid grid-cols-2 gap-1 font-mono text-sm" data-backup-codes />
+                </div>
+              </div>
+              <form class="space-y-4" data-confirm-2fa novalidate>
+                <p data-form-status hidden tabindex="-1" />
+                <Field name="code" label="Code à 6 chiffres" required autocomplete="one-time-code" inputmode="numeric" />
+                <button type="submit" class="btn btn-primary">Terminer l'activation</button>
+              </form>
+            </div>
+          </div>
+        )
+      }
+    </section>
+
+    <section class="card p-6" aria-labelledby="titre-mdp">
+      <h2 id="titre-mdp" class="text-xl">Changer de mot de passe</h2>
+      <form class="mt-4 space-y-4" data-change-password novalidate>
+        <p data-form-status hidden tabindex="-1"></p>
+        <Field name="current" label="Mot de passe actuel" type="password" required autocomplete="current-password" />
+        <Field name="password" label="Nouveau mot de passe" type="password" required autocomplete="new-password" hint="10 caractères minimum." />
+        <button type="submit" class="btn btn-primary">Enregistrer</button>
+      </form>
+    </section>
+  </div>
+</Layout>
+
+<script>
+  import { renderSVG } from 'uqr';
+  import { authClient } from '../../lib/auth-client';
+  import { bindForm, errorMessage, showStatus } from '../../scripts/auth-forms';
+
+  const enableForm = document.querySelector<HTMLFormElement>('form[data-enable-2fa]');
+  const setup = document.querySelector<HTMLElement>('[data-setup]');
+  if (enableForm && setup) {
+    bindForm(enableForm, async (data) => {
+      const { data: result, error } = await authClient.twoFactor.enable({ password: String(data.get('password') ?? '') });
+      if (error || !result) return errorMessage(error);
+      setup.querySelector('[data-qr]')!.innerHTML = renderSVG(result.totpURI);
+      setup.querySelector('[data-secret]')!.textContent = new URL(result.totpURI).searchParams.get('secret');
+      setup.querySelector('[data-backup-codes]')!.replaceChildren(
+        ...result.backupCodes.map((code) => Object.assign(document.createElement('li'), { textContent: code })),
+      );
+      enableForm.hidden = true;
+      setup.hidden = false;
+      setup.querySelector<HTMLInputElement>('[name="code"]')?.focus();
+    });
+  }
+
+  const confirmForm = document.querySelector<HTMLFormElement>('form[data-confirm-2fa]');
+  if (confirmForm) {
+    bindForm(confirmForm, async (data) => {
+      const { error } = await authClient.twoFactor.verifyTotp({ code: String(data.get('code') ?? '').replace(/\s/g, '') });
+      if (error) return errorMessage(error);
+      location.href = '/compte?securite=1';
+    });
+  }
+
+  const disableForm = document.querySelector<HTMLFormElement>('form[data-disable-2fa]');
+  if (disableForm) {
+    bindForm(disableForm, async (data) => {
+      const { error } = await authClient.twoFactor.disable({ password: String(data.get('password') ?? '') });
+      if (error) return errorMessage(error);
+      location.reload();
+    });
+  }
+
+  const passwordForm = document.querySelector<HTMLFormElement>('form[data-change-password]')!;
+  bindForm(passwordForm, async (data) => {
+    const newPassword = String(data.get('password') ?? '');
+    if (newPassword.length < 10) return 'Le nouveau mot de passe doit contenir au moins 10 caractères.';
+    const { error } = await authClient.changePassword({
+      currentPassword: String(data.get('current') ?? ''),
+      newPassword,
+      revokeOtherSessions: true,
+    });
+    if (error) return errorMessage(error);
+    passwordForm.reset();
+    showStatus(passwordForm, 'success', 'Mot de passe modifié. Vos autres appareils ont été déconnectés.');
+  });
+</script>
