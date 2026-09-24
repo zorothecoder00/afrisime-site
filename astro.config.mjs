@@ -11,7 +11,7 @@ export default defineConfig({
     plugins: [tailwindcss()]
   },
 
-  site: "https://votre-domaine.com"
+  site: "https://votre-domaine.com",
 
   integrations: [sitemap()]
 });
