@@ -1,0 +1,46 @@
+---
+import { getCollection, render, type CollectionEntry } from 'astro:content';
+import Layout from '../../layouts/Layout.astro';
+import Breadcrumbs from '../../components/ui/Breadcrumbs.astro';
+import { ARTICLE_TYPE_LABELS, formatDate } from '../../lib/format';
+
+export async function getStaticPaths() {
+  const articles = await getCollection('articles');
+  return articles.map((article) => ({ params: { id: article.id }, props: { article } }));
+}
+
+const { article } = Astro.props as { article: CollectionEntry<'articles'> };
+const { Content } = await render(article);
+const url = new URL(`/media/${article.id}`, Astro.site).href;
+const share = [
+  { label: 'WhatsApp', href: `https://wa.me/?text=${encodeURIComponent(`${article.data.title} ${url}`)}` },
+  { label: 'Facebook', href: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}` },
+  { label: 'LinkedIn', href: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}` },
+];
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Article',
+  headline: article.data.title,
+  description: article.data.excerpt,
+  datePublished: article.data.date.toISOString(),
+  author: { '@type': 'Organization', name: article.data.author },
+};
+---
+
+<Layout title={article.data.title} description={article.data.excerpt} jsonLd={jsonLd}>
+  <article class="container-page max-w-3xl py-10">
+    <Breadcrumbs items={[{ label: 'Média', href: '/media' }, { label: article.data.title }]} />
+    <p class="mt-8 flex items-center gap-2 text-sm text-muted">
+      <span class="badge badge-populaire">{ARTICLE_TYPE_LABELS[article.data.type]}</span>
+      <time datetime={article.data.date.toISOString()}>{formatDate(article.data.date)}</time> · {article.data.author}
+    </p>
+    <h1 class="mt-4 text-3xl sm:text-5xl">{article.data.title}</h1>
+    <p class="mt-4 text-xl text-muted">{article.data.excerpt}</p>
+    <div class="prose-afs mt-8"><Content /></div>
+    <aside class="mt-12 flex flex-wrap items-center gap-2 border-t border-line pt-6">
+      <span class="text-sm font-bold">Partager :</span>
+      {share.map((s) => <a href={s.href} target="_blank" rel="noopener" class="btn btn-secondary btn-sm">{s.label}</a>)}
+    </aside>
+    <a href="/media" class="mt-8 inline-flex items-center gap-1 font-bold text-brand-700 hover:underline">← Tous les articles</a>
+  </article>
+</Layout>

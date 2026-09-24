@@ -1,0 +1,213 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Breadcrumbs from '../components/ui/Breadcrumbs.astro';
+import Icon from '../components/ui/Icon.astro';
+import { getCatalog } from '../lib/catalog';
+
+// Prix et statuts à jour, pour corriger un panier enregistré avec d'anciens prix.
+const { products } = await getCatalog();
+const catalog = Object.fromEntries(
+  products.map((p) => [p.id, { status: p.data.status, variants: Object.fromEntries(p.data.variants.map((v) => [v.id, v.price])) }]),
+);
+---
+
+<Layout title="Mon panier" noindex>
+  <div class="container-page py-8">
+    <Breadcrumbs items={[{ label: 'Panier' }]} />
+    <h1 class="mt-4 text-3xl sm:text-4xl">Mon panier</h1>
+
+    <!-- Chargement -->
+    <div class="mt-8 space-y-3" data-state="loading">
+      <div class="skeleton h-24"></div>
+      <div class="skeleton h-24"></div>
+    </div>
+
+    <!-- Panier vide -->
+    <div class="card mt-8 p-10 text-center" data-state="empty" hidden>
+      <Icon name="cart" size={44} class="mx-auto text-muted" />
+      <h2 class="mt-4 text-xl">Votre panier est vide</h2>
+      <p class="mt-2 text-sm text-muted">Parcourez nos rayons et ajoutez vos produits du quotidien.</p>
+      <a href="/boutique" class="btn btn-primary mt-6">Aller à la boutique</a>
+    </div>
+
+    <!-- Panier rempli -->
+    <div class="mt-8 grid gap-8 lg:grid-cols-[1fr_380px]" data-state="filled" hidden>
+      <div>
+        <div class="alert-info alert mb-4" data-notice hidden role="status"></div>
+        <ul class="card divide-y divide-line" data-lines></ul>
+        <div class="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm">
+          <a href="/boutique" class="font-bold text-brand-700 hover:underline">← Continuer mes achats</a>
+          <p class="text-muted">Votre panier est sauvegardé sur cet appareil.</p>
+          <button type="button" class="font-semibold text-danger hover:underline" data-clear-cart>Vider le panier</button>
+        </div>
+      </div>
+
+      <aside class="card h-fit p-6 lg:sticky lg:top-40">
+        <h2 class="text-xl">Récapitulatif</h2>
+        <form class="mt-4 flex gap-2" data-promo-form>
+          <label for="promo" class="sr-only">Code promo</label>
+          <input id="promo" name="promo" class="input !py-2.5 uppercase" placeholder="Code promo" autocomplete="off" />
+          <button type="submit" class="btn btn-secondary btn-sm">Appliquer</button>
+        </form>
+        <p class="mt-1 text-xs" data-promo-status aria-live="polite"></p>
+        <dl class="mt-5 space-y-2 text-sm">
+          <div class="flex justify-between"><dt>Sous-total</dt><dd class="font-semibold" data-subtotal></dd></div>
+          <div class="flex justify-between text-brand-700" data-discount-row hidden><dt>Remise</dt><dd class="font-semibold" data-discount></dd></div>
+          <div class="flex justify-between text-muted"><dt>Livraison</dt><dd>Calculée à l'étape suivante</dd></div>
+        </dl>
+        <div class="mt-4 flex items-baseline justify-between border-t border-line pt-4">
+          <span class="font-bold">Total estimé</span>
+          <span class="text-2xl font-extrabold text-brand-900" data-total></span>
+        </div>
+        <p class="mt-3 rounded-lg bg-brand-50 px-3 py-2 text-xs text-brand-800" data-free-delivery></p>
+        <a href="/commande" class="btn btn-primary mt-5 w-full !py-4" data-checkout>Passer la commande <Icon name="arrow" size={18} /></a>
+        <p class="mt-3 flex items-center justify-center gap-1.5 text-xs text-muted"><Icon name="shield" size={14} />Paiement sécurisé · Mobile Money · Carte</p>
+      </aside>
+    </div>
+  </div>
+
+  <script type="application/json" id="catalog-prices" set:html={JSON.stringify(catalog)} />
+  <template id="line-template">
+    <li class="flex gap-4 p-4">
+      <a data-link class="grid size-20 shrink-0 place-items-center rounded-xl text-2xl font-extrabold" data-thumb></a>
+      <div class="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center">
+        <div class="min-w-0 flex-1">
+          <a data-link class="font-bold text-brand-900 hover:text-brand-600" data-name></a>
+          <p class="text-sm text-muted" data-variant></p>
+          <p class="text-sm font-semibold" data-unit-price></p>
+        </div>
+        <div class="flex items-center justify-between gap-4 sm:justify-end">
+          <div class="flex items-center rounded-lg border border-line">
+            <button type="button" class="px-3 py-2" data-step="-1"><span class="sr-only">Diminuer</span>−</button>
+            <input type="number" min="1" max="999" inputmode="numeric" class="w-12 border-0 bg-transparent text-center font-bold focus:outline-none" data-qty />
+            <button type="button" class="px-3 py-2" data-step="1"><span class="sr-only">Augmenter</span>+</button>
+          </div>
+          <p class="w-28 text-right font-extrabold text-brand-900" data-line-total></p>
+          <button type="button" class="text-muted hover:text-danger" data-remove></button>
+        </div>
+      </div>
+    </li>
+  </template>
+</Layout>
+
+<script>
+  import { cart, type CartItem } from '../scripts/cart';
+  import { computeTotals, isValidPromoCode } from '../lib/pricing';
+  import { formatPrice } from '../lib/format';
+  import { track } from '../scripts/analytics';
+  import { FREE_DELIVERY_THRESHOLD as threshold } from '../data/site';
+
+  const PROMO_KEY = 'afs-promo';
+  const catalog: Record<string, { status: string; variants: Record<string, number> }> = JSON.parse(
+    document.getElementById('catalog-prices')!.textContent!,
+  );
+  const $ = <T extends HTMLElement>(sel: string) => document.querySelector<T>(sel)!;
+  const template = $<HTMLTemplateElement>('#line-template');
+  const list = $('[data-lines]');
+  const notice = $('[data-notice]');
+
+  function getPromo() {
+    try { return sessionStorage.getItem(PROMO_KEY) ?? ''; } catch { return ''; }
+  }
+  function setPromo(code: string) {
+    try { code ? sessionStorage.setItem(PROMO_KEY, code) : sessionStorage.removeItem(PROMO_KEY); } catch {}
+  }
+
+  // Aligne le panier sur le catalogue : prix mis à jour, articles retirés de la vente supprimés.
+  function reconcile() {
+    const messages: string[] = [];
+    const next: CartItem[] = [];
+    for (const item of cart.items()) {
+      const ref = catalog[item.productId];
+      const price = ref?.variants[item.variantId];
+      if (!ref || price === undefined || ref.status === 'indisponible' || ref.status === 'devis') {
+        messages.push(`« ${item.name} » n'est plus disponible en ligne et a été retiré.`);
+        continue;
+      }
+      if (price !== item.price) messages.push(`Le prix de « ${item.name} » a été mis à jour.`);
+      next.push({ ...item, price });
+    }
+    if (messages.length) {
+      cart.replace(next);
+      notice.textContent = messages.join(' ');
+      notice.hidden = false;
+    }
+  }
+
+  function render() {
+    const items = cart.items();
+    $('[data-state="loading"]').hidden = true;
+    $('[data-state="empty"]').hidden = items.length > 0;
+    $('[data-state="filled"]').hidden = items.length === 0;
+    if (!items.length) return;
+
+    list.replaceChildren(
+      ...items.map((item) => {
+        const li = template.content.firstElementChild!.cloneNode(true) as HTMLElement;
+        li.querySelectorAll<HTMLAnchorElement>('[data-link]').forEach((a) => (a.href = `/boutique/${item.slug}`));
+        const thumb = li.querySelector<HTMLElement>('[data-thumb]')!;
+        thumb.style.cssText = `background:${item.color}1f;color:${item.color}`;
+        thumb.textContent = item.name.charAt(0);
+        thumb.setAttribute('aria-hidden', 'true');
+        thumb.tabIndex = -1;
+        li.querySelector('[data-name]')!.textContent = item.name;
+        li.querySelector('[data-variant]')!.textContent = item.variantLabel;
+        li.querySelector('[data-unit-price]')!.textContent = `${formatPrice(item.price)} l'unité`;
+        li.querySelector('[data-line-total]')!.textContent = formatPrice(item.price * item.quantity);
+        const qty = li.querySelector<HTMLInputElement>('[data-qty]')!;
+        qty.value = String(item.quantity);
+        qty.setAttribute('aria-label', `Quantité pour ${item.name}`);
+        qty.addEventListener('change', () => cart.setQuantity(item.productId, item.variantId, Math.max(1, Math.floor(Number(qty.value)) || 1)));
+        li.querySelectorAll<HTMLButtonElement>('[data-step]').forEach((b) =>
+          b.addEventListener('click', () => cart.setQuantity(item.productId, item.variantId, item.quantity + Number(b.dataset.step))),
+        );
+        const remove = li.querySelector<HTMLButtonElement>('[data-remove]')!;
+        remove.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>';
+        remove.setAttribute('aria-label', `Retirer ${item.name} du panier`);
+        remove.addEventListener('click', () => cart.remove(item.productId, item.variantId));
+        return li;
+      }),
+    );
+
+    const promo = getPromo();
+    const totals = computeTotals(items.map((i) => ({ unitPrice: i.price, quantity: i.quantity })), undefined, promo);
+    $('[data-subtotal]').textContent = formatPrice(totals.subtotal);
+    $('[data-discount-row]').hidden = totals.discount === 0;
+    $('[data-discount]').textContent = `− ${formatPrice(totals.discount)}`;
+    $('[data-total]').textContent = formatPrice(totals.total);
+    $<HTMLInputElement>('#promo').value = promo;
+    const missing = threshold - totals.subtotal;
+    $('[data-free-delivery]').textContent =
+      missing > 0
+        ? `Plus que ${formatPrice(missing)} pour la livraison offerte à Lomé.`
+        : 'Livraison offerte à Lomé centre et périphérie.';
+  }
+
+  $('[data-promo-form]').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const code = $<HTMLInputElement>('#promo').value.trim().toUpperCase();
+    const status = $('[data-promo-status]');
+    if (!code) {
+      setPromo('');
+      status.textContent = '';
+    } else if (isValidPromoCode(code)) {
+      setPromo(code);
+      status.className = 'mt-1 text-xs font-semibold text-brand-700';
+      status.textContent = `Code ${code} appliqué.`;
+    } else {
+      setPromo('');
+      status.className = 'mt-1 text-xs font-semibold text-danger';
+      status.textContent = 'Ce code promo n\'est pas valide.';
+    }
+    render();
+  });
+
+  $('[data-clear-cart]').addEventListener('click', () => {
+    if (confirm('Vider entièrement le panier ?')) cart.clear();
+  });
+  $('[data-checkout]').addEventListener('click', () => track('begin_checkout', { value: cart.subtotal() }));
+
+  document.addEventListener('afs:cart', render);
+  reconcile();
+  render();
+</script>

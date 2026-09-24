@@ -1,0 +1,264 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import ProductCard from '../../components/ProductCard.astro';
+import Breadcrumbs from '../../components/ui/Breadcrumbs.astro';
+import Icon from '../../components/ui/Icon.astro';
+import ProductVisual from '../../components/ui/ProductVisual.astro';
+import { canBuyOnline, cartPayload, getCatalog, lowestVariant, type Product } from '../../lib/catalog';
+import { BADGE_LABELS, STATUS_LABELS, formatPrice } from '../../lib/format';
+import { DELIVERY_ZONES, SITE } from '../../data/site';
+
+export async function getStaticPaths() {
+  const { products } = await getCatalog();
+  return products.map((product) => ({ params: { slug: product.id }, props: { product } }));
+}
+
+const { product } = Astro.props as { product: Product };
+const { products, categoryOf, brandOf } = await getCatalog();
+const p = product.data;
+const category = categoryOf(product);
+const brand = brandOf(product);
+const defaultVariant = lowestVariant(product);
+const buyable = canBuyOnline(product);
+
+const related = p.related
+  .map((id) => products.find((x) => x.id === id))
+  .filter((x): x is Product => !!x)
+  .concat(products.filter((x) => x.id !== product.id && x.data.category.id === category.id && !p.related.includes(x.id)))
+  .slice(0, 4);
+
+const availability = {
+  disponible: 'https://schema.org/InStock',
+  'sur-commande': 'https://schema.org/PreOrder',
+  indisponible: 'https://schema.org/OutOfStock',
+  devis: 'https://schema.org/LimitedAvailability',
+}[p.status];
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Product',
+  name: p.name,
+  sku: p.sku,
+  description: p.summary,
+  category: category.data.name,
+  brand: { '@type': 'Brand', name: brand.data.name },
+  offers: p.variants.map((v) => ({
+    '@type': 'Offer',
+    sku: `${p.sku}-${v.id}`,
+    name: v.label,
+    price: v.price,
+    priceCurrency: SITE.currency,
+    availability,
+    url: new URL(`/boutique/${product.id}`, Astro.site).href,
+  })),
+};
+
+const whatsappText = encodeURIComponent(`Bonjour AfriSime, je souhaite des informations sur : ${p.name} (${p.sku}).`);
+const statusStyle = {
+  disponible: 'bg-brand-50 text-brand-700 border-brand-200',
+  'sur-commande': 'bg-warning-50 text-warning border-warning/20',
+  indisponible: 'bg-danger-50 text-danger border-danger/20',
+  devis: 'bg-info-50 text-info border-info/20',
+}[p.status];
+const statusNote = {
+  disponible: 'En stock, prêt à être livré.',
+  'sur-commande': 'Commandable en ligne : livraison sous 3 à 7 jours après confirmation.',
+  indisponible: 'Réassort en cours. Contactez-nous pour connaître la date de retour.',
+  devis: 'Ce produit est vendu sur devis selon les volumes.',
+}[p.status];
+---
+
+<Layout title={`${p.name} – ${brand.data.name}`} description={`${p.summary} Réf. ${p.sku}. À partir de ${formatPrice(defaultVariant.price)}.`} jsonLd={jsonLd}>
+  <div class="container-page py-6">
+    <Breadcrumbs items={[{ label: 'Boutique', href: '/boutique' }, { label: category.data.name, href: `/boutique?categorie=${category.id}` }, { label: p.name }]} />
+  </div>
+
+  <section class="container-page grid gap-8 pb-12 lg:grid-cols-2 lg:gap-14">
+    <!-- Visuel -->
+    <div>
+      <div class="card group relative overflow-hidden">
+        <ProductVisual name={p.name} color={category.data.color} icon={category.data.icon} size="lg" class="aspect-square transition duration-500 group-hover:scale-110" />
+        <div class="absolute left-4 top-4 flex flex-wrap gap-1.5">
+          {p.badges.map((b) => <span class={`badge badge-${b}`}>{BADGE_LABELS[b]}</span>)}
+        </div>
+      </div>
+      <p class="mt-2 text-center text-xs text-muted">Photo non contractuelle</p>
+    </div>
+
+    <!-- Achat -->
+    <div>
+      <p class="text-sm font-semibold text-muted">
+        <a href={`/boutique?marque=${brand.id}`} class="hover:text-brand-600">{brand.data.name}</a> · Réf. {p.sku}
+      </p>
+      <h1 class="mt-2 text-3xl sm:text-4xl">{p.name}</h1>
+      <p class="mt-3 text-lg text-muted">{p.summary}</p>
+
+      <div class={`mt-5 rounded-xl border px-4 py-3 text-sm ${statusStyle}`}>
+        <strong>{STATUS_LABELS[p.status]}</strong> — {statusNote}
+      </div>
+
+      <form class="mt-6" data-product-form data-product-id={product.id} onsubmit="return false">
+        <fieldset>
+          <legend class="label">Format</legend>
+          <div class="grid gap-2 sm:grid-cols-2">
+            {
+              p.variants.map((v) => (
+                <label class="cursor-pointer">
+                  <input
+                    type="radio"
+                    name="variante"
+                    value={v.id}
+                    checked={v.id === defaultVariant.id}
+                    class="peer sr-only"
+                    data-price={v.price}
+                    data-compare={v.compareAtPrice ?? ''}
+                    data-weight={v.weightKg}
+                  />
+                  <span class="flex items-center justify-between gap-2 rounded-xl border-2 border-line px-4 py-3 text-sm transition peer-checked:border-brand-700 peer-checked:bg-brand-50 peer-focus-visible:outline-2 peer-focus-visible:outline-accent-500">
+                    <span class="font-semibold">{v.label}</span>
+                    {p.status !== 'devis' && <span class="font-extrabold text-brand-900">{formatPrice(v.price)}</span>}
+                  </span>
+                </label>
+              ))
+            }
+          </div>
+        </fieldset>
+
+        {
+          p.status !== 'devis' && (
+            <p class="mt-6 flex items-baseline gap-3">
+              <span class="text-4xl font-extrabold text-brand-900" data-price-display>{formatPrice(defaultVariant.price)}</span>
+              <s class="text-lg text-muted" data-compare-display hidden={!defaultVariant.compareAtPrice}>
+                {defaultVariant.compareAtPrice ? formatPrice(defaultVariant.compareAtPrice) : ''}
+              </s>
+            </p>
+          )
+        }
+
+        <div class="mt-5 flex flex-col gap-3 sm:flex-row">
+          {
+            buyable && (
+              <>
+                <div class="flex items-center rounded-xl border border-line bg-white">
+                  <button type="button" class="px-4 py-3" data-qty-step="-1" aria-label="Diminuer la quantité"><Icon name="minus" size={16} /></button>
+                  <label for="quantite" class="sr-only">Quantité</label>
+                  <input id="quantite" type="number" min="1" max="999" value="1" inputmode="numeric" class="w-14 border-0 bg-transparent text-center font-bold focus:outline-none" />
+                  <button type="button" class="px-4 py-3" data-qty-step="1" aria-label="Augmenter la quantité"><Icon name="plus" size={16} /></button>
+                </div>
+                <button
+                  type="button"
+                  class="btn btn-primary flex-1 !py-4 !text-base"
+                  data-add-to-cart={cartPayload(product, category.data.color)}
+                  data-variant-select="variante"
+                  data-qty-input="quantite"
+                >
+                  <Icon name="cart" size={20} />Ajouter au panier
+                </button>
+              </>
+            )
+          }
+          {
+            !buyable && (
+              <a href={`/b2b?produit=${encodeURIComponent(p.name)}#devis`} class="btn btn-primary flex-1 !py-4 !text-base">
+                Demander un devis
+              </a>
+            )
+          }
+        </div>
+        <div class="mt-3 flex flex-col gap-2 sm:flex-row">
+          <a href={`/b2b?produit=${encodeURIComponent(p.name)}#devis`} class="btn btn-secondary flex-1" hidden={!buyable}>Prix pro / gros volume</a>
+          <a href={`${SITE.contact.whatsapp}?text=${whatsappText}`} target="_blank" rel="noopener" class="btn btn-ghost flex-1">
+            <Icon name="whatsapp" size={18} />Poser une question
+          </a>
+        </div>
+      </form>
+
+      <ul class="mt-8 grid gap-3 text-sm sm:grid-cols-3">
+        <li class="flex items-center gap-2"><Icon name="truck" size={18} class="text-brand-600" />Livraison dès {formatPrice(DELIVERY_ZONES[1].fee)}</li>
+        <li class="flex items-center gap-2"><Icon name="store" size={18} class="text-brand-600" />Retrait gratuit au dépôt</li>
+        <li class="flex items-center gap-2"><Icon name="shield" size={18} class="text-brand-600" />Paiement sécurisé</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- Détails -->
+  <section class="border-t border-line bg-white">
+    <div class="container-page grid gap-10 py-12 lg:grid-cols-[2fr_1fr]">
+      <div>
+        <h2 class="text-2xl">Description</h2>
+        <p class="mt-3 leading-relaxed text-ink">{p.description}</p>
+        <h2 class="mt-10 text-2xl">Caractéristiques</h2>
+        <dl class="mt-4 divide-y divide-line rounded-2xl border border-line">
+          <div class="grid grid-cols-2 gap-4 px-4 py-3 text-sm"><dt class="text-muted">Référence</dt><dd class="font-semibold">{p.sku}</dd></div>
+          <div class="grid grid-cols-2 gap-4 px-4 py-3 text-sm"><dt class="text-muted">Catégorie</dt><dd class="font-semibold">{category.data.name}</dd></div>
+          <div class="grid grid-cols-2 gap-4 px-4 py-3 text-sm"><dt class="text-muted">Marque</dt><dd class="font-semibold">{brand.data.name}</dd></div>
+          {p.features.map((f) => (
+            <div class="grid grid-cols-2 gap-4 px-4 py-3 text-sm"><dt class="text-muted">{f.label}</dt><dd class="font-semibold">{f.value}</dd></div>
+          ))}
+        </dl>
+      </div>
+      <aside>
+        <h2 class="text-2xl">Logistique</h2>
+        <dl class="mt-4 space-y-3 text-sm">
+          <div class="card p-4">
+            <dt class="text-muted">Poids du format choisi</dt>
+            <dd class="mt-1 font-bold" data-weight-display>{defaultVariant.weightKg} kg</dd>
+          </div>
+          <div class="card p-4">
+            <dt class="text-muted">Délai indicatif</dt>
+            <dd class="mt-1 font-bold">{p.status === 'sur-commande' ? '3 à 7 jours' : 'Sous 24 h à Lomé centre'}</dd>
+          </div>
+        </dl>
+        <div class="mt-4 rounded-2xl bg-brand-900 p-5 text-white">
+          <p class="font-bold">Vous achetez en volume ?</p>
+          <p class="mt-1 text-sm text-brand-200">Commerçants, restaurants, entreprises : obtenez un prix adapté à vos quantités.</p>
+          <a href={`/b2b?produit=${encodeURIComponent(p.name)}#devis`} class="btn btn-accent btn-sm mt-4">Demander un prix pro</a>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  {
+    related.length > 0 && (
+      <section class="section !pt-12">
+        <div class="container-page">
+          <h2 class="text-2xl">Vous aimerez aussi</h2>
+          <div class="mt-6 grid grid-cols-1 gap-4 min-[420px]:grid-cols-2 lg:grid-cols-4">
+            {related.map((r) => <ProductCard product={r} category={categoryOf(r)} brand={brandOf(r)} />)}
+          </div>
+        </div>
+      </section>
+    )
+  }
+</Layout>
+
+<script>
+  import { formatPrice } from '../../lib/format';
+  import { track } from '../../scripts/analytics';
+
+  const form = document.querySelector<HTMLFormElement>('[data-product-form]')!;
+  const priceEl = document.querySelector<HTMLElement>('[data-price-display]');
+  const compareEl = document.querySelector<HTMLElement>('[data-compare-display]');
+  const weightEl = document.querySelector<HTMLElement>('[data-weight-display]');
+  const qty = document.getElementById('quantite') as HTMLInputElement | null;
+
+  form.addEventListener('change', (e) => {
+    const input = e.target as HTMLInputElement;
+    if (input.name !== 'variante') return;
+    if (priceEl) priceEl.textContent = formatPrice(Number(input.dataset.price));
+    if (compareEl) {
+      compareEl.hidden = !input.dataset.compare;
+      compareEl.textContent = input.dataset.compare ? formatPrice(Number(input.dataset.compare)) : '';
+    }
+    if (weightEl) weightEl.textContent = `${input.dataset.weight} kg`;
+  });
+
+  form.querySelectorAll<HTMLButtonElement>('[data-qty-step]').forEach((b) =>
+    b.addEventListener('click', () => {
+      if (!qty) return;
+      qty.value = String(Math.min(999, Math.max(1, (Number(qty.value) || 1) + Number(b.dataset.qtyStep))));
+    }),
+  );
+
+  track('view_item', { item_id: form.dataset.productId });
+</script>

@@ -1,0 +1,27 @@
+---
+// Visuel produit provisoire, dessiné à partir de la couleur et de l'icône de la catégorie.
+// Quand les photos existeront, remplacer par <Picture> d'astro:assets (WebP/AVIF, lazy loading).
+import Icon, { type IconName } from './Icon.astro';
+
+interface Props {
+  name: string;
+  color: string;
+  icon: string;
+  size?: 'sm' | 'md' | 'lg';
+  class?: string;
+}
+const { name, color, icon, size = 'md', class: className } = Astro.props;
+const iconSize = { sm: 28, md: 44, lg: 96 }[size];
+---
+
+<div
+  class:list={['relative grid place-items-center overflow-hidden', className]}
+  style={`background: radial-gradient(circle at 30% 20%, ${color}22, ${color}10 55%, ${color}25); color: ${color}`}
+  role="img"
+  aria-label={`Visuel : ${name}`}
+>
+  <svg class="absolute -right-6 -top-6 opacity-20" width="120" height="120" viewBox="0 0 120 120" aria-hidden="true">
+    <circle cx="60" cy="60" r="60" fill="currentColor"></circle>
+  </svg>
+  <Icon name={icon as IconName} size={iconSize} />
+</div>

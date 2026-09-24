@@ -1,0 +1,431 @@
+[
+  {
+    "id": "riz-parfume-savana",
+    "sku": "AFS-CER-001",
+    "name": "Riz parfumé long grain",
+    "category": "cereales",
+    "brand": "savana",
+    "summary": "Riz parfumé long grain, cuisson rapide, idéal pour le riz au gras et le riz sauce.",
+    "description": "Un riz long grain parfumé, trié et calibré, qui reste ferme à la cuisson. Disponible au détail pour les ménages et en sac de 25 ou 50 kg pour les commerçants et la restauration.",
+    "features": [
+      { "label": "Origine", "value": "Importé" },
+      { "label": "Type", "value": "Long grain parfumé" },
+      { "label": "Conservation", "value": "Au sec, à l'abri de la chaleur" }
+    ],
+    "origin": "importe",
+    "variants": [
+      { "id": "5kg", "label": "Sac 5 kg", "price": 4750, "unit": "sac", "weightKg": 5 },
+      { "id": "25kg", "label": "Sac 25 kg", "price": 22500, "unit": "sac", "weightKg": 25 },
+      { "id": "50kg", "label": "Sac 50 kg", "price": 43500, "compareAtPrice": 45000, "unit": "sac", "weightKg": 50 }
+    ],
+    "status": "disponible",
+    "badges": ["populaire", "b2b"],
+    "popularity": 98,
+    "createdAt": "2026-03-10",
+    "related": ["huile-vegetale-golfe-or", "tomate-concentree", "sel-iode"]
+  },
+  {
+    "id": "mais-grain",
+    "sku": "AFS-CER-002",
+    "name": "Maïs grain blanc",
+    "category": "cereales",
+    "brand": "terroir-togo",
+    "summary": "Maïs blanc local, séché et trié, pour la pâte (akoumé) et la farine.",
+    "description": "Maïs blanc cultivé au Togo, séché naturellement et trié. Vendu en sac pour les ménages, les moulins et les revendeurs.",
+    "features": [
+      { "label": "Origine", "value": "Togo" },
+      { "label": "Humidité", "value": "Inférieure à 13 %" }
+    ],
+    "origin": "local",
+    "variants": [
+      { "id": "10kg", "label": "Sac 10 kg", "price": 3500, "unit": "sac", "weightKg": 10 },
+      { "id": "100kg", "label": "Sac 100 kg", "price": 31000, "unit": "sac", "weightKg": 100 }
+    ],
+    "status": "disponible",
+    "badges": ["b2b"],
+    "popularity": 80,
+    "createdAt": "2026-02-02",
+    "related": ["farine-mais", "riz-parfume-savana"]
+  },
+  {
+    "id": "farine-mais",
+    "sku": "AFS-CER-003",
+    "name": "Farine de maïs fine",
+    "category": "cereales",
+    "brand": "savana",
+    "summary": "Farine de maïs finement moulue pour pâte, bouillie et pâtisseries.",
+    "description": "Farine de maïs 100 % naturelle, moulue fin, sans additif. Parfaite pour l'akoumé, la bouillie et les beignets.",
+    "features": [
+      { "label": "Origine", "value": "Togo" },
+      { "label": "Ingrédients", "value": "100 % maïs" }
+    ],
+    "origin": "local",
+    "variants": [
+      { "id": "1kg", "label": "Paquet 1 kg", "price": 650, "unit": "paquet", "weightKg": 1 },
+      { "id": "carton-10", "label": "Carton 10 × 1 kg", "price": 6000, "unit": "carton", "weightKg": 10 }
+    ],
+    "status": "disponible",
+    "badges": ["nouveau"],
+    "popularity": 61,
+    "createdAt": "2026-08-28",
+    "related": ["mais-grain", "sucre-poudre"]
+  },
+  {
+    "id": "huile-vegetale-golfe-or",
+    "sku": "AFS-HUI-001",
+    "name": "Huile végétale raffinée",
+    "category": "huiles",
+    "brand": "golfe-or",
+    "summary": "Huile végétale raffinée pour la cuisson et la friture.",
+    "description": "Huile végétale raffinée, neutre en goût, supportant les hautes températures. En bouteille pour la maison, en bidon de 5 ou 20 L pour les restaurants et revendeurs.",
+    "features": [
+      { "label": "Origine", "value": "Importé" },
+      { "label": "Usage", "value": "Cuisson, friture, assaisonnement" }
+    ],
+    "origin": "importe",
+    "variants": [
+      { "id": "1l", "label": "Bouteille 1 L", "price": 1300, "unit": "bouteille", "weightKg": 1 },
+      { "id": "5l", "label": "Bidon 5 L", "price": 6200, "compareAtPrice": 6800, "unit": "bidon", "weightKg": 5 },
+      { "id": "20l", "label": "Bidon 20 L", "price": 23500, "unit": "bidon", "weightKg": 20 }
+    ],
+    "status": "disponible",
+    "badges": ["promotion", "populaire"],
+    "popularity": 95,
+    "createdAt": "2026-01-15",
+    "related": ["huile-palme-rouge", "riz-parfume-savana"]
+  },
+  {
+    "id": "huile-palme-rouge",
+    "sku": "AFS-HUI-002",
+    "name": "Huile de palme rouge",
+    "category": "huiles",
+    "brand": "terroir-togo",
+    "summary": "Huile de palme rouge artisanale, pour les sauces traditionnelles.",
+    "description": "Huile de palme rouge produite par des coopératives togolaises, filtrée et conditionnée proprement.",
+    "features": [
+      { "label": "Origine", "value": "Togo" },
+      { "label": "Production", "value": "Coopératives locales" }
+    ],
+    "origin": "local",
+    "variants": [
+      { "id": "1l", "label": "Bouteille 1 L", "price": 1500, "unit": "bouteille", "weightKg": 1 },
+      { "id": "25l", "label": "Bidon 25 L", "price": 34000, "unit": "bidon", "weightKg": 25 }
+    ],
+    "status": "sur-commande",
+    "badges": ["sur-commande"],
+    "popularity": 55,
+    "createdAt": "2026-04-20",
+    "related": ["huile-vegetale-golfe-or", "piment-seche"]
+  },
+  {
+    "id": "sucre-poudre",
+    "sku": "AFS-EPI-001",
+    "name": "Sucre en poudre",
+    "category": "epicerie",
+    "brand": "saveurs-sahel",
+    "summary": "Sucre blanc cristallisé, pour le thé, la bouillie et la pâtisserie.",
+    "description": "Sucre blanc cristallisé de qualité alimentaire. Vendu au kilo ou en sac de 50 kg.",
+    "features": [
+      { "label": "Origine", "value": "Importé" }
+    ],
+    "origin": "importe",
+    "variants": [
+      { "id": "1kg", "label": "Paquet 1 kg", "price": 750, "unit": "paquet", "weightKg": 1 },
+      { "id": "50kg", "label": "Sac 50 kg", "price": 34000, "unit": "sac", "weightKg": 50 }
+    ],
+    "status": "disponible",
+    "badges": ["b2b"],
+    "popularity": 88,
+    "createdAt": "2026-01-05",
+    "related": ["lait-poudre", "farine-mais"]
+  },
+  {
+    "id": "sel-iode",
+    "sku": "AFS-EPI-002",
+    "name": "Sel iodé fin",
+    "category": "epicerie",
+    "brand": "saveurs-sahel",
+    "summary": "Sel iodé fin, sachet refermable.",
+    "description": "Sel de table iodé, conforme aux normes nationales d'iodation.",
+    "features": [
+      { "label": "Origine", "value": "Importé" }
+    ],
+    "origin": "importe",
+    "variants": [
+      { "id": "500g", "label": "Sachet 500 g", "price": 200, "unit": "sachet", "weightKg": 0.5 },
+      { "id": "carton-24", "label": "Carton 24 × 500 g", "price": 4300, "unit": "carton", "weightKg": 12 }
+    ],
+    "status": "disponible",
+    "badges": [],
+    "popularity": 50,
+    "createdAt": "2025-12-01",
+    "related": ["tomate-concentree", "cube-assaisonnement"]
+  },
+  {
+    "id": "tomate-concentree",
+    "sku": "AFS-EPI-003",
+    "name": "Tomate concentrée double",
+    "category": "epicerie",
+    "brand": "saveurs-sahel",
+    "summary": "Double concentré de tomate en boîte, pour sauces et ragoûts.",
+    "description": "Concentré de tomate 28-30 %, riche en goût. Boîte de 400 g ou carton de 24 boîtes.",
+    "features": [
+      { "label": "Concentration", "value": "28-30 %" },
+      { "label": "Conservation après ouverture", "value": "3 jours au frais" }
+    ],
+    "origin": "importe",
+    "variants": [
+      { "id": "400g", "label": "Boîte 400 g", "price": 600, "unit": "boîte", "weightKg": 0.45 },
+      { "id": "carton-24", "label": "Carton 24 × 400 g", "price": 13200, "unit": "carton", "weightKg": 10.8 }
+    ],
+    "status": "disponible",
+    "badges": ["populaire"],
+    "popularity": 84,
+    "createdAt": "2026-02-18",
+    "related": ["riz-parfume-savana", "cube-assaisonnement"]
+  },
+  {
+    "id": "cube-assaisonnement",
+    "sku": "AFS-EPI-004",
+    "name": "Cubes d'assaisonnement",
+    "category": "epicerie",
+    "brand": "saveurs-sahel",
+    "summary": "Bouillon en cubes pour relever sauces et soupes.",
+    "description": "Cubes d'assaisonnement goût poulet, en boîte de 100 cubes ou carton pour revendeurs.",
+    "features": [
+      { "label": "Goût", "value": "Poulet" }
+    ],
+    "origin": "importe",
+    "variants": [
+      { "id": "boite-100", "label": "Boîte 100 cubes", "price": 1800, "unit": "boîte", "weightKg": 0.4 },
+      { "id": "carton-24", "label": "Carton 24 boîtes", "price": 41000, "unit": "carton", "weightKg": 9.6 }
+    ],
+    "status": "indisponible",
+    "badges": ["rupture"],
+    "popularity": 70,
+    "createdAt": "2026-03-03",
+    "related": ["tomate-concentree", "sel-iode"]
+  },
+  {
+    "id": "lait-poudre",
+    "sku": "AFS-EPI-005",
+    "name": "Lait entier en poudre",
+    "category": "epicerie",
+    "brand": "saveurs-sahel",
+    "summary": "Lait entier en poudre, riche et onctueux.",
+    "description": "Lait entier en poudre, en sachet de 400 g ou en sac de 25 kg pour boulangeries et yaourteries.",
+    "features": [
+      { "label": "Matière grasse", "value": "26 %" }
+    ],
+    "origin": "importe",
+    "variants": [
+      { "id": "400g", "label": "Sachet 400 g", "price": 2300, "unit": "sachet", "weightKg": 0.4 },
+      { "id": "25kg", "label": "Sac 25 kg", "price": 58000, "unit": "sac", "weightKg": 25 }
+    ],
+    "status": "devis",
+    "badges": ["b2b"],
+    "popularity": 66,
+    "createdAt": "2026-05-12",
+    "related": ["sucre-poudre"]
+  },
+  {
+    "id": "eau-minerale",
+    "sku": "AFS-BOI-001",
+    "name": "Eau minérale naturelle",
+    "category": "boissons",
+    "brand": "aqua-lome",
+    "summary": "Eau minérale naturelle, faiblement minéralisée.",
+    "description": "Eau minérale naturelle embouteillée, en pack de 6 × 1,5 L ou en fardeau de 12 × 0,5 L.",
+    "features": [
+      { "label": "Origine", "value": "Togo" }
+    ],
+    "origin": "local",
+    "variants": [
+      { "id": "pack-6", "label": "Pack 6 × 1,5 L", "price": 1800, "unit": "pack", "weightKg": 9 },
+      { "id": "fardeau-12", "label": "Fardeau 12 × 0,5 L", "price": 1500, "unit": "fardeau", "weightKg": 6 }
+    ],
+    "status": "disponible",
+    "badges": ["populaire"],
+    "popularity": 90,
+    "createdAt": "2026-01-20",
+    "related": ["jus-bissap", "boisson-maltee"]
+  },
+  {
+    "id": "jus-bissap",
+    "sku": "AFS-BOI-002",
+    "name": "Jus de bissap",
+    "category": "boissons",
+    "brand": "terroir-togo",
+    "summary": "Jus de fleurs d'hibiscus, peu sucré, produit localement.",
+    "description": "Jus de bissap préparé à partir de fleurs d'hibiscus séchées, pasteurisé et embouteillé au Togo.",
+    "features": [
+      { "label": "Origine", "value": "Togo" },
+      { "label": "Conservation", "value": "Au frais après ouverture" }
+    ],
+    "origin": "local",
+    "variants": [
+      { "id": "1l", "label": "Bouteille 1 L", "price": 900, "unit": "bouteille", "weightKg": 1 },
+      { "id": "carton-12", "label": "Carton 12 × 1 L", "price": 10000, "unit": "carton", "weightKg": 12 }
+    ],
+    "status": "disponible",
+    "badges": ["nouveau"],
+    "popularity": 72,
+    "createdAt": "2026-09-05",
+    "related": ["eau-minerale", "gari"]
+  },
+  {
+    "id": "boisson-maltee",
+    "sku": "AFS-BOI-003",
+    "name": "Boisson maltée sans alcool",
+    "category": "boissons",
+    "brand": "aqua-lome",
+    "summary": "Boisson maltée énergisante, canette 33 cl.",
+    "description": "Boisson maltée sans alcool, en canette de 33 cl ou en carton de 24.",
+    "features": [
+      { "label": "Contenance", "value": "33 cl" }
+    ],
+    "origin": "importe",
+    "variants": [
+      { "id": "canette", "label": "Canette 33 cl", "price": 500, "unit": "canette", "weightKg": 0.35 },
+      { "id": "carton-24", "label": "Carton 24 × 33 cl", "price": 11000, "unit": "carton", "weightKg": 8.4 }
+    ],
+    "status": "disponible",
+    "badges": [],
+    "popularity": 58,
+    "createdAt": "2026-06-01",
+    "related": ["eau-minerale"]
+  },
+  {
+    "id": "gari",
+    "sku": "AFS-LOC-001",
+    "name": "Gari extra blanc",
+    "category": "produits-locaux",
+    "brand": "terroir-togo",
+    "summary": "Semoule de manioc torréfiée, grain fin et croquant.",
+    "description": "Gari extra blanc produit par des transformatrices togolaises, grain fin, bien torréfié.",
+    "features": [
+      { "label": "Origine", "value": "Togo" },
+      { "label": "Grain", "value": "Fin" }
+    ],
+    "origin": "local",
+    "variants": [
+      { "id": "2kg", "label": "Sachet 2 kg", "price": 1200, "unit": "sachet", "weightKg": 2 },
+      { "id": "25kg", "label": "Sac 25 kg", "price": 13500, "unit": "sac", "weightKg": 25 }
+    ],
+    "status": "disponible",
+    "badges": ["populaire"],
+    "popularity": 77,
+    "createdAt": "2026-02-25",
+    "related": ["soja-grain", "jus-bissap"]
+  },
+  {
+    "id": "soja-grain",
+    "sku": "AFS-LOC-002",
+    "name": "Soja grain",
+    "category": "produits-locaux",
+    "brand": "terroir-togo",
+    "summary": "Soja local trié, pour fromage de soja, lait et alimentation animale.",
+    "description": "Soja grain issu des régions des Plateaux et Centrale, trié et nettoyé.",
+    "features": [
+      { "label": "Origine", "value": "Togo" }
+    ],
+    "origin": "local",
+    "variants": [
+      { "id": "5kg", "label": "Sac 5 kg", "price": 2500, "unit": "sac", "weightKg": 5 },
+      { "id": "50kg", "label": "Sac 50 kg", "price": 22000, "unit": "sac", "weightKg": 50 }
+    ],
+    "status": "sur-commande",
+    "badges": ["sur-commande", "b2b"],
+    "popularity": 44,
+    "createdAt": "2026-07-14",
+    "related": ["gari", "mais-grain"]
+  },
+  {
+    "id": "piment-seche",
+    "sku": "AFS-LOC-003",
+    "name": "Piment sec moulu",
+    "category": "produits-locaux",
+    "brand": "saveurs-sahel",
+    "summary": "Piment rouge séché et moulu, piquant intense.",
+    "description": "Piment rouge séché au soleil et finement moulu, en pot hermétique.",
+    "features": [
+      { "label": "Origine", "value": "Togo" },
+      { "label": "Force", "value": "Très piquant" }
+    ],
+    "origin": "local",
+    "variants": [
+      { "id": "200g", "label": "Pot 200 g", "price": 800, "unit": "pot", "weightKg": 0.25 }
+    ],
+    "status": "disponible",
+    "badges": ["nouveau"],
+    "popularity": 40,
+    "createdAt": "2026-09-12",
+    "related": ["huile-palme-rouge", "cube-assaisonnement"]
+  },
+  {
+    "id": "beurre-karite",
+    "sku": "AFS-LOC-004",
+    "name": "Beurre de karité brut",
+    "category": "produits-locaux",
+    "brand": "terroir-togo",
+    "summary": "Beurre de karité non raffiné, usage alimentaire et cosmétique.",
+    "description": "Beurre de karité brut produit par des groupements de femmes de la région des Savanes.",
+    "features": [
+      { "label": "Origine", "value": "Togo, région des Savanes" }
+    ],
+    "origin": "local",
+    "variants": [
+      { "id": "500g", "label": "Pot 500 g", "price": 1500, "unit": "pot", "weightKg": 0.5 },
+      { "id": "10kg", "label": "Seau 10 kg", "price": 24000, "unit": "seau", "weightKg": 10 }
+    ],
+    "status": "disponible",
+    "badges": [],
+    "popularity": 47,
+    "createdAt": "2026-04-02",
+    "related": ["savon-noir"]
+  },
+  {
+    "id": "savon-noir",
+    "sku": "AFS-HYG-001",
+    "name": "Savon de ménage",
+    "category": "hygiene-entretien",
+    "brand": "maison-claire",
+    "summary": "Savon de ménage multi-usage, lessive et vaisselle.",
+    "description": "Savon de ménage en barre, efficace sur le linge et la vaisselle.",
+    "features": [
+      { "label": "Format", "value": "Barre 400 g" }
+    ],
+    "origin": "local",
+    "variants": [
+      { "id": "barre", "label": "Barre 400 g", "price": 350, "unit": "barre", "weightKg": 0.4 },
+      { "id": "carton-40", "label": "Carton 40 barres", "price": 12500, "unit": "carton", "weightKg": 16 }
+    ],
+    "status": "disponible",
+    "badges": ["promotion"],
+    "popularity": 63,
+    "createdAt": "2026-03-22",
+    "related": ["detergent-poudre", "beurre-karite"]
+  },
+  {
+    "id": "detergent-poudre",
+    "sku": "AFS-HYG-002",
+    "name": "Détergent en poudre",
+    "category": "hygiene-entretien",
+    "brand": "maison-claire",
+    "summary": "Lessive en poudre pour lavage à la main et en machine.",
+    "description": "Détergent en poudre concentré, parfum frais. Sachet de 1 kg ou sac de 15 kg pour pressings et hôtels.",
+    "features": [
+      { "label": "Usage", "value": "Main et machine" }
+    ],
+    "origin": "importe",
+    "variants": [
+      { "id": "1kg", "label": "Sachet 1 kg", "price": 1100, "compareAtPrice": 1250, "unit": "sachet", "weightKg": 1 },
+      { "id": "15kg", "label": "Sac 15 kg", "price": 15000, "unit": "sac", "weightKg": 15 }
+    ],
+    "status": "disponible",
+    "badges": ["promotion"],
+    "popularity": 59,
+    "createdAt": "2026-05-30",
+    "related": ["savon-noir"]
+  }
+]

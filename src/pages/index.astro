@@ -1,11 +1,251 @@
 ---
-import Welcome from '../components/Welcome.astro';
+import { getCollection } from 'astro:content';
 import Layout from '../layouts/Layout.astro';
+import ProductCard from '../components/ProductCard.astro';
+import Icon, { type IconName } from '../components/ui/Icon.astro';
+import { getCatalog } from '../lib/catalog';
+import { ARTICLE_TYPE_LABELS, formatDate } from '../lib/format';
 
-// Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
-// Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
+const { products, categories, brands, categoryOf, brandOf } = await getCatalog();
+const popular = [...products].sort((a, b) => b.data.popularity - a.data.popularity).slice(0, 8);
+const promos = products.filter((p) => p.data.badges.includes('promotion')).slice(0, 3);
+const articles = (await getCollection('articles')).sort((a, b) => +b.data.date - +a.data.date).slice(0, 3);
+const countByCategory = (id: string) => products.filter((p) => p.data.category.id === id).length;
+
+const reasons: { icon: IconName; title: string; text: string }[] = [
+  { icon: 'box', title: 'Disponibilité', text: 'Un stock suivi en temps réel sur les produits essentiels.' },
+  { icon: 'pin', title: 'Proximité', text: 'Un dépôt à Lomé et des points de retrait près de chez vous.' },
+  { icon: 'truck', title: 'Livraison', text: 'Sous 24 h à Lomé, et partout au Togo.' },
+  { icon: 'shield', title: 'Qualité', text: 'Produits sélectionnés, stockés dans de bonnes conditions.' },
+  { icon: 'globe', title: 'Diversité', text: 'Produits locaux et importés, du sachet au sac de 100 kg.' },
+  { icon: 'users', title: 'Service', text: 'Un conseiller joignable par téléphone et WhatsApp.' },
+];
+
+const b2bSegments: { icon: IconName; title: string; text: string }[] = [
+  { icon: 'store', title: 'Commerçants', text: 'Réassort rapide et prix demi-gros pour boutiques et superettes.' },
+  { icon: 'handshake', title: 'Revendeurs & grossistes', text: 'Volumes, prix dégressifs et livraison programmée.' },
+  { icon: 'chef', title: 'Restaurants & hôtels', text: 'Approvisionnement régulier, facturation mensuelle.' },
+  { icon: 'building', title: 'Entreprises & institutions', text: 'Cantines, ONG, écoles : appels d\'offres et contrats cadres.' },
+];
 ---
 
 <Layout>
-	<Welcome />
+  <!-- Hero -->
+  <section class="relative overflow-hidden bg-brand-900 text-white">
+    <div class="absolute inset-0 opacity-[0.07]" style="background-image: radial-gradient(circle at 1px 1px, white 1px, transparent 0); background-size: 22px 22px;"></div>
+    <div class="container-page relative grid items-center gap-10 py-14 sm:py-20 lg:grid-cols-[1.2fr_1fr]">
+      <div>
+        <p class="eyebrow !text-accent-500">Local · Importé · Gros · Demi-gros · Détail · B2B</p>
+        <h1 class="mt-4 text-4xl !text-white sm:text-6xl">La distribution alimentaire, autrement.</h1>
+        <p class="mt-5 max-w-xl text-lg text-brand-100">
+          Les produits du quotidien au juste prix, livrés chez vous ou dans votre commerce. Pour les ménages comme pour les professionnels.
+        </p>
+        <div class="mt-8 flex flex-col gap-3 sm:flex-row">
+          <a href="/boutique" class="btn btn-accent !px-7 !py-4 !text-base">Découvrir la boutique <Icon name="arrow" size={18} /></a>
+          <a href="/b2b" class="btn !px-7 !py-4 !text-base border border-white/40 text-white hover:bg-white/10">Je suis un professionnel</a>
+        </div>
+        <ul class="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-sm text-brand-100">
+          <li class="flex items-center gap-2"><Icon name="check" size={16} class="text-accent-500" />Paiement Mobile Money</li>
+          <li class="flex items-center gap-2"><Icon name="check" size={16} class="text-accent-500" />Livraison sous 24 h à Lomé</li>
+          <li class="flex items-center gap-2"><Icon name="check" size={16} class="text-accent-500" />Prix de gros pour les pros</li>
+        </ul>
+      </div>
+      <div class="hidden grid-cols-2 gap-4 lg:grid">
+        {
+          categories.slice(0, 4).map((c, i) => (
+            <a
+              href={`/boutique?categorie=${c.id}`}
+              class:list={['rounded-3xl p-6 backdrop-blur transition hover:scale-[1.02]', i % 3 === 0 ? 'bg-accent-500 text-brand-950' : 'bg-white/10 text-white']}
+            >
+              <Icon name={c.data.icon as IconName} size={40} />
+              <p class="mt-10 text-lg font-extrabold">{c.data.name}</p>
+              <p class="text-sm opacity-80">{countByCategory(c.id)} produits</p>
+            </a>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- Catégories -->
+  <section class="section !pb-0">
+    <div class="container-page">
+      <div class="flex items-end justify-between gap-4">
+        <div>
+          <p class="eyebrow">Nos rayons</p>
+          <h2 class="mt-2 text-3xl">Parcourir par catégorie</h2>
+        </div>
+        <a href="/boutique" class="hidden font-bold text-brand-700 hover:underline sm:block">Tout le catalogue →</a>
+      </div>
+      <ul class="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        {
+          categories.map((c) => (
+            <li>
+              <a href={`/boutique?categorie=${c.id}`} class="card flex h-full flex-col items-center gap-3 p-5 text-center transition hover:border-brand-600 hover:shadow-md">
+                <span class="grid size-14 place-items-center rounded-2xl" style={`background:${c.data.color}18;color:${c.data.color}`}>
+                  <Icon name={c.data.icon as IconName} size={28} />
+                </span>
+                <span class="text-sm font-bold text-brand-900">{c.data.name}</span>
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+  </section>
+
+  <!-- Produits populaires -->
+  <section class="section">
+    <div class="container-page">
+      <div class="flex items-end justify-between gap-4">
+        <div>
+          <p class="eyebrow">Les plus demandés</p>
+          <h2 class="mt-2 text-3xl">Produits populaires</h2>
+        </div>
+        <a href="/boutique?tri=popularite" class="font-bold text-brand-700 hover:underline">Voir tout →</a>
+      </div>
+      <div class="mt-8 grid grid-cols-1 gap-4 min-[420px]:grid-cols-2 lg:grid-cols-4">
+        {popular.map((p) => <ProductCard product={p} category={categoryOf(p)} brand={brandOf(p)} />)}
+      </div>
+    </div>
+  </section>
+
+  <!-- Offres -->
+  <section class="section bg-accent-100/60">
+    <div class="container-page grid gap-8 lg:grid-cols-[1fr_2fr] lg:items-center">
+      <div>
+        <p class="eyebrow !text-warning">Offres du moment</p>
+        <h2 class="mt-2 text-3xl">Promotions de septembre</h2>
+        <p class="mt-3 text-muted">
+          Jusqu'à −10 % sur une sélection d'huiles et de produits d'entretien. Code <strong class="text-brand-900">BIENVENUE</strong> : −5 % sur votre première commande.
+        </p>
+        <a href="/boutique?badge=promotion" class="btn btn-primary mt-6">Voir toutes les promotions</a>
+      </div>
+      <div class="grid gap-4 sm:grid-cols-3">
+        {promos.map((p) => <ProductCard product={p} category={categoryOf(p)} brand={brandOf(p)} />)}
+      </div>
+    </div>
+  </section>
+
+  <!-- Pourquoi AfriSime -->
+  <section class="section">
+    <div class="container-page">
+      <div class="mx-auto max-w-2xl text-center">
+        <p class="eyebrow">Pourquoi AfriSime</p>
+        <h2 class="mt-2 text-3xl">Un distributeur sur qui compter</h2>
+      </div>
+      <ul class="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {
+          reasons.map((r) => (
+            <li class="card flex gap-4 p-6">
+              <span class="grid size-12 shrink-0 place-items-center rounded-xl bg-brand-100 text-brand-700">
+                <Icon name={r.icon} size={24} />
+              </span>
+              <div>
+                <h3 class="text-lg">{r.title}</h3>
+                <p class="mt-1 text-sm text-muted">{r.text}</p>
+              </div>
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+  </section>
+
+  <!-- B2B -->
+  <section class="section bg-brand-950 text-white">
+    <div class="container-page">
+      <div class="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+        <div class="max-w-2xl">
+          <p class="eyebrow !text-accent-500">Solutions B2B</p>
+          <h2 class="mt-2 text-3xl !text-white sm:text-4xl">Professionnels, approvisionnez-vous en direct</h2>
+          <p class="mt-3 text-brand-200">Prix volume, livraisons programmées et un commercial dédié pour votre activité.</p>
+        </div>
+        <a href="/b2b#devis" class="btn btn-accent shrink-0">Demander un devis</a>
+      </div>
+      <ul class="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {
+          b2bSegments.map((s) => (
+            <li class="rounded-2xl border border-brand-800 bg-brand-900 p-6">
+              <Icon name={s.icon} size={28} class="text-accent-500" />
+              <h3 class="mt-4 text-lg !text-white">{s.title}</h3>
+              <p class="mt-1 text-sm text-brand-200">{s.text}</p>
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+  </section>
+
+  <!-- Marques -->
+  <section class="section !pb-0">
+    <div class="container-page">
+      <p class="eyebrow text-center">Nos marques</p>
+      <h2 class="mt-2 text-center text-3xl">Des marques de confiance</h2>
+      <ul class="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        {
+          brands.map((b) => (
+            <li>
+              <a href={`/boutique?marque=${b.id}`} class="card grid h-20 place-items-center px-3 text-center text-sm font-extrabold uppercase tracking-wider text-muted transition hover:text-brand-700">
+                {b.data.name}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+  </section>
+
+  <!-- Média -->
+  <section class="section">
+    <div class="container-page">
+      <div class="flex items-end justify-between gap-4">
+        <div>
+          <p class="eyebrow">Média</p>
+          <h2 class="mt-2 text-3xl">Actualités & conseils</h2>
+        </div>
+        <a href="/media" class="font-bold text-brand-700 hover:underline">Tout voir →</a>
+      </div>
+      <div class="mt-8 grid gap-4 md:grid-cols-3">
+        {
+          articles.map((a) => (
+            <article class="card flex flex-col p-6">
+              <p class="flex items-center gap-2 text-xs font-semibold text-muted">
+                <span class="badge badge-populaire">{ARTICLE_TYPE_LABELS[a.data.type]}</span>
+                <time datetime={a.data.date.toISOString()}>{formatDate(a.data.date)}</time>
+              </p>
+              <h3 class="mt-3 text-lg leading-snug">
+                <a href={`/media/${a.id}`} class="hover:text-brand-600">{a.data.title}</a>
+              </h3>
+              <p class="mt-2 flex-1 text-sm text-muted">{a.data.excerpt}</p>
+              <a href={`/media/${a.id}`} class="mt-4 text-sm font-bold text-brand-700 hover:underline">Lire la suite →</a>
+            </article>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA final -->
+  <section class="pb-16">
+    <div class="container-page">
+      <div class="grid gap-4 rounded-3xl bg-brand-100 p-8 sm:p-12 lg:grid-cols-3">
+        <div class="lg:col-span-3">
+          <h2 class="text-3xl">Comment pouvons-nous vous aider ?</h2>
+        </div>
+        <a href="/boutique" class="card flex items-center justify-between gap-4 p-6 hover:border-brand-600">
+          <span><strong class="block text-lg text-brand-900">Commander</strong><span class="text-sm text-muted">Pour la maison</span></span>
+          <Icon name="cart" size={28} class="text-brand-600" />
+        </a>
+        <a href="/b2b#devis" class="card flex items-center justify-between gap-4 p-6 hover:border-brand-600">
+          <span><strong class="block text-lg text-brand-900">Demander un devis</strong><span class="text-sm text-muted">Pour les professionnels</span></span>
+          <Icon name="chart" size={28} class="text-brand-600" />
+        </a>
+        <a href="/partenaires" class="card flex items-center justify-between gap-4 p-6 hover:border-brand-600">
+          <span><strong class="block text-lg text-brand-900">Devenir partenaire</strong><span class="text-sm text-muted">Fournisseurs, dépôt-vente</span></span>
+          <Icon name="handshake" size={28} class="text-brand-600" />
+        </a>
+      </div>
+    </div>
+  </section>
 </Layout>

@@ -1,0 +1,50 @@
+[
+  {
+    "id": "epicerie",
+    "name": "Épicerie",
+    "description": "Sucre, sel, pâtes, conserves, condiments et essentiels du quotidien.",
+    "icon": "basket",
+    "color": "#2e7d5b",
+    "order": 1
+  },
+  {
+    "id": "boissons",
+    "name": "Boissons",
+    "description": "Eaux, jus, sodas, boissons maltées et boissons locales.",
+    "icon": "bottle",
+    "color": "#1f6f8b",
+    "order": 2
+  },
+  {
+    "id": "cereales",
+    "name": "Céréales & farines",
+    "description": "Riz, maïs, mil, farines et semoules, au détail comme en sac.",
+    "icon": "grain",
+    "color": "#b7862b",
+    "order": 3
+  },
+  {
+    "id": "huiles",
+    "name": "Huiles",
+    "description": "Huiles végétales, huile de palme rouge, huiles de cuisson en bidon.",
+    "icon": "drop",
+    "color": "#c2791b",
+    "order": 4
+  },
+  {
+    "id": "produits-locaux",
+    "name": "Produits locaux",
+    "description": "Le meilleur du Togo et de la sous-région : gari, soja, karité, épices.",
+    "icon": "leaf",
+    "color": "#4f8a2b",
+    "order": 5
+  },
+  {
+    "id": "hygiene-entretien",
+    "name": "Hygiène & entretien",
+    "description": "Savons, détergents et produits d'entretien pour la maison et les pros.",
+    "icon": "sparkle",
+    "color": "#6b5ca5",
+    "order": 6
+  }
+]

@@ -1,0 +1,18 @@
+---
+// Logo provisoire (monogramme + nom). À remplacer par le logo officiel AfriSime.
+interface Props {
+  inverted?: boolean;
+}
+const { inverted = false } = Astro.props;
+---
+
+<span class="flex items-center gap-2">
+  <svg width="34" height="34" viewBox="0 0 64 64" aria-hidden="true">
+    <rect width="64" height="64" rx="16" fill={inverted ? '#e8a33d' : '#0f3d2e'}></rect>
+    <path d="M18 46 30 16h4l12 30h-7l-2.6-7H27.6L25 46Zm11.6-13h6.8L33 23.5Z" fill={inverted ? '#0a2a20' : '#fff'}></path>
+    <path d="M40 18c6 0 9 3 9 8-4 0-8-2-9-8Z" fill={inverted ? '#0a2a20' : '#e8a33d'}></path>
+  </svg>
+  <span class:list={['text-xl font-extrabold tracking-tight', inverted ? 'text-white' : 'text-brand-900']}>
+    AFRI<span class={inverted ? 'text-accent-500' : 'text-brand-600'}>SIME</span>
+  </span>
+</span>

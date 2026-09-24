@@ -1,0 +1,167 @@
+---
+import Icon from './ui/Icon.astro';
+import Logo from './ui/Logo.astro';
+import { NAV, SITE } from '../data/site';
+
+const path = Astro.url.pathname;
+const isActive = (href: string) => (href === '/' ? path === '/' : path.startsWith(href));
+---
+
+<div class="bg-brand-950 text-brand-100">
+  <div class="container-page flex items-center justify-between gap-4 py-2 text-xs">
+    <p class="flex items-center gap-2">
+      <Icon name="truck" size={14} />
+      <span>Livraison offerte à Lomé dès 50 000 FCFA</span>
+    </p>
+    <div class="hidden items-center gap-5 sm:flex">
+      <a href={SITE.contact.phoneHref} class="flex items-center gap-1.5 hover:text-white">
+        <Icon name="phone" size={14} />{SITE.contact.phone}
+      </a>
+      <a href={SITE.contact.whatsapp} class="flex items-center gap-1.5 hover:text-white" rel="noopener" target="_blank">
+        <Icon name="whatsapp" size={14} />WhatsApp
+      </a>
+      <a href="/faq" class="hover:text-white">Aide & FAQ</a>
+    </div>
+  </div>
+</div>
+
+<header class="sticky top-0 z-40 border-b border-line bg-white/95 backdrop-blur" data-header>
+  <div class="container-page flex items-center gap-3 py-3 lg:gap-6">
+    <button
+      type="button"
+      class="btn-ghost btn btn-sm -ml-2 lg:hidden"
+      aria-controls="menu-mobile"
+      aria-expanded="false"
+      data-menu-toggle
+    >
+      <Icon name="menu" size={22} label="Ouvrir le menu" />
+    </button>
+
+    <a href="/" class="shrink-0" aria-label="AfriSime, retour à l'accueil">
+      <Logo />
+    </a>
+
+    <form action="/boutique" method="get" role="search" class="relative hidden flex-1 md:block">
+      <label for="recherche-header" class="sr-only">Rechercher un produit</label>
+      <input
+        id="recherche-header"
+        name="q"
+        type="search"
+        placeholder="Rechercher un produit, une marque, une référence…"
+        class="input !rounded-full !py-2.5 pl-11"
+        autocomplete="off"
+      />
+      <Icon name="search" size={18} class="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted" />
+    </form>
+
+    <div class="ml-auto flex items-center gap-1 sm:gap-2">
+      <a href="/b2b" class="btn btn-accent btn-sm hidden sm:inline-flex">Espace pro · Devis</a>
+      <a href="/compte" class="btn btn-ghost btn-sm" aria-label="Mon compte">
+        <Icon name="user" size={22} />
+      </a>
+      <a href="/panier" class="btn btn-ghost btn-sm relative" aria-label="Mon panier">
+        <Icon name="cart" size={22} />
+        <span
+          class="absolute -right-0.5 -top-0.5 grid min-w-5 place-items-center rounded-full bg-accent-500 px-1 text-[11px] font-extrabold text-brand-950"
+          data-cart-count
+          hidden
+          aria-live="polite">0</span
+        >
+      </a>
+    </div>
+  </div>
+
+  <!-- Recherche mobile -->
+  <div class="container-page pb-3 md:hidden">
+    <form action="/boutique" method="get" role="search" class="relative">
+      <label for="recherche-mobile" class="sr-only">Rechercher un produit</label>
+      <input id="recherche-mobile" name="q" type="search" placeholder="Rechercher un produit…" class="input !rounded-full !py-2.5 pl-11" />
+      <Icon name="search" size={18} class="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted" />
+    </form>
+  </div>
+
+  <!-- Navigation desktop -->
+  <nav aria-label="Navigation principale" class="hidden border-t border-line lg:block">
+    <ul class="container-page flex items-center gap-1">
+      {
+        NAV.map((item) => (
+          <li class="group relative">
+            <a
+              href={item.href}
+              class:list={[
+                'flex items-center gap-1 px-3 py-3 text-sm font-semibold transition hover:text-brand-600',
+                isActive(item.href) ? 'text-brand-600 shadow-[inset_0_-2px_0] shadow-brand-600' : 'text-ink',
+              ]}
+              aria-current={isActive(item.href) ? 'page' : undefined}
+            >
+              {item.label}
+              {item.children && <Icon name="down" size={14} />}
+            </a>
+            {item.children && (
+              <ul class="invisible absolute left-0 top-full z-50 min-w-60 translate-y-1 rounded-xl border border-line bg-white p-2 opacity-0 shadow-xl transition group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:opacity-100 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100">
+                {item.children.map((child) => (
+                  <li>
+                    <a href={child.href} class="block rounded-lg px-3 py-2 text-sm hover:bg-brand-50 hover:text-brand-700">
+                      {child.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </li>
+        ))
+      }
+      <li class="ml-auto"><a href="/faq" class="px-3 py-3 text-sm font-semibold text-muted hover:text-brand-600">FAQ</a></li>
+    </ul>
+  </nav>
+
+  <!-- Menu mobile -->
+  <nav id="menu-mobile" aria-label="Menu mobile" class="max-h-[75vh] overflow-y-auto border-t border-line bg-white lg:hidden" hidden>
+    <ul class="container-page divide-y divide-line py-2">
+      {
+        NAV.map((item) => (
+          <li class="py-1">
+            <a href={item.href} class="block py-2.5 font-bold text-brand-900">
+              {item.label}
+            </a>
+            {item.children && (
+              <ul class="mb-2 grid grid-cols-2 gap-x-4 pl-3">
+                {item.children.map((child) => (
+                  <li>
+                    <a href={child.href} class="block py-1.5 text-sm text-muted">
+                      {child.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </li>
+        ))
+      }
+      <li class="py-1"><a href="/faq" class="block py-2.5 font-bold text-brand-900">FAQ</a></li>
+      <li class="flex flex-col gap-2 py-4">
+        <a href="/b2b" class="btn btn-accent">Espace pro · Demander un devis</a>
+        <a href={SITE.contact.whatsapp} class="btn btn-secondary" target="_blank" rel="noopener">
+          <Icon name="whatsapp" size={18} />Commander sur WhatsApp
+        </a>
+      </li>
+    </ul>
+  </nav>
+</header>
+
+<script>
+  const toggle = document.querySelector<HTMLButtonElement>('[data-menu-toggle]');
+  const menu = document.getElementById('menu-mobile');
+  toggle?.addEventListener('click', () => {
+    const open = toggle.getAttribute('aria-expanded') === 'true';
+    toggle.setAttribute('aria-expanded', String(!open));
+    menu!.hidden = open;
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && menu && !menu.hidden) {
+      menu.hidden = true;
+      toggle?.setAttribute('aria-expanded', 'false');
+      toggle?.focus();
+    }
+  });
+</script>

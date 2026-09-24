@@ -1,0 +1,73 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import PageHero from '../../components/PageHero.astro';
+import { DELIVERY_ZONES, SITE } from '../../data/site';
+import { formatPrice } from '../../lib/format';
+
+// Textes provisoires : à faire valider par un juriste et à adapter au périmètre réel avant la mise en ligne.
+const PAGES: Record<string, { title: string; sections: { heading: string; body: string[] }[] }> = {
+  'mentions-legales': {
+    title: 'Mentions légales',
+    sections: [
+      { heading: 'Éditeur du site', body: [`${SITE.name} — [forme juridique, capital], RCCM [numéro], NIF [numéro].`, `Siège : ${SITE.contact.address}. Téléphone : ${SITE.contact.phone}. E-mail : ${SITE.contact.email}.`, 'Directeur de la publication : [nom].'] },
+      { heading: 'Hébergement', body: ['Vercel Inc., 440 N Barranca Ave #4133, Covina, CA 91723, États-Unis.'] },
+      { heading: 'Propriété intellectuelle', body: ["Les contenus du site (textes, logos, visuels) sont la propriété d'AfriSime ou de ses partenaires. Toute reproduction sans autorisation est interdite."] },
+    ],
+  },
+  cgv: {
+    title: 'Conditions générales de vente',
+    sections: [
+      { heading: 'Objet', body: ['Les présentes conditions régissent les ventes réalisées sur le site AfriSime auprès des particuliers et des professionnels.'] },
+      { heading: 'Prix', body: ["Les prix sont indiqués en francs CFA (FCFA), toutes taxes comprises. Les frais de livraison sont indiqués avant la validation de la commande. Les prix professionnels font l'objet d'un devis."] },
+      { heading: 'Commande', body: ['La commande est enregistrée à sa validation et un numéro unique est attribué. AfriSime peut contacter le client pour confirmer la commande ou signaler une indisponibilité.'] },
+      { heading: 'Paiement', body: ["Le paiement s'effectue par Mobile Money, carte bancaire ou, selon la zone, à la livraison. Les paiements en ligne sont traités par un prestataire sécurisé."] },
+      { heading: 'Annulation', body: ["Une commande peut être annulée sans frais tant qu'elle n'est pas en préparation, en contactant le service client."] },
+    ],
+  },
+  'livraison-retours': {
+    title: 'Livraison & retours',
+    sections: [
+      { heading: 'Zones et frais', body: DELIVERY_ZONES.map((z) => `${z.label} : ${z.fee ? formatPrice(z.fee) : 'gratuit'} — ${z.delay}.`) },
+      { heading: 'Réception', body: ['Vérifiez votre commande à la livraison. Toute anomalie (produit manquant, abîmé, date dépassée) doit être signalée au livreur ou au service client sous 24 h.'] },
+      { heading: 'Retours', body: ['Les produits alimentaires ne sont ni repris ni échangés, sauf non-conformité constatée. Dans ce cas, AfriSime remplace le produit ou rembourse le client.'] },
+    ],
+  },
+  confidentialite: {
+    title: 'Politique de confidentialité',
+    sections: [
+      { heading: 'Données collectées', body: ['Nous collectons les données nécessaires au traitement de vos commandes et demandes : nom, téléphone, e-mail, adresse de livraison, contenu de vos messages.'] },
+      { heading: 'Utilisation', body: ['Ces données servent uniquement à traiter vos commandes, répondre à vos demandes et, avec votre accord, vous envoyer nos offres. Elles ne sont jamais revendues.'] },
+      { heading: 'Conservation', body: ['Les données clients sont conservées 3 ans après le dernier contact, les candidatures 12 mois.'] },
+      { heading: 'Vos droits', body: [`Vous pouvez accéder à vos données, les rectifier ou demander leur suppression en écrivant à ${SITE.contact.email}.`] },
+    ],
+  },
+  cookies: {
+    title: 'Politique cookies',
+    sections: [
+      { heading: 'Stockage nécessaire', body: ['Le panier et vos préférences sont enregistrés dans votre navigateur pour le bon fonctionnement du site. Ils ne nécessitent pas votre consentement.'] },
+      { heading: "Mesure d'audience", body: ["Avec votre accord, nous mesurons la fréquentation du site pour l'améliorer. Vous pouvez changer d'avis à tout moment via le lien « Gérer les cookies » en bas de page."] },
+    ],
+  },
+};
+
+export function getStaticPaths() {
+  return ['mentions-legales', 'cgv', 'livraison-retours', 'confidentialite', 'cookies'].map((slug) => ({ params: { slug } }));
+}
+
+const page = PAGES[Astro.params.slug!];
+---
+
+<Layout title={page.title}>
+  <PageHero title={page.title} breadcrumbs={[{ label: page.title }]} />
+  <div class="container-page max-w-3xl py-12">
+    <p class="alert alert-info">Document provisoire, en cours de validation.</p>
+    {
+      page.sections.map((s) => (
+        <section class="mt-10">
+          <h2 class="text-2xl">{s.heading}</h2>
+          {s.body.map((p) => <p class="mt-3 leading-relaxed">{p}</p>)}
+        </section>
+      ))
+    }
+  </div>
+</Layout>

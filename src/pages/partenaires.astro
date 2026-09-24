@@ -1,0 +1,85 @@
+---
+import Layout from '../layouts/Layout.astro';
+import PageHero from '../components/PageHero.astro';
+import Field from '../components/ui/Field.astro';
+import Icon, { type IconName } from '../components/ui/Icon.astro';
+
+const offers: { id: string; icon: IconName; title: string; text: string }[] = [
+  { id: 'fournisseur', icon: 'box', title: 'Devenir fournisseur', text: 'Producteurs, transformateurs, importateurs : référencez vos produits dans notre réseau de distribution.' },
+  { id: 'depot-vente', icon: 'store', title: 'Dépôt-vente', text: 'Confiez-nous vos produits : nous les stockons, les vendons et vous reversons les ventes.' },
+  { id: 'commercial', icon: 'handshake', title: 'Partenaire commercial', text: 'Distributeurs, agents, points relais : développons ensemble de nouvelles zones.' },
+  { id: 'grossiste', icon: 'truck', title: 'Grossiste partenaire', text: 'Approvisionnez-vous en volume avec des conditions dédiées et une logistique partagée.' },
+];
+
+const criteria = [
+  'Produits conformes aux normes sanitaires en vigueur',
+  'Capacité de production régulière',
+  'Traçabilité et étiquetage clairs',
+  'Prix compétitifs et conditions de paiement transparentes',
+];
+---
+
+<Layout title="Partenaires & fournisseurs" description="Devenez fournisseur, partenaire commercial ou dépôt-vente d'AfriSime, distributeur alimentaire au Togo.">
+  <PageHero
+    eyebrow="Partenaires"
+    title="Grandissons ensemble"
+    intro="AfriSime travaille avec des producteurs locaux, des importateurs et des partenaires commerciaux pour rendre les bons produits accessibles partout au Togo."
+    breadcrumbs={[{ label: 'Partenaires' }]}
+  />
+
+  <section class="section">
+    <div class="container-page grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {
+        offers.map((o) => (
+          <article id={o.id} class="card p-6">
+            <Icon name={o.icon} size={28} class="text-brand-600" />
+            <h2 class="mt-4 text-xl">{o.title}</h2>
+            <p class="mt-2 text-sm text-muted">{o.text}</p>
+          </article>
+        ))
+      }
+    </div>
+  </section>
+
+  <section id="formulaire" class="section scroll-mt-32 bg-white">
+    <div class="container-page grid gap-10 lg:grid-cols-[1fr_1.5fr]">
+      <div>
+        <p class="eyebrow">Formulaire de qualification</p>
+        <h2 class="mt-2 text-3xl">Proposez votre partenariat</h2>
+        <p class="mt-3 text-muted">Notre équipe achats étudie chaque proposition et vous répond sous 5 jours ouvrés.</p>
+        <h3 class="mt-8 text-lg">Ce que nous regardons</h3>
+        <ul class="mt-3 space-y-2 text-sm">
+          {criteria.map((c) => <li class="flex gap-2"><Icon name="check" size={16} class="mt-0.5 shrink-0 text-brand-600" />{c}</li>)}
+        </ul>
+      </div>
+
+      <form data-lead-form class="card grid gap-4 p-6 sm:grid-cols-2 sm:p-8" data-success-message="Merci ! Votre proposition est transmise à notre équipe achats. Réponse sous 5 jours ouvrés." novalidate>
+        <input type="hidden" name="type" value="fournisseur" />
+        <input type="hidden" name="source" value="page-partenaires" />
+        <div class="hidden" aria-hidden="true"><input name="website" tabindex="-1" autocomplete="off" /></div>
+
+        <Field name="partenariat" label="Type de partenariat" required options={['Fournisseur', 'Dépôt-vente', 'Partenaire commercial', 'Grossiste', 'Autre']} class="sm:col-span-2" />
+        <Field name="company" label="Raison sociale" required autocomplete="organization" />
+        <Field name="rccm" label="RCCM / NIF" hint="Si votre structure est enregistrée." />
+        <Field name="name" label="Nom du contact" required autocomplete="name" />
+        <Field name="phone" label="Téléphone" type="tel" required autocomplete="tel" inputmode="tel" />
+        <Field name="email" label="E-mail" type="email" autocomplete="email" />
+        <Field name="localisation" label="Localisation" required placeholder="Ville, région" />
+        <Field name="need" label="Produits proposés et capacités" required textarea placeholder="Produits, conditionnements, volumes disponibles par mois, prix indicatifs…" class="sm:col-span-2" />
+        <Field name="certifications" label="Certifications / agréments" placeholder="Ex. : autorisation de mise sur le marché, bio…" class="sm:col-span-2" />
+
+        <div class="sm:col-span-2">
+          <label class="flex items-start gap-2 text-sm">
+            <input type="checkbox" name="consent" class="mt-1 size-4 accent-brand-700" />
+            J'accepte qu'AfriSime utilise ces informations pour étudier ma proposition et me recontacter.
+          </label>
+          <p class="field-error" data-error-for="consent" hidden></p>
+        </div>
+        <div class="sm:col-span-2">
+          <button type="submit" class="btn btn-primary w-full !py-4 sm:w-auto">Envoyer ma proposition</button>
+          <div data-form-status class="mt-4" hidden role="status"></div>
+        </div>
+      </form>
+    </div>
+  </section>
+</Layout>

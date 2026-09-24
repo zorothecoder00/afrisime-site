@@ -1,0 +1,308 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Field from '../../components/ui/Field.astro';
+import Icon from '../../components/ui/Icon.astro';
+import { DELIVERY_ZONES, PAYMENT_METHODS } from '../../data/site';
+import { formatPrice } from '../../lib/format';
+
+const steps = ['Panier', 'Coordonnées', 'Livraison', 'Paiement', 'Confirmation'];
+---
+
+<Layout title="Commande" noindex>
+  <div class="container-page py-8">
+    <h1 class="text-3xl">Finaliser ma commande</h1>
+
+    <ol class="mt-6 grid grid-cols-5 gap-2 text-center text-[11px] font-bold sm:text-sm" aria-label="Étapes de la commande">
+      {
+        steps.map((label, i) => (
+          <li data-step-indicator={i} class:list={['rounded-xl border px-1 py-2.5', i === 0 ? 'border-brand-900 bg-brand-900 text-white' : 'border-line bg-white text-muted']}>
+            <span class="hidden sm:inline">{i + 1}. </span>{label}
+          </li>
+        ))
+      }
+    </ol>
+
+    <div class="mt-4 space-y-3" data-state="loading">
+      <div class="skeleton h-64"></div>
+    </div>
+
+    <div class="card mt-8 p-10 text-center" data-state="empty" hidden>
+      <h2 class="text-xl">Votre panier est vide</h2>
+      <a href="/boutique" class="btn btn-primary mt-6">Aller à la boutique</a>
+    </div>
+
+    <div class="mt-8 grid gap-8 lg:grid-cols-[1fr_380px]" data-state="filled" hidden>
+      <form novalidate data-checkout-form class="space-y-6">
+        <div class="alert alert-error" data-form-error hidden role="alert" tabindex="-1"></div>
+
+        <!-- Étape 2 : coordonnées -->
+        <section class="card p-6" data-step="1" aria-labelledby="etape-coordonnees">
+          <h2 id="etape-coordonnees" class="text-xl focus:outline-none" tabindex="-1">Vos coordonnées</h2>
+          <div class="mt-5 grid gap-4 sm:grid-cols-2">
+            <Field name="name" label="Nom complet" required autocomplete="name" class="sm:col-span-2" />
+            <Field name="phone" label="Téléphone" type="tel" required autocomplete="tel" inputmode="tel" placeholder="90 00 00 00" hint="Nous vous appelons pour confirmer la livraison." />
+            <Field name="email" label="E-mail" type="email" required autocomplete="email" placeholder="vous@exemple.com" hint="Pour recevoir votre confirmation." />
+          </div>
+          <button type="button" class="btn btn-primary mt-6" data-next="2">Continuer vers la livraison</button>
+        </section>
+
+        <!-- Étape 3 : livraison -->
+        <section class="card p-6" data-step="2" aria-labelledby="etape-livraison" hidden>
+          <h2 id="etape-livraison" class="text-xl focus:outline-none" tabindex="-1">Livraison</h2>
+          <fieldset class="mt-5">
+            <legend class="label">Zone ou mode de livraison <span class="text-danger">*</span></legend>
+            <div class="space-y-2">
+              {
+                DELIVERY_ZONES.map((z) => (
+                  <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-line p-4 has-[:checked]:border-brand-700 has-[:checked]:bg-brand-50">
+                    <input type="radio" name="deliveryZone" value={z.id} class="size-4 accent-brand-700" />
+                    <span class="flex-1">
+                      <span class="block text-sm font-bold">{z.label}</span>
+                      <span class="text-xs text-muted">{z.delay}</span>
+                    </span>
+                    <span class="text-sm font-bold">{z.fee === 0 ? 'Gratuit' : formatPrice(z.fee)}</span>
+                  </label>
+                ))
+              }
+            </div>
+            <p class="field-error" data-error-for="deliveryZone" hidden></p>
+          </fieldset>
+          <div class="mt-5 grid gap-4 sm:grid-cols-2" data-address-fields>
+            <Field name="city" label="Ville / quartier" autocomplete="address-level2" placeholder="Lomé, Tokoin" />
+            <Field name="address" label="Adresse ou point de repère" autocomplete="street-address" placeholder="Rue, maison, repère…" />
+          </div>
+          <div class="mt-6 flex gap-2">
+            <button type="button" class="btn btn-ghost" data-prev="1">Retour</button>
+            <button type="button" class="btn btn-primary" data-next="3">Continuer vers le paiement</button>
+          </div>
+        </section>
+
+        <!-- Étape 4 : paiement -->
+        <section class="card p-6" data-step="3" aria-labelledby="etape-paiement" hidden>
+          <h2 id="etape-paiement" class="text-xl focus:outline-none" tabindex="-1">Paiement</h2>
+          <fieldset class="mt-5">
+            <legend class="label">Moyen de paiement <span class="text-danger">*</span></legend>
+            <div class="space-y-2">
+              {
+                PAYMENT_METHODS.map((m) => (
+                  <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-line p-4 has-[:checked]:border-brand-700 has-[:checked]:bg-brand-50">
+                    <input type="radio" name="paymentMethod" value={m.id} class="size-4 accent-brand-700" />
+                    <span>
+                      <span class="block text-sm font-bold">{m.label}</span>
+                      <span class="text-xs text-muted">{m.description}</span>
+                    </span>
+                  </label>
+                ))
+              }
+            </div>
+            <p class="field-error" data-error-for="paymentMethod" hidden></p>
+          </fieldset>
+          <label class="mt-5 flex items-start gap-2 text-sm">
+            <input type="checkbox" name="cgv" class="mt-1 size-4 accent-brand-700" />
+            <span>J'accepte les <a href="/legal/cgv" target="_blank" class="font-semibold underline">conditions générales de vente</a> et la <a href="/legal/livraison-retours" target="_blank" class="font-semibold underline">politique de livraison et retours</a>.</span>
+          </label>
+          <p class="field-error" data-error-for="cgv" hidden></p>
+          <div class="mt-6 flex gap-2">
+            <button type="button" class="btn btn-ghost" data-prev="2">Retour</button>
+            <button type="submit" class="btn btn-accent flex-1 !py-4 !text-base">Valider la commande</button>
+          </div>
+          <p class="mt-3 flex items-center gap-1.5 text-xs text-muted">
+            <Icon name="shield" size={14} />Vos données sont transmises de manière chiffrée et ne sont jamais revendues.
+          </p>
+        </section>
+      </form>
+
+      <aside class="card h-fit p-6 lg:sticky lg:top-40" aria-labelledby="resume">
+        <h2 id="resume" class="text-xl">Résumé de la commande</h2>
+        <ul class="mt-4 divide-y divide-line text-sm" data-summary-lines></ul>
+        <dl class="mt-4 space-y-2 border-t border-line pt-4 text-sm">
+          <div class="flex justify-between"><dt>Sous-total</dt><dd data-subtotal></dd></div>
+          <div class="flex justify-between text-brand-700" data-discount-row hidden><dt>Remise</dt><dd data-discount></dd></div>
+          <div class="flex justify-between"><dt>Livraison</dt><dd data-delivery>—</dd></div>
+        </dl>
+        <div class="mt-4 flex items-baseline justify-between border-t border-line pt-4">
+          <span class="font-bold">Total</span>
+          <span class="text-2xl font-extrabold text-brand-900" data-total></span>
+        </div>
+        <a href="/panier" class="mt-4 inline-block text-sm font-semibold text-brand-700 hover:underline">Modifier le panier</a>
+      </aside>
+    </div>
+  </div>
+</Layout>
+
+<script>
+  import { cart } from '../../scripts/cart';
+  import { computeTotals } from '../../lib/pricing';
+  import { formatPrice } from '../../lib/format';
+  import { isValidEmail, isValidPhone } from '../../lib/validation';
+  import { track } from '../../scripts/analytics';
+
+  const $ = <T extends HTMLElement>(sel: string, root: ParentNode = document) => root.querySelector<T>(sel)!;
+  const form = $<HTMLFormElement>('[data-checkout-form]');
+  const formError = $('[data-form-error]');
+  const items = cart.items();
+
+  function session(key: string, value?: string) {
+    try {
+      if (value === undefined) return sessionStorage.getItem(key);
+      sessionStorage.setItem(key, value);
+    } catch {}
+    return value ?? null;
+  }
+  // Une clé par tentative de commande : un double envoi renvoie la même commande.
+  const idempotencyKey = session('afs-checkout-key') ?? session('afs-checkout-key', crypto.randomUUID())!;
+  const promoCode = session('afs-promo') ?? '';
+
+  $('[data-state="loading"]').hidden = true;
+  $('[data-state="empty"]').hidden = items.length > 0;
+  $('[data-state="filled"]').hidden = items.length === 0;
+
+  const field = (name: string) => form.elements.namedItem(name) as HTMLInputElement | RadioNodeList;
+  const value = (name: string) => String((field(name) as HTMLInputElement)?.value ?? '').trim();
+
+  function setError(name: string, message: string | null) {
+    const slot = form.querySelector<HTMLElement>(`[data-error-for="${name}"]`);
+    const input = form.elements.namedItem(name);
+    if (input instanceof HTMLElement) {
+      if (message) input.setAttribute('aria-invalid', 'true');
+      else input.removeAttribute('aria-invalid');
+    }
+    if (slot) {
+      slot.textContent = message ?? '';
+      slot.hidden = !message;
+    }
+  }
+
+  const validators: Record<number, () => Record<string, string>> = {
+    1: () => {
+      const e: Record<string, string> = {};
+      if (value('name').length < 2) e.name = 'Indiquez votre nom complet.';
+      if (!isValidPhone(value('phone'))) e.phone = 'Numéro invalide. Exemple : 90 00 00 00 ou +228 90 00 00 00.';
+      if (!isValidEmail(value('email'))) e.email = 'Adresse e-mail invalide. Exemple : vous@exemple.com.';
+      return e;
+    },
+    2: () => {
+      const e: Record<string, string> = {};
+      const zone = value('deliveryZone');
+      if (!zone) e.deliveryZone = 'Choisissez une zone ou le retrait au dépôt.';
+      if (zone && zone !== 'retrait' && value('address').length < 4) e.address = 'Indiquez une adresse ou un point de repère.';
+      return e;
+    },
+    3: () => {
+      const e: Record<string, string> = {};
+      if (!value('paymentMethod')) e.paymentMethod = 'Choisissez un moyen de paiement.';
+      if (!(field('cgv') as HTMLInputElement).checked) e.cgv = 'Vous devez accepter les conditions de vente.';
+      return e;
+    },
+  };
+
+  function validate(step: number) {
+    const errors = validators[step]();
+    const names = ['name', 'phone', 'email', 'deliveryZone', 'city', 'address', 'paymentMethod', 'cgv'];
+    names.forEach((n) => setError(n, errors[n] ?? null));
+    const first = Object.keys(errors)[0];
+    if (first) {
+      const el = form.elements.namedItem(first);
+      (el instanceof RadioNodeList ? (el[0] as HTMLElement) : (el as HTMLElement))?.focus();
+    }
+    return !first;
+  }
+
+  function showStep(step: number, moveFocus = true) {
+    form.querySelectorAll<HTMLElement>('[data-step]').forEach((s) => (s.hidden = Number(s.dataset.step) !== step));
+    document.querySelectorAll<HTMLElement>('[data-step-indicator]').forEach((li) => {
+      const i = Number(li.dataset.stepIndicator);
+      li.className = `rounded-xl border px-1 py-2.5 ${i <= step ? 'border-brand-900 bg-brand-900 text-white' : 'border-line bg-white text-muted'}`;
+      if (i === step) li.setAttribute('aria-current', 'step');
+      else li.removeAttribute('aria-current');
+    });
+    if (moveFocus) $<HTMLElement>(`[data-step="${step}"] h2`).focus();
+  }
+
+  form.querySelectorAll<HTMLButtonElement>('[data-next]').forEach((b) =>
+    b.addEventListener('click', () => {
+      const current = Number(b.closest<HTMLElement>('[data-step]')!.dataset.step);
+      if (validate(current)) {
+        showStep(Number(b.dataset.next));
+        track('checkout_progress', { step: Number(b.dataset.next) });
+      }
+    }),
+  );
+  form.querySelectorAll<HTMLButtonElement>('[data-prev]').forEach((b) => b.addEventListener('click', () => showStep(Number(b.dataset.prev))));
+
+  function renderSummary() {
+    $('[data-summary-lines]').replaceChildren(
+      ...items.map((i) => {
+        const li = document.createElement('li');
+        li.className = 'flex justify-between gap-3 py-2';
+        const label = document.createElement('span');
+        label.textContent = `${i.name} – ${i.variantLabel} × ${i.quantity}`;
+        const price = document.createElement('span');
+        price.className = 'shrink-0 font-semibold';
+        price.textContent = formatPrice(i.price * i.quantity);
+        li.append(label, price);
+        return li;
+      }),
+    );
+    const zone = value('deliveryZone');
+    const t = computeTotals(items.map((i) => ({ unitPrice: i.price, quantity: i.quantity })), zone, promoCode);
+    $('[data-subtotal]').textContent = formatPrice(t.subtotal);
+    $('[data-discount-row]').hidden = t.discount === 0;
+    $('[data-discount]').textContent = `− ${formatPrice(t.discount)}`;
+    $('[data-delivery]').textContent = zone ? (t.delivery === 0 ? 'Gratuite' : formatPrice(t.delivery)) : 'À choisir';
+    $('[data-total]').textContent = formatPrice(t.total);
+    $('[data-address-fields]').hidden = zone === 'retrait';
+  }
+  form.addEventListener('change', renderSummary);
+
+  let submitting = false;
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (submitting || !validate(3)) return;
+    submitting = true;
+    const submit = $<HTMLButtonElement>('button[type="submit"]', form);
+    submit.disabled = true;
+    submit.textContent = 'Validation en cours…';
+    formError.hidden = true;
+
+    try {
+      const res = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          idempotencyKey,
+          promoCode,
+          customer: { name: value('name'), phone: value('phone'), email: value('email'), city: value('city'), address: value('address') },
+          deliveryZone: value('deliveryZone'),
+          paymentMethod: value('paymentMethod'),
+          items: items.map((i) => ({ productId: i.productId, variantId: i.variantId, quantity: i.quantity })),
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const errors: Record<string, string> = data.errors ?? {};
+        Object.entries(errors).forEach(([n, m]) => setError(n, m));
+        const firstStep = errors.name || errors.phone || errors.email ? 1 : errors.deliveryZone || errors.address ? 2 : 3;
+        if (Object.keys(errors).length) showStep(firstStep);
+        throw new Error(errors.items ?? data.error ?? 'La commande n\'a pas pu être validée.');
+      }
+      session('afs-last-order', JSON.stringify(data.order));
+      try { sessionStorage.removeItem('afs-checkout-key'); sessionStorage.removeItem('afs-promo'); } catch {}
+      track('purchase', { transaction_id: data.order.number, value: data.order.totals.total, currency: 'XOF' });
+      cart.clear();
+      location.href = '/commande/confirmation';
+    } catch (err) {
+      formError.textContent = err instanceof TypeError ? 'Connexion impossible. Vérifiez votre réseau : votre commande n\'a pas été enregistrée.' : (err as Error).message;
+      formError.hidden = false;
+      formError.focus();
+      submitting = false;
+      submit.disabled = false;
+      submit.textContent = 'Valider la commande';
+    }
+  });
+
+  if (items.length) {
+    renderSummary();
+    showStep(1, false);
+  }
+</script>

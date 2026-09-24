@@ -1,0 +1,46 @@
+---
+import Layout from '../layouts/Layout.astro';
+import PageHero from '../components/PageHero.astro';
+import Field from '../components/ui/Field.astro';
+import Icon from '../components/ui/Icon.astro';
+
+const pillars = [
+  { title: 'Un marché essentiel', text: 'L\'alimentation représente la première dépense des ménages togolais, avec une demande stable et croissante.' },
+  { title: 'Un modèle multicanal', text: 'Gros, détail, B2B et e-commerce : des revenus diversifiés et une clientèle large.' },
+  { title: 'Des outils modernes', text: 'ERP interne, plateforme e-commerce et données de vente pour piloter la croissance.' },
+  { title: 'Un impact local', text: 'Des filières agricoles structurées et des emplois créés dans la logistique et la vente.' },
+];
+---
+
+<Layout title="Investir" description="Relations investisseurs AfriSime : présentation, modèle économique et contact.">
+  <PageHero eyebrow="Investisseurs & institutions" title="Investir dans la distribution de demain" intro="AfriSime construit un réseau de distribution alimentaire moderne, connecté et à fort impact local." breadcrumbs={[{ label: 'AfriSime', href: '/afrisime' }, { label: 'Investir' }]} />
+  <section class="section">
+    <div class="container-page grid gap-4 md:grid-cols-2">
+      {pillars.map((p) => <article class="card p-7"><Icon name="chart" size={28} class="text-brand-600" /><h2 class="mt-4 text-xl">{p.title}</h2><p class="mt-2 text-muted">{p.text}</p></article>)}
+    </div>
+  </section>
+  <section class="section bg-white">
+    <div class="container-page max-w-3xl">
+      <h2 class="text-3xl">Relations investisseurs</h2>
+      <p class="mt-3 text-muted">Pour recevoir notre présentation ou organiser un échange avec la direction, laissez-nous vos coordonnées.</p>
+      <form data-lead-form class="card mt-8 grid gap-4 p-6 sm:grid-cols-2 sm:p-8" data-success-message="Merci. La direction vous recontactera rapidement." novalidate>
+        <input type="hidden" name="type" value="investisseur" />
+        <input type="hidden" name="source" value="page-investir" />
+        <div class="hidden" aria-hidden="true"><input name="website" tabindex="-1" autocomplete="off" /></div>
+        <Field name="name" label="Nom complet" required autocomplete="name" />
+        <Field name="company" label="Organisation" autocomplete="organization" />
+        <Field name="phone" label="Téléphone" type="tel" required autocomplete="tel" />
+        <Field name="email" label="E-mail" type="email" autocomplete="email" />
+        <Field name="need" label="Objet de votre demande" required textarea class="sm:col-span-2" />
+        <div class="sm:col-span-2">
+          <label class="flex items-start gap-2 text-sm"><input type="checkbox" name="consent" class="mt-1 size-4 accent-brand-700" />J'accepte qu'AfriSime utilise ces informations pour me recontacter.</label>
+          <p class="field-error" data-error-for="consent" hidden></p>
+        </div>
+        <div class="sm:col-span-2">
+          <button type="submit" class="btn btn-primary">Envoyer</button>
+          <div data-form-status class="mt-4" hidden role="status"></div>
+        </div>
+      </form>
+    </div>
+  </section>
+</Layout>

@@ -1,1 +1,145 @@
 @import "tailwindcss";
+
+/* ───────── Design system AfriSime ───────── */
+@theme {
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+
+  --color-brand-950: #0a2a20;
+  --color-brand-900: #0f3d2e;
+  --color-brand-800: #14503b;
+  --color-brand-700: #1b6247;
+  --color-brand-600: #2e7d5b;
+  --color-brand-500: #3f9a70;
+  --color-brand-200: #c6e0d2;
+  --color-brand-100: #e3efe8;
+  --color-brand-50: #f2f8f4;
+
+  --color-accent-600: #c9811a;
+  --color-accent-500: #e8a33d;
+  --color-accent-100: #fbeed6;
+
+  --color-ink: #17221d;
+  --color-muted: #56665f;
+  --color-line: #dbe4df;
+  --color-surface: #ffffff;
+  --color-canvas: #f7f9f8;
+
+  --color-danger: #b42318;
+  --color-danger-50: #fdecea;
+  --color-warning: #9a6200;
+  --color-warning-50: #fff4dc;
+  --color-info: #1f5f8b;
+  --color-info-50: #e7f1f8;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-canvas text-ink font-sans antialiased;
+  }
+  h1, h2, h3, h4 {
+    @apply font-extrabold tracking-tight text-brand-900;
+    text-wrap: balance;
+  }
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-accent-500;
+  }
+  [x-cloak], [hidden] {
+    display: none !important;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+  }
+}
+
+@layer components {
+  .container-page {
+    @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
+  }
+  .section {
+    @apply py-14 sm:py-20;
+  }
+  .eyebrow {
+    @apply text-xs font-bold uppercase tracking-[0.14em] text-brand-600;
+  }
+
+  /* Boutons */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-bold transition
+      disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply bg-brand-900 text-white hover:bg-brand-800;
+  }
+  .btn-accent {
+    @apply bg-accent-500 text-brand-950 hover:bg-accent-600 hover:text-white;
+  }
+  .btn-secondary {
+    @apply border border-brand-900 bg-white text-brand-900 hover:bg-brand-50;
+  }
+  .btn-ghost {
+    @apply text-brand-900 hover:bg-brand-100;
+  }
+  .btn-sm {
+    @apply px-3 py-2 text-xs rounded-lg;
+  }
+
+  /* Cartes */
+  .card {
+    @apply rounded-2xl border border-line bg-surface;
+  }
+
+  /* Badges */
+  .badge {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide;
+  }
+  .badge-nouveau { @apply bg-info-50 text-info; }
+  .badge-promotion { @apply bg-accent-100 text-warning; }
+  .badge-populaire { @apply bg-brand-100 text-brand-800; }
+  .badge-rupture { @apply bg-danger-50 text-danger; }
+  .badge-b2b { @apply bg-brand-900 text-white; }
+  .badge-sur-commande { @apply bg-warning-50 text-warning; }
+
+  /* Formulaires */
+  .label {
+    @apply mb-1.5 block text-sm font-semibold text-ink;
+  }
+  .input {
+    @apply block w-full rounded-xl border border-line bg-white px-4 py-3 text-sm text-ink placeholder:text-muted/70
+      focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-200
+      aria-[invalid=true]:border-danger aria-[invalid=true]:ring-danger-50;
+  }
+  .field-error {
+    @apply mt-1 text-xs font-semibold text-danger;
+  }
+  .hint {
+    @apply mt-1 text-xs text-muted;
+  }
+
+  /* Alertes */
+  .alert {
+    @apply rounded-xl border px-4 py-3 text-sm;
+  }
+  .alert-success { @apply border-brand-200 bg-brand-50 text-brand-800; }
+  .alert-error { @apply border-danger/30 bg-danger-50 text-danger; }
+  .alert-info { @apply border-info/20 bg-info-50 text-info; }
+
+  /* Contenu éditorial (articles Markdown) */
+  .prose-afs {
+    @apply max-w-none text-[17px] leading-relaxed text-ink;
+  }
+  .prose-afs h2 { @apply mt-10 mb-3 text-2xl; }
+  .prose-afs h3 { @apply mt-8 mb-2 text-xl; }
+  .prose-afs p { @apply my-4; }
+  .prose-afs ul { @apply my-4 list-disc pl-6 space-y-1; }
+  .prose-afs ol { @apply my-4 list-decimal pl-6 space-y-1; }
+  .prose-afs a { @apply font-semibold text-brand-700 underline; }
+
+  .skeleton {
+    @apply animate-pulse rounded-lg bg-brand-100;
+  }
+}

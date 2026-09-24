@@ -1,0 +1,105 @@
+---
+import Layout from '../layouts/Layout.astro';
+import PageHero from '../components/PageHero.astro';
+import Icon, { type IconName } from '../components/ui/Icon.astro';
+
+// Contenus d'exemple : histoire, chiffres et gouvernance à remplacer par les informations officielles.
+const figures = [
+  { value: '2 000+', label: 'références produits' },
+  { value: '1 500', label: 'clients professionnels' },
+  { value: '24 h', label: 'délai de livraison à Lomé' },
+  { value: '12', label: 'coopératives partenaires' },
+];
+
+const values: { icon: IconName; title: string; text: string }[] = [
+  { icon: 'shield', title: 'Fiabilité', text: 'Tenir nos engagements de prix, de qualité et de délai.' },
+  { icon: 'users', title: 'Proximité', text: 'Être accessibles, à l\'écoute et présents près de nos clients.' },
+  { icon: 'leaf', title: 'Ancrage local', text: 'Valoriser la production togolaise et les filières locales.' },
+  { icon: 'star', title: 'Exigence', text: 'Sélectionner, contrôler et conserver nos produits avec soin.' },
+];
+
+const commitments = [
+  { title: 'Filières locales', text: 'Achats directs auprès de coopératives, prix connus avant récolte, paiement sous 7 jours.' },
+  { title: 'Sécurité alimentaire', text: 'Stockage ventilé, rotation des stocks, contrôle des dates et de l\'état des produits.' },
+  { title: 'Emploi', text: 'Recrutement et formation de jeunes aux métiers de la logistique et de la vente.' },
+  { title: 'Environnement', text: 'Optimisation des tournées de livraison et réduction des emballages plastiques.' },
+];
+---
+
+<Layout title="Qui sommes-nous" description="AfriSime, distributeur alimentaire togolais : histoire, vision, mission, valeurs, gouvernance et engagements RSE.">
+  <PageHero
+    eyebrow="AfriSime"
+    title="Rendre les bons produits accessibles à tous"
+    intro="Distributeur alimentaire basé à Lomé, AfriSime relie producteurs, importateurs, commerçants et familles avec une promesse simple : disponibilité, qualité et juste prix."
+    breadcrumbs={[{ label: 'AfriSime' }]}
+  />
+
+  <section class="border-b border-line bg-white">
+    <dl class="container-page grid grid-cols-2 gap-6 py-10 md:grid-cols-4">
+      {figures.map((f) => <div><dt class="sr-only">{f.label}</dt><dd><span class="block text-3xl font-extrabold text-brand-900 sm:text-4xl">{f.value}</span><span class="text-sm text-muted">{f.label}</span></dd></div>)}
+    </dl>
+  </section>
+
+  <section id="histoire" class="section scroll-mt-32">
+    <div class="container-page grid gap-10 lg:grid-cols-2">
+      <div>
+        <p class="eyebrow">Notre histoire</p>
+        <h2 class="mt-2 text-3xl">D'un dépôt de quartier à un réseau de distribution</h2>
+      </div>
+      <div class="space-y-4 text-lg leading-relaxed text-ink">
+        <p>AfriSime est née d'un constat : au Togo, trouver les produits du quotidien au bon prix, au bon moment et en bonne quantité reste un défi, pour les familles comme pour les commerçants.</p>
+        <p>Parti d'un dépôt à Lomé, AfriSime s'est structuré autour de trois métiers : le gros et le demi-gros pour les revendeurs, le détail pour les ménages, et l'approvisionnement des entreprises et institutions.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="vision" class="section scroll-mt-32 bg-brand-900 text-white">
+    <div class="container-page grid gap-6 md:grid-cols-2">
+      <div class="rounded-3xl bg-brand-800 p-8">
+        <p class="eyebrow !text-accent-500">Vision</p>
+        <p class="mt-3 text-2xl font-bold leading-snug">Devenir la référence de la distribution alimentaire moderne en Afrique de l'Ouest.</p>
+      </div>
+      <div class="rounded-3xl bg-brand-800 p-8">
+        <p class="eyebrow !text-accent-500">Mission</p>
+        <p class="mt-3 text-2xl font-bold leading-snug">Rendre les produits alimentaires de qualité disponibles, accessibles et abordables, du producteur jusqu'au consommateur.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="valeurs" class="section scroll-mt-32">
+    <div class="container-page">
+      <p class="eyebrow">Nos valeurs</p>
+      <h2 class="mt-2 text-3xl">Ce qui nous guide</h2>
+      <ul class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {values.map((v) => <li class="card p-6"><Icon name={v.icon} size={28} class="text-brand-600" /><h3 class="mt-4 text-lg">{v.title}</h3><p class="mt-1 text-sm text-muted">{v.text}</p></li>)}
+      </ul>
+    </div>
+  </section>
+
+  <section id="gouvernance" class="section scroll-mt-32 bg-white">
+    <div class="container-page grid gap-10 lg:grid-cols-2">
+      <div>
+        <p class="eyebrow">Gouvernance</p>
+        <h2 class="mt-2 text-3xl">Une organisation structurée</h2>
+        <p class="mt-4 text-muted">AfriSime s'appuie sur une direction générale et des pôles dédiés : achats, logistique, ventes B2B, e-commerce, finance et contrôle. Nos processus sont outillés par un ERP interne pour garantir traçabilité et fiabilité.</p>
+      </div>
+      <ul class="grid gap-3 sm:grid-cols-2">
+        {['Direction générale', 'Achats & fournisseurs', 'Logistique & entrepôts', 'Ventes B2B', 'E-commerce & marketing', 'Finance & contrôle'].map((p) => <li class="card p-4 font-semibold text-brand-900">{p}</li>)}
+      </ul>
+    </div>
+  </section>
+
+  <section id="engagements" class="section scroll-mt-32">
+    <div class="container-page">
+      <p class="eyebrow">Engagements & RSE</p>
+      <h2 class="mt-2 text-3xl">Une croissance responsable</h2>
+      <ul class="mt-8 grid gap-4 md:grid-cols-2">
+        {commitments.map((c) => <li class="card p-6"><h3 class="text-lg">{c.title}</h3><p class="mt-1 text-muted">{c.text}</p></li>)}
+      </ul>
+      <div class="mt-10 flex flex-col gap-3 sm:flex-row">
+        <a href="/investir" class="btn btn-primary">Investir dans AfriSime</a>
+        <a href="/carrieres" class="btn btn-secondary">Nous rejoindre</a>
+      </div>
+    </div>
+  </section>
+</Layout>

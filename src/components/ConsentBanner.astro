@@ -1,0 +1,36 @@
+<div
+  id="consent-banner"
+  class="fixed inset-x-0 bottom-0 z-50 border-t border-line bg-white p-4 shadow-[0_-8px_30px_rgba(0,0,0,0.08)]"
+  role="dialog"
+  aria-labelledby="consent-title"
+  hidden
+>
+  <div class="container-page flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+    <div class="text-sm">
+      <p id="consent-title" class="font-bold text-brand-900">Cookies de mesure d'audience</p>
+      <p class="text-muted">
+        Nous utilisons des cookies pour comprendre comment le site est utilisé et l'améliorer.
+        <a href="/legal/cookies" class="font-semibold underline">En savoir plus</a>
+      </p>
+    </div>
+    <div class="flex shrink-0 gap-2">
+      <button type="button" class="btn btn-secondary btn-sm" data-consent="refused">Refuser</button>
+      <button type="button" class="btn btn-primary btn-sm" data-consent="accepted">Accepter</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  import { getConsent, setConsent } from '../scripts/analytics';
+
+  const banner = document.getElementById('consent-banner')!;
+  if (!getConsent()) banner.hidden = false;
+
+  banner.querySelectorAll<HTMLButtonElement>('[data-consent]').forEach((button) =>
+    button.addEventListener('click', () => {
+      setConsent(button.dataset.consent as 'accepted' | 'refused');
+      banner.hidden = true;
+    }),
+  );
+  document.querySelector('[data-open-consent]')?.addEventListener('click', () => (banner.hidden = false));
+</script>

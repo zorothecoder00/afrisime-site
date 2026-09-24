@@ -1,0 +1,120 @@
+---
+import Layout from '../layouts/Layout.astro';
+import PageHero from '../components/PageHero.astro';
+import Field from '../components/ui/Field.astro';
+import Icon, { type IconName } from '../components/ui/Icon.astro';
+import { SITE } from '../data/site';
+
+const segments: { id: string; icon: IconName; title: string; text: string; points: string[] }[] = [
+  { id: 'commercants', icon: 'store', title: 'Commerçants & boutiques', text: 'Réassort rapide pour boutiques de quartier, superettes et kiosques.', points: ['Prix demi-gros dès 5 cartons', 'Livraison en 24 h', 'Commande par WhatsApp'] },
+  { id: 'revendeurs', icon: 'handshake', title: 'Revendeurs & grossistes', text: 'Volumes importants, prix dégressifs et livraison programmée.', points: ['Grille tarifaire volume', 'Camion complet ou groupage', 'Crédit fournisseur sur dossier'] },
+  { id: 'restaurants', icon: 'chef', title: 'Restaurants, hôtels & traiteurs', text: 'Un approvisionnement régulier pour ne jamais manquer.', points: ['Livraison hebdomadaire', 'Facturation mensuelle', 'Formats professionnels'] },
+  { id: 'entreprises', icon: 'building', title: 'Entreprises & institutions', text: 'Cantines, ONG, écoles, administrations : contrats cadres et appels d\'offres.', points: ['Contrat cadre annuel', 'Documents administratifs', 'Interlocuteur dédié'] },
+];
+
+const steps = [
+  { title: 'Votre demande', text: 'Produits, volumes et fréquence souhaités.' },
+  { title: 'Qualification', text: 'Un commercial vous rappelle sous 24 h ouvrées.' },
+  { title: 'Devis', text: 'Une offre de prix adaptée à vos volumes.' },
+  { title: 'Commande & livraison', text: 'Livraison programmée et suivi de vos commandes.' },
+];
+
+---
+
+<Layout title="Solutions B2B" description="Prix de gros, livraisons programmées et commercial dédié pour commerçants, revendeurs, restaurants, entreprises et institutions au Togo.">
+  <PageHero
+    eyebrow="Solutions B2B"
+    title="L'approvisionnement des professionnels, simplifié"
+    intro="Commerçants, revendeurs, restaurants, entreprises : AfriSime vous livre en volume, au prix juste, avec un interlocuteur dédié."
+    breadcrumbs={[{ label: 'Solutions B2B' }]}
+  >
+    <div class="mt-8 flex flex-col gap-3 sm:flex-row">
+      <a href="#devis" class="btn btn-primary">Demander un devis</a>
+      <a href={SITE.contact.phoneHref} class="btn btn-secondary"><Icon name="phone" size={18} />Appeler un commercial</a>
+    </div>
+  </PageHero>
+
+  <section class="section">
+    <div class="container-page grid gap-4 md:grid-cols-2">
+      {
+        segments.map((s) => (
+          <article id={s.id} class="card p-7">
+            <span class="grid size-12 place-items-center rounded-xl bg-brand-900 text-accent-500"><Icon name={s.icon} size={24} /></span>
+            <h2 class="mt-5 text-2xl">{s.title}</h2>
+            <p class="mt-2 text-muted">{s.text}</p>
+            <ul class="mt-4 space-y-2 text-sm">
+              {s.points.map((pt) => <li class="flex items-center gap-2"><Icon name="check" size={16} class="text-brand-600" />{pt}</li>)}
+            </ul>
+          </article>
+        ))
+      }
+    </div>
+  </section>
+
+  <section class="bg-white py-14">
+    <div class="container-page">
+      <h2 class="text-center text-3xl">Comment ça marche</h2>
+      <ol class="mt-10 grid gap-6 md:grid-cols-4">
+        {
+          steps.map((s, i) => (
+            <li class="text-center">
+              <span class="mx-auto grid size-12 place-items-center rounded-full bg-accent-500 text-lg font-extrabold text-brand-950">{i + 1}</span>
+              <h3 class="mt-4 text-lg">{s.title}</h3>
+              <p class="mt-1 text-sm text-muted">{s.text}</p>
+            </li>
+          ))
+        }
+      </ol>
+    </div>
+  </section>
+
+  <section id="devis" class="section scroll-mt-32">
+    <div class="container-page grid gap-10 lg:grid-cols-[1fr_1.5fr]">
+      <div>
+        <p class="eyebrow">Demande de devis</p>
+        <h2 class="mt-2 text-3xl">Parlez-nous de vos besoins</h2>
+        <p class="mt-3 text-muted">Réponse sous 24 h ouvrées. Plus votre demande est précise, plus notre offre sera juste.</p>
+        <div class="card mt-6 space-y-3 p-5 text-sm">
+          <p class="font-bold text-brand-900">Vous préférez échanger directement ?</p>
+          <a href={SITE.contact.phoneHref} class="flex items-center gap-2 hover:text-brand-600"><Icon name="phone" size={16} />{SITE.contact.phone}</a>
+          <a href={SITE.contact.whatsapp} target="_blank" rel="noopener" class="flex items-center gap-2 hover:text-brand-600"><Icon name="whatsapp" size={16} />WhatsApp commercial</a>
+        </div>
+      </div>
+
+      <form data-lead-form class="card grid gap-4 p-6 sm:grid-cols-2 sm:p-8" data-success-message="Merci ! Votre demande de devis est enregistrée. Un commercial vous rappelle sous 24 h ouvrées." novalidate>
+        <input type="hidden" name="type" value="b2b" />
+        <input type="hidden" name="source" value="page-b2b" />
+        <div class="hidden" aria-hidden="true"><input name="website" tabindex="-1" autocomplete="off" /></div>
+
+        <Field name="company" label="Entreprise / établissement" required autocomplete="organization" />
+        <Field name="secteur" label="Secteur" required options={['Boutique / commerce', 'Revendeur / grossiste', 'Restaurant / hôtel / traiteur', 'Entreprise', 'Institution / ONG / école', 'Autre']} />
+        <Field name="name" label="Nom du contact" required autocomplete="name" />
+        <Field name="phone" label="Téléphone" type="tel" required autocomplete="tel" inputmode="tel" />
+        <Field name="email" label="E-mail" type="email" autocomplete="email" />
+        <Field name="ville" label="Ville / quartier" required />
+        <Field name="need" label="Produits et volumes souhaités" required textarea placeholder="Ex. : 20 sacs de riz 50 kg, 10 bidons d'huile 20 L par mois" class="sm:col-span-2" />
+        <Field name="frequence" label="Fréquence" options={['Ponctuelle', 'Hebdomadaire', 'Bimensuelle', 'Mensuelle']} />
+        <Field name="budget" label="Volume mensuel estimé" options={['Moins de 500 000 FCFA', '500 000 – 2 000 000 FCFA', '2 – 10 millions FCFA', 'Plus de 10 millions FCFA']} />
+
+        <div class="sm:col-span-2">
+          <label class="flex items-start gap-2 text-sm">
+            <input type="checkbox" name="consent" class="mt-1 size-4 accent-brand-700" />
+            J'accepte qu'AfriSime utilise ces informations pour me recontacter au sujet de ma demande.
+          </label>
+          <p class="field-error" data-error-for="consent" hidden></p>
+        </div>
+        <div class="sm:col-span-2">
+          <button type="submit" class="btn btn-primary w-full !py-4 sm:w-auto">Envoyer ma demande de devis</button>
+          <div data-form-status class="mt-4" hidden role="status"></div>
+        </div>
+      </form>
+    </div>
+  </section>
+</Layout>
+
+<script>
+  // Pré-remplit la demande quand on arrive depuis une fiche produit (?produit=…).
+  const product = new URLSearchParams(location.search).get('produit');
+  const need = document.querySelector<HTMLTextAreaElement>('#devis textarea[name="need"]');
+  if (product && need && !need.value) need.value = `${product} : quantité souhaitée ?`;
+</script>

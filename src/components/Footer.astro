@@ -1,0 +1,119 @@
+---
+import Icon from './ui/Icon.astro';
+import Logo from './ui/Logo.astro';
+import { SITE } from '../data/site';
+
+const columns = [
+  {
+    title: 'Boutique',
+    links: [
+      { label: 'Tout le catalogue', href: '/boutique' },
+      { label: 'Promotions', href: '/boutique?badge=promotion' },
+      { label: 'Nouveautés', href: '/boutique?tri=nouveautes' },
+      { label: 'Produits locaux', href: '/boutique?categorie=produits-locaux' },
+      { label: 'Mon panier', href: '/panier' },
+    ],
+  },
+  {
+    title: 'Professionnels',
+    links: [
+      { label: 'Solutions B2B', href: '/b2b' },
+      { label: 'Demander un devis', href: '/b2b#devis' },
+      { label: 'Devenir fournisseur', href: '/partenaires#formulaire' },
+      { label: 'Investir', href: '/investir' },
+    ],
+  },
+  {
+    title: 'AfriSime',
+    links: [
+      { label: 'Qui sommes-nous', href: '/afrisime' },
+      { label: 'Nos activités', href: '/activites' },
+      { label: 'Média', href: '/media' },
+      { label: 'Carrières', href: '/carrieres' },
+      { label: 'FAQ', href: '/faq' },
+    ],
+  },
+];
+
+const legal = [
+  { label: 'Mentions légales', href: '/legal/mentions-legales' },
+  { label: 'CGV', href: '/legal/cgv' },
+  { label: 'Livraison & retours', href: '/legal/livraison-retours' },
+  { label: 'Confidentialité', href: '/legal/confidentialite' },
+  { label: 'Cookies', href: '/legal/cookies' },
+];
+---
+
+<footer class="mt-auto bg-brand-950 text-brand-100">
+  <div class="container-page grid gap-10 py-14 lg:grid-cols-[1.3fr_repeat(3,1fr)_1.4fr]">
+    <div>
+      <Logo inverted />
+      <p class="mt-4 max-w-xs text-sm leading-relaxed text-brand-200">
+        Distribution alimentaire à Lomé : produits locaux et importés, en gros, demi-gros et détail.
+      </p>
+      <ul class="mt-5 space-y-2 text-sm">
+        <li class="flex gap-2"><Icon name="pin" size={16} class="mt-0.5 shrink-0" />{SITE.contact.address}</li>
+        <li><a href={SITE.contact.phoneHref} class="flex gap-2 hover:text-white"><Icon name="phone" size={16} />{SITE.contact.phone}</a></li>
+        <li><a href={`mailto:${SITE.contact.email}`} class="flex gap-2 hover:text-white"><Icon name="mail" size={16} />{SITE.contact.email}</a></li>
+        <li class="flex gap-2"><Icon name="clock" size={16} />{SITE.contact.hours}</li>
+      </ul>
+    </div>
+
+    {
+      columns.map((col) => (
+        <nav aria-label={col.title}>
+          <h2 class="text-sm font-bold uppercase tracking-wider text-white">{col.title}</h2>
+          <ul class="mt-4 space-y-2.5 text-sm">
+            {col.links.map((l) => (
+              <li>
+                <a href={l.href} class="text-brand-200 hover:text-white">{l.label}</a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      ))
+    }
+
+    <div>
+      <h2 class="text-sm font-bold uppercase tracking-wider text-white">Newsletter</h2>
+      <p class="mt-4 text-sm text-brand-200">Promotions, nouveautés et conseils, une fois par mois.</p>
+      <form data-lead-form class="mt-4" data-success-message="Merci, vous êtes inscrit à la newsletter.">
+        <input type="hidden" name="type" value="newsletter" />
+        <input type="hidden" name="source" value="footer" />
+        <div class="hidden" aria-hidden="true"><input name="website" tabindex="-1" autocomplete="off" /></div>
+        <label for="newsletter-email" class="sr-only">Adresse e-mail</label>
+        <div class="flex gap-2">
+          <input id="newsletter-email" name="email" type="email" required placeholder="votre@email.com" class="input !py-2.5" />
+          <button type="submit" class="btn btn-accent !py-2.5">OK</button>
+        </div>
+        <p class="field-error !text-accent-500" data-error-for="email" hidden></p>
+        <label class="mt-3 flex items-start gap-2 text-xs text-brand-200">
+          <input type="checkbox" name="consent" required class="mt-0.5 accent-accent-500" />
+          J'accepte de recevoir les communications d'AfriSime.
+        </label>
+        <div data-form-status class="mt-3" hidden role="status"></div>
+      </form>
+      <ul class="mt-6 flex flex-wrap gap-2">
+        {
+          SITE.social.map((s) => (
+            <li>
+              <a href={s.href} target="_blank" rel="noopener" class="inline-block rounded-full border border-brand-700 px-3 py-1.5 text-xs font-semibold hover:bg-brand-800">
+                {s.label}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+  </div>
+
+  <div class="border-t border-brand-800">
+    <div class="container-page flex flex-col gap-3 py-5 text-xs text-brand-200 md:flex-row md:items-center md:justify-between">
+      <p>© {new Date().getFullYear()} AfriSime. Tous droits réservés.</p>
+      <ul class="flex flex-wrap gap-x-5 gap-y-2">
+        {legal.map((l) => <li><a href={l.href} class="hover:text-white">{l.label}</a></li>)}
+        <li><button type="button" class="hover:text-white" data-open-consent>Gérer les cookies</button></li>
+      </ul>
+    </div>
+  </div>
+</footer>

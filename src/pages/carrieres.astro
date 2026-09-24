@@ -1,0 +1,79 @@
+---
+import Layout from '../layouts/Layout.astro';
+import PageHero from '../components/PageHero.astro';
+import Field from '../components/ui/Field.astro';
+import Icon from '../components/ui/Icon.astro';
+
+// Offres d'exemple. En production, elles seront gérées depuis le CMS.
+const jobs = [
+  { title: 'Commercial B2B terrain', place: 'Lomé', contract: 'CDI', text: 'Développer un portefeuille de commerçants, restaurants et entreprises.' },
+  { title: 'Préparateur de commandes', place: 'Lomé – entrepôt', contract: 'CDD 6 mois', text: 'Préparer, contrôler et charger les commandes clients.' },
+  { title: 'Chargé(e) e-commerce', place: 'Lomé', contract: 'CDI', text: 'Animer la boutique en ligne, le catalogue et les campagnes.' },
+];
+const culture = ['Formation à l\'embauche et tout au long du parcours', 'Évolution interne privilégiée', 'Esprit d\'équipe et exigence du service client'];
+---
+
+<Layout title="Carrières" description="Rejoignez AfriSime : offres d'emploi, culture d'entreprise et candidature spontanée.">
+  <PageHero eyebrow="Carrières" title="Rejoignez l'équipe AfriSime" intro="Logistique, vente, e-commerce, finance : construisons ensemble la distribution alimentaire de demain." breadcrumbs={[{ label: 'AfriSime', href: '/afrisime' }, { label: 'Carrières' }]} />
+
+  <section class="section">
+    <div class="container-page grid gap-10 lg:grid-cols-[1.5fr_1fr]">
+      <div>
+        <h2 class="text-2xl">Offres ouvertes</h2>
+        <ul class="mt-6 space-y-3">
+          {
+            jobs.map((j) => (
+              <li class="card flex flex-col gap-3 p-6 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h3 class="text-lg">{j.title}</h3>
+                  <p class="text-sm text-muted">{j.place} · {j.contract}</p>
+                  <p class="mt-1 text-sm">{j.text}</p>
+                </div>
+                <a href={`#candidature`} class="btn btn-secondary btn-sm shrink-0" data-job={j.title}>Postuler</a>
+              </li>
+            ))
+          }
+        </ul>
+      </div>
+      <aside class="card h-fit p-6">
+        <h2 class="text-xl">Notre culture</h2>
+        <ul class="mt-4 space-y-3 text-sm">
+          {culture.map((c) => <li class="flex gap-2"><Icon name="check" size={16} class="mt-0.5 shrink-0 text-brand-600" />{c}</li>)}
+        </ul>
+      </aside>
+    </div>
+  </section>
+
+  <section id="candidature" class="section scroll-mt-32 bg-white">
+    <div class="container-page max-w-3xl">
+      <h2 class="text-3xl">Candidature</h2>
+      <p class="mt-2 text-muted">Pour une offre ou en candidature spontanée. Nous vous demanderons votre CV si votre profil est retenu.</p>
+      <form data-lead-form class="card mt-8 grid gap-4 p-6 sm:grid-cols-2 sm:p-8" data-success-message="Merci pour votre candidature ! Nous revenons vers vous si votre profil correspond." novalidate>
+        <input type="hidden" name="type" value="candidature" />
+        <input type="hidden" name="source" value="page-carrieres" />
+        <div class="hidden" aria-hidden="true"><input name="website" tabindex="-1" autocomplete="off" /></div>
+        <Field name="poste" label="Poste visé" required options={[...jobs.map((j) => j.title), 'Candidature spontanée']} class="sm:col-span-2" />
+        <Field name="name" label="Nom complet" required autocomplete="name" />
+        <Field name="phone" label="Téléphone" type="tel" required autocomplete="tel" />
+        <Field name="email" label="E-mail" type="email" autocomplete="email" />
+        <Field name="lien" label="Lien vers votre CV / LinkedIn" type="url" />
+        <Field name="need" label="Présentez-vous en quelques lignes" required textarea class="sm:col-span-2" />
+        <div class="sm:col-span-2">
+          <label class="flex items-start gap-2 text-sm"><input type="checkbox" name="consent" class="mt-1 size-4 accent-brand-700" />J'accepte qu'AfriSime conserve ma candidature pendant 12 mois.</label>
+          <p class="field-error" data-error-for="consent" hidden></p>
+        </div>
+        <div class="sm:col-span-2">
+          <button type="submit" class="btn btn-primary">Envoyer ma candidature</button>
+          <div data-form-status class="mt-4" hidden role="status"></div>
+        </div>
+      </form>
+    </div>
+  </section>
+</Layout>
+
+<script>
+  const select = document.querySelector<HTMLSelectElement>('select[name="poste"]');
+  document.querySelectorAll<HTMLAnchorElement>('[data-job]').forEach((a) =>
+    a.addEventListener('click', () => select && (select.value = a.dataset.job!)),
+  );
+</script>

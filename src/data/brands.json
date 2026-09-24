@@ -1,0 +1,8 @@
+[
+  { "id": "savana", "name": "Savana", "description": "Céréales et farines sélectionnées." },
+  { "id": "golfe-or", "name": "Golfe d'Or", "description": "Huiles végétales raffinées." },
+  { "id": "terroir-togo", "name": "Terroir Togo", "description": "Produits locaux transformés au Togo." },
+  { "id": "aqua-lome", "name": "Aqua Lomé", "description": "Eaux minérales et boissons." },
+  { "id": "maison-claire", "name": "Maison Claire", "description": "Hygiène et entretien." },
+  { "id": "saveurs-sahel", "name": "Saveurs du Sahel", "description": "Épices, condiments et épicerie fine." }
+]

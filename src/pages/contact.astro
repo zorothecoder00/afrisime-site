@@ -1,0 +1,78 @@
+---
+import Layout from '../layouts/Layout.astro';
+import PageHero from '../components/PageHero.astro';
+import Field from '../components/ui/Field.astro';
+import Icon from '../components/ui/Icon.astro';
+import { SITE } from '../data/site';
+
+const subjects = ['Question sur une commande', 'Recherche d\'un produit', 'Demande professionnelle (B2B)', 'Partenariat / fournisseur', 'Réclamation', 'Presse / média', 'Autre'];
+const mapSrc = `https://www.openstreetmap.org/export/embed.html?bbox=1.18%2C6.11%2C1.27%2C6.17&layer=mapnik`;
+---
+
+<Layout title="Contact" description={`Contactez AfriSime à Lomé : ${SITE.contact.phone}, WhatsApp, e-mail, formulaire et plan d'accès.`}>
+  <PageHero eyebrow="Contact" title="Parlons-en" intro="Une question, une commande, un projet ? Notre équipe vous répond du lundi au samedi." breadcrumbs={[{ label: 'Contact' }]} />
+
+  <section class="section">
+    <div class="container-page grid gap-10 lg:grid-cols-[1fr_1.4fr]">
+      <div class="space-y-4">
+        <a href={SITE.contact.phoneHref} class="card flex items-center gap-4 p-5 hover:border-brand-600">
+          <span class="grid size-12 place-items-center rounded-xl bg-brand-100 text-brand-700"><Icon name="phone" /></span>
+          <span><span class="block text-sm text-muted">Téléphone</span><strong class="text-brand-900">{SITE.contact.phone}</strong></span>
+        </a>
+        <a href={SITE.contact.whatsapp} target="_blank" rel="noopener" class="card flex items-center gap-4 p-5 hover:border-brand-600">
+          <span class="grid size-12 place-items-center rounded-xl bg-brand-100 text-brand-700"><Icon name="whatsapp" /></span>
+          <span><span class="block text-sm text-muted">WhatsApp</span><strong class="text-brand-900">Écrivez-nous</strong></span>
+        </a>
+        <a href={`mailto:${SITE.contact.email}`} class="card flex items-center gap-4 p-5 hover:border-brand-600">
+          <span class="grid size-12 place-items-center rounded-xl bg-brand-100 text-brand-700"><Icon name="mail" /></span>
+          <span><span class="block text-sm text-muted">E-mail</span><strong class="text-brand-900">{SITE.contact.email}</strong></span>
+        </a>
+        <div class="card flex items-center gap-4 p-5">
+          <span class="grid size-12 place-items-center rounded-xl bg-brand-100 text-brand-700"><Icon name="pin" /></span>
+          <span><span class="block text-sm text-muted">Dépôt principal</span><strong class="text-brand-900">{SITE.contact.address}</strong><span class="block text-sm text-muted">{SITE.contact.hours}</span></span>
+        </div>
+        <iframe
+          title="Plan d'accès au dépôt AfriSime à Lomé"
+          src={mapSrc}
+          class="h-72 w-full rounded-2xl border border-line"
+          loading="lazy"
+          referrerpolicy="no-referrer"></iframe>
+      </div>
+
+      <form data-lead-form class="card grid h-fit gap-4 p-6 sm:grid-cols-2 sm:p-8" data-success-message="Merci ! Votre message est bien envoyé. Nous vous répondons sous 24 h ouvrées." novalidate>
+        <h2 class="text-2xl sm:col-span-2">Écrivez-nous</h2>
+        <input type="hidden" name="type" value="contact" />
+        <input type="hidden" name="source" value="page-contact" />
+        <div class="hidden" aria-hidden="true"><input name="website" tabindex="-1" autocomplete="off" /></div>
+
+        <Field name="name" label="Nom complet" required autocomplete="name" />
+        <Field name="phone" label="Téléphone" type="tel" required autocomplete="tel" inputmode="tel" />
+        <Field name="email" label="E-mail" type="email" autocomplete="email" />
+        <Field name="sujet" label="Sujet" required options={subjects} />
+        <Field name="commande" label="Numéro de commande" placeholder="AFS-…" hint="Si votre demande concerne une commande." class="sm:col-span-2" />
+        <Field name="need" label="Message" required textarea class="sm:col-span-2" />
+
+        <div class="sm:col-span-2">
+          <label class="flex items-start gap-2 text-sm">
+            <input type="checkbox" name="consent" class="mt-1 size-4 accent-brand-700" />
+            J'accepte qu'AfriSime utilise ces informations pour répondre à ma demande.
+          </label>
+          <p class="field-error" data-error-for="consent" hidden></p>
+        </div>
+        <div class="sm:col-span-2">
+          <button type="submit" class="btn btn-primary w-full !py-4 sm:w-auto">Envoyer le message</button>
+          <div data-form-status class="mt-4" hidden role="status"></div>
+        </div>
+      </form>
+    </div>
+  </section>
+</Layout>
+
+<script>
+  // Pré-remplissage depuis un lien (?sujet=produit&message=…), par ex. une recherche sans résultat.
+  const params = new URLSearchParams(location.search);
+  const subject = document.querySelector<HTMLSelectElement>('select[name="sujet"]');
+  const message = document.querySelector<HTMLTextAreaElement>('textarea[name="need"]');
+  if (params.get('sujet') === 'produit' && subject) subject.value = "Recherche d'un produit";
+  if (params.get('message') && message) message.value = params.get('message')!.slice(0, 500);
+</script>
