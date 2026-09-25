@@ -39,14 +39,14 @@ const isActive = (href: string) => (href === '/admin' ? path === '/admin' || pat
         <a href="/" class="underline hover:text-white">Voir le site</a>
       </p>
     </div>
-    <nav aria-label="Navigation du back-office" class="container-page mt-3 flex gap-1 overflow-x-auto">
+    <nav aria-label="Navigation du back-office" class="container-page mt-3 flex flex-wrap gap-1.5 pb-3">
       {
         nav.map((item) => (
           <a
             href={item.href}
             class:list={[
-              'whitespace-nowrap rounded-t-lg px-4 py-2.5 text-sm font-semibold',
-              isActive(item.href) ? 'bg-canvas text-brand-900' : 'text-brand-100 hover:bg-brand-900',
+              'whitespace-nowrap rounded-lg px-3.5 py-2 text-sm font-semibold',
+              isActive(item.href) ? 'bg-white text-brand-900' : 'text-brand-100 hover:bg-brand-800',
             ]}
             aria-current={isActive(item.href) ? 'page' : undefined}
           >
