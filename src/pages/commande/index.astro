@@ -1,7 +1,11 @@
 ---
+// Commande, sur le modèle d'Alibaba : une seule page avec blocs numérotés (coordonnées,
+// livraison, paiement, articles regroupés par marque) et récapitulatif collant avec le bouton
+// de commande. Les montants sont calculés par le serveur ; une clé d'idempotence empêche
+// toute double commande.
 import Layout from '../../layouts/Layout.astro';
 import Field from '../../components/ui/Field.astro';
-import Icon from '../../components/ui/Icon.astro';
+import Icon, { type IconName } from '../../components/ui/Icon.astro';
 import { formatPrice } from '../../lib/format';
 import { onlinePaymentAvailable } from '../../lib/payments/service';
 import { activeZones, enabledPaymentMethods, getSettings } from '../../lib/settings';
@@ -12,99 +16,106 @@ const online = onlinePaymentAvailable();
 const methods = enabledPaymentMethods(settings).map((m) =>
   m.id !== 'livraison' && !online ? { ...m, description: 'Un conseiller vous envoie le lien de paiement après la commande.' } : m,
 );
-const steps = ['Panier', 'Coordonnées', 'Livraison', 'Paiement', 'Confirmation'];
+const methodIcon: Record<string, IconName> = { 'mobile-money': 'phone', carte: 'shield', livraison: 'truck' };
+const step = 'grid size-7 shrink-0 place-items-center rounded-full bg-brand-900 text-sm font-extrabold text-white';
+const block = 'rounded-2xl bg-white p-5 ring-1 ring-line sm:p-6';
 ---
 
 <Layout title="Commande" noindex>
-  <div class="container-page py-8">
-    <h1 class="text-3xl">Finaliser ma commande</h1>
-
-    <ol class="mt-6 grid grid-cols-5 gap-2 text-center text-[11px] font-bold sm:text-sm" aria-label="Étapes de la commande">
-      {
-        steps.map((label, i) => (
-          <li data-step-indicator={i} class:list={['rounded-xl border px-1 py-2.5', i === 0 ? 'border-brand-900 bg-brand-900 text-white' : 'border-line bg-white text-muted']}>
-            <span class="hidden sm:inline">{i + 1}. </span>{label}
-          </li>
-        ))
-      }
+  <div class="container-page pb-28 pt-5 lg:pb-12">
+    <ol class="flex items-center gap-2 text-xs font-semibold text-muted sm:text-sm" aria-label="Étapes">
+      <li><a href="/panier" class="hover:text-brand-700">Panier</a></li>
+      <li aria-hidden="true">›</li>
+      <li class="text-ink" aria-current="step">Commande</li>
+      <li aria-hidden="true">›</li>
+      <li>Confirmation</li>
+      <li class="ml-auto flex items-center gap-1 text-brand-700"><Icon name="shield" size={14} />Paiement sécurisé</li>
     </ol>
 
-    <div class="mt-4 space-y-3" data-state="loading">
-      <div class="skeleton h-64"></div>
+    <div class="mt-5 space-y-3" data-state="loading">
+      <div class="skeleton h-40"></div>
+      <div class="skeleton h-40"></div>
     </div>
 
-    <div class="card mt-8 p-10 text-center" data-state="empty" hidden>
-      <h2 class="text-xl">Votre panier est vide</h2>
-      <a href="/boutique" class="btn btn-primary mt-6">Aller à la boutique</a>
+    <div class="mt-5 rounded-2xl bg-white p-10 text-center ring-1 ring-line" data-state="empty" hidden>
+      <Icon name="cart" size={44} class="mx-auto text-muted" />
+      <h1 class="mt-4 text-xl">Aucun article à commander</h1>
+      <p class="mt-2 text-sm text-muted">Votre panier est vide, ou aucun article n'y est coché.</p>
+      <div class="mt-6 flex justify-center gap-2">
+        <a href="/panier" class="btn btn-secondary">Voir le panier</a>
+        <a href="/boutique" class="btn btn-accent">Aller à la boutique</a>
+      </div>
     </div>
 
-    <div class="mt-8 grid gap-8 lg:grid-cols-[1fr_380px]" data-state="filled" hidden>
-      <form novalidate data-checkout-form class="space-y-6">
+    <form novalidate data-checkout-form class="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_360px]" data-state="filled" hidden>
+      <div class="min-w-0 space-y-4">
+        <h1 class="text-2xl font-bold !text-ink">Finaliser ma commande</h1>
         <div class="alert alert-error" data-form-error hidden role="alert" tabindex="-1"></div>
 
-        <!-- Étape 2 : coordonnées -->
-        <section class="card p-6" data-step="1" aria-labelledby="etape-coordonnees">
-          <h2 id="etape-coordonnees" class="text-xl focus:outline-none" tabindex="-1">Vos coordonnées</h2>
+        <!-- 1. Coordonnées -->
+        <section class={block} aria-labelledby="etape-coordonnees">
+          <h2 id="etape-coordonnees" class="flex items-center gap-3 text-lg font-bold !text-ink"><span class={step}>1</span>Vos coordonnées</h2>
           <p class="mt-2 text-sm text-muted" data-login-hint>
-            Déjà client ? <a href="/compte/connexion?retour=/commande" class="font-semibold underline">Connectez-vous</a> pour retrouver vos adresses et suivre vos commandes.
+            Déjà client ? <a href="/compte/connexion?retour=/commande" class="font-semibold text-brand-700 underline">Connectez-vous</a> pour retrouver vos adresses et suivre vos commandes.
           </p>
-          <div class="mt-5 grid gap-4 sm:grid-cols-2">
+          <div class="mt-4 grid gap-4 sm:grid-cols-2">
             <Field name="name" label="Nom complet" required autocomplete="name" class="sm:col-span-2" />
             <Field name="phone" label="Téléphone" type="tel" required autocomplete="tel" inputmode="tel" placeholder="90 00 00 00" hint="Nous vous appelons pour confirmer la livraison." />
             <Field name="email" label="E-mail" type="email" required autocomplete="email" placeholder="vous@exemple.com" hint="Pour recevoir votre confirmation." />
           </div>
-          <button type="button" class="btn btn-primary mt-6" data-next="2">Continuer vers la livraison</button>
         </section>
 
-        <!-- Étape 3 : livraison -->
-        <section class="card p-6" data-step="2" aria-labelledby="etape-livraison" hidden>
-          <h2 id="etape-livraison" class="text-xl focus:outline-none" tabindex="-1">Livraison</h2>
-          <fieldset class="mt-5">
-            <legend class="label">Zone ou mode de livraison <span class="text-danger">*</span></legend>
-            <div class="space-y-2">
+        <!-- 2. Livraison -->
+        <section class={block} aria-labelledby="etape-livraison">
+          <h2 id="etape-livraison" class="flex items-center gap-3 text-lg font-bold !text-ink"><span class={step}>2</span>Livraison</h2>
+          <fieldset class="mt-4">
+            <legend class="sr-only">Zone ou mode de livraison</legend>
+            <div class="grid gap-2 sm:grid-cols-2">
               {
                 zones.map((z) => (
-                  <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-line p-4 has-[:checked]:border-brand-700 has-[:checked]:bg-brand-50">
-                    <input type="radio" name="deliveryZone" value={z.id} class="size-4 accent-brand-700" />
-                    <span class="flex-1">
+                  <label class="flex cursor-pointer items-start gap-3 rounded-xl border-2 border-line p-3.5 transition hover:border-brand-600 has-[:checked]:border-brand-700 has-[:checked]:bg-brand-50">
+                    <input type="radio" name="deliveryZone" value={z.id} class="mt-1 size-4 accent-brand-700" />
+                    <span class="min-w-0 flex-1">
                       <span class="block text-sm font-bold">{z.label}</span>
                       <span class="text-xs text-muted">{z.delay}</span>
                     </span>
-                    <span class="text-sm font-bold">{z.fee === 0 ? 'Gratuit' : formatPrice(z.fee)}</span>
+                    <span class="text-sm font-extrabold">{z.fee === 0 ? 'Gratuit' : formatPrice(z.fee)}</span>
                   </label>
                 ))
               }
             </div>
             <p class="field-error" data-error-for="deliveryZone" hidden></p>
           </fieldset>
-          <div class="mt-5" data-address-fields>
+          <div class="mt-4" data-address-fields hidden>
             <div class="mb-4" data-saved-addresses hidden>
               <label for="adresse-enregistree" class="label">Mes adresses</label>
               <select id="adresse-enregistree" class="input"><option value="">Saisir une nouvelle adresse</option></select>
             </div>
             <div class="grid gap-4 sm:grid-cols-2">
               <Field name="city" label="Ville / quartier" autocomplete="address-level2" placeholder="Lomé, Tokoin" />
-              <Field name="address" label="Adresse ou point de repère" autocomplete="street-address" placeholder="Rue, maison, repère…" />
+              <Field name="address" label="Adresse ou point de repère" required autocomplete="street-address" placeholder="Rue, maison, repère…" />
             </div>
-          </div>
-          <div class="mt-6 flex gap-2">
-            <button type="button" class="btn btn-ghost" data-prev="1">Retour</button>
-            <button type="button" class="btn btn-primary" data-next="3">Continuer vers le paiement</button>
           </div>
         </section>
 
-        <!-- Étape 4 : paiement -->
-        <section class="card p-6" data-step="3" aria-labelledby="etape-paiement" hidden>
-          <h2 id="etape-paiement" class="text-xl focus:outline-none" tabindex="-1">Paiement</h2>
-          <fieldset class="mt-5">
-            <legend class="label">Moyen de paiement <span class="text-danger">*</span></legend>
+        <!-- 3. Paiement -->
+        <section class={block} aria-labelledby="etape-paiement">
+          <h2 id="etape-paiement" class="flex items-center gap-3 text-lg font-bold !text-ink"><span class={step}>3</span>Mode de paiement</h2>
+          <fieldset class="mt-4">
+            <legend class="sr-only">Moyen de paiement</legend>
             <div class="space-y-2">
               {
-                methods.map((m) => (
-                  <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-line p-4 has-[:checked]:border-brand-700 has-[:checked]:bg-brand-50">
+                methods.map((m, i) => (
+                  <label class="flex cursor-pointer items-center gap-3 rounded-xl border-2 border-line p-3.5 transition hover:border-brand-600 has-[:checked]:border-brand-700 has-[:checked]:bg-brand-50">
                     <input type="radio" name="paymentMethod" value={m.id} class="size-4 accent-brand-700" />
-                    <span>
-                      <span class="block text-sm font-bold">{m.label}</span>
+                    <span class="grid size-10 shrink-0 place-items-center rounded-lg bg-canvas text-brand-700">
+                      <Icon name={methodIcon[m.id] ?? 'shield'} size={20} />
+                    </span>
+                    <span class="min-w-0 flex-1">
+                      <span class="flex flex-wrap items-center gap-2 text-sm font-bold">
+                        {m.label}
+                        {i === 0 && m.id !== 'livraison' && <span class="rounded-sm bg-accent-500 px-1.5 text-[11px] font-extrabold text-brand-950">Recommandé</span>}
+                      </span>
                       <span class="text-xs text-muted">{m.description}</span>
                     </span>
                   </label>
@@ -113,42 +124,77 @@ const steps = ['Panier', 'Coordonnées', 'Livraison', 'Paiement', 'Confirmation'
             </div>
             <p class="field-error" data-error-for="paymentMethod" hidden></p>
           </fieldset>
-          <label class="mt-5 flex items-start gap-2 text-sm">
-            <input type="checkbox" name="cgv" class="mt-1 size-4 accent-brand-700" />
+        </section>
+
+        <!-- 4. Articles -->
+        <section class={block} aria-labelledby="etape-articles">
+          <div class="flex items-center justify-between gap-3">
+            <h2 id="etape-articles" class="flex items-center gap-3 text-lg font-bold !text-ink"><span class={step}>4</span><span>Articles (<span data-item-count>0</span>)</span></h2>
+            <a href="/panier" class="text-sm font-semibold text-brand-700 hover:underline">Modifier le panier</a>
+          </div>
+          <div class="mt-4 space-y-4" data-summary-groups></div>
+          <ul hidden data-summary-lines></ul>
+        </section>
+      </div>
+
+      <!-- Récapitulatif -->
+      <aside class="h-fit space-y-3 lg:sticky lg:top-24" aria-labelledby="resume">
+        <section class="rounded-2xl bg-white p-5 ring-1 ring-line">
+          <h2 id="resume" class="text-lg font-bold !text-ink">Récapitulatif</h2>
+          <dl class="mt-4 space-y-2.5 text-sm">
+            <div class="flex justify-between"><dt>Articles</dt><dd class="font-semibold" data-subtotal></dd></div>
+            <div class="flex justify-between text-danger" data-discount-row hidden><dt>Remise</dt><dd class="font-semibold" data-discount></dd></div>
+            <div class="flex justify-between"><dt>Livraison</dt><dd class="font-semibold" data-delivery>À choisir</dd></div>
+          </dl>
+          <div class="mt-4 flex items-baseline justify-between border-t border-line pt-4">
+            <span class="font-bold">Total</span>
+            <span class="text-2xl font-extrabold text-ink" data-total></span>
+          </div>
+          <p class="mt-2 text-xs text-muted" data-summary-note hidden></p>
+
+          <label class="mt-4 flex items-start gap-2 text-xs">
+            <input type="checkbox" name="cgv" class="mt-0.5 size-4 accent-brand-700" />
             <span>J'accepte les <a href="/legal/cgv" target="_blank" class="font-semibold underline">conditions générales de vente</a> et la <a href="/legal/livraison-retours" target="_blank" class="font-semibold underline">politique de livraison et retours</a>.</span>
           </label>
           <p class="field-error" data-error-for="cgv" hidden></p>
-          <div class="mt-6 flex gap-2">
-            <button type="button" class="btn btn-ghost" data-prev="2">Retour</button>
-            <button type="submit" class="btn btn-accent flex-1 !py-4 !text-base">Valider la commande</button>
-          </div>
-          <p class="mt-3 flex items-center gap-1.5 text-xs text-muted">
-            <Icon name="shield" size={14} />Vos données sont transmises de manière chiffrée et ne sont jamais revendues.
-          </p>
-        </section>
-      </form>
 
-      <aside class="card h-fit p-6 lg:sticky lg:top-40" aria-labelledby="resume">
-        <h2 id="resume" class="text-xl">Résumé de la commande</h2>
-        <ul class="mt-4 divide-y divide-line text-sm" data-summary-lines></ul>
-        <dl class="mt-4 space-y-2 border-t border-line pt-4 text-sm">
-          <div class="flex justify-between"><dt>Sous-total</dt><dd data-subtotal></dd></div>
-          <div class="flex justify-between text-brand-700" data-discount-row hidden><dt>Remise</dt><dd data-discount></dd></div>
-          <div class="flex justify-between"><dt>Livraison</dt><dd data-delivery>—</dd></div>
-        </dl>
-        <div class="mt-4 flex items-baseline justify-between border-t border-line pt-4">
-          <span class="font-bold">Total</span>
-          <span class="text-2xl font-extrabold text-brand-900" data-total></span>
-        </div>
-        <p class="mt-3 text-xs text-muted" data-summary-note hidden></p>
-        <a href="/panier" class="mt-4 inline-block text-sm font-semibold text-brand-700 hover:underline">Modifier le panier</a>
+          <button type="submit" class="btn btn-accent mt-4 w-full !rounded-full !py-3.5 !text-base" data-submit>Passer la commande</button>
+          <p class="mt-3 flex items-center justify-center gap-1.5 text-xs text-muted"><Icon name="shield" size={14} />Données chiffrées, jamais revendues</p>
+        </section>
+
+        <section class="rounded-2xl bg-white p-5 text-sm ring-1 ring-line" aria-labelledby="titre-protections">
+          <h2 id="titre-protections" class="font-bold !text-ink">Protections AfriSime</h2>
+          <ul class="mt-3 space-y-2 text-muted">
+            <li class="flex gap-2"><Icon name="shield" size={16} class="mt-0.5 shrink-0 text-brand-600" />Paiement sécurisé par notre prestataire</li>
+            <li class="flex gap-2"><Icon name="refresh" size={16} class="mt-0.5 shrink-0 text-brand-600" />Annulation gratuite tant que la préparation n'a pas commencé</li>
+            <li class="flex gap-2"><Icon name="box" size={16} class="mt-0.5 shrink-0 text-brand-600" />Suivi de votre commande jusqu'à la livraison</li>
+          </ul>
+        </section>
       </aside>
-    </div>
+
+      <!-- Barre de commande mobile -->
+      <div class="fixed inset-x-0 bottom-0 z-30 flex items-center gap-3 border-t border-line bg-white/95 px-4 py-3 backdrop-blur lg:hidden">
+        <p class="leading-tight">
+          <span class="block text-xs text-muted">Total</span>
+          <span class="text-lg font-extrabold" data-total-mobile></span>
+        </p>
+        <button type="submit" class="btn btn-accent ml-auto !rounded-full" data-submit>Passer la commande</button>
+      </div>
+    </form>
   </div>
+
+  <template id="group-template">
+    <div class="overflow-hidden rounded-xl border border-line">
+      <p class="flex items-center gap-2 border-b border-line bg-canvas px-4 py-2 text-sm">
+        <Icon name="store" size={16} class="text-brand-600" /><strong data-group-name></strong><span class="text-xs text-muted">· Vendu et livré par AfriSime</span>
+      </p>
+      <ul class="divide-y divide-line" data-group-lines></ul>
+    </div>
+  </template>
 </Layout>
 
 <script>
-  import { cart } from '../../scripts/cart';
+  import { cart, type CartItem } from '../../scripts/cart';
   import { fetchQuote, getPromo, setPromo, type QuoteResponse } from '../../scripts/quote';
   import { formatPrice } from '../../lib/format';
   import { isValidEmail, isValidPhone } from '../../lib/validation';
@@ -173,7 +219,7 @@ const steps = ['Panier', 'Coordonnées', 'Livraison', 'Paiement', 'Confirmation'
 
   $('[data-state="loading"]').hidden = true;
   $('[data-state="empty"]').hidden = items.length > 0;
-  $('[data-state="filled"]').hidden = items.length === 0;
+  form.hidden = items.length === 0;
 
   const field = (name: string) => form.elements.namedItem(name) as HTMLInputElement | RadioNodeList;
   const value = (name: string) => String((field(name) as HTMLInputElement)?.value ?? '').trim();
@@ -216,80 +262,78 @@ const steps = ['Panier', 'Coordonnées', 'Livraison', 'Paiement', 'Confirmation'
     }
   }
 
-  const validators: Record<number, () => Record<string, string>> = {
-    1: () => {
-      const e: Record<string, string> = {};
-      if (value('name').length < 2) e.name = 'Indiquez votre nom complet.';
-      if (!isValidPhone(value('phone'))) e.phone = 'Numéro invalide. Exemple : 90 00 00 00 ou +228 90 00 00 00.';
-      if (!isValidEmail(value('email'))) e.email = 'Adresse e-mail invalide. Exemple : vous@exemple.com.';
-      return e;
-    },
-    2: () => {
-      const e: Record<string, string> = {};
-      const zone = value('deliveryZone');
-      if (!zone) e.deliveryZone = 'Choisissez une zone ou le retrait au dépôt.';
-      if (zone && zone !== 'retrait' && value('address').length < 4) e.address = 'Indiquez une adresse ou un point de repère.';
-      return e;
-    },
-    3: () => {
-      const e: Record<string, string> = {};
-      if (!value('paymentMethod')) e.paymentMethod = 'Choisissez un moyen de paiement.';
-      if (!(field('cgv') as HTMLInputElement).checked) e.cgv = 'Vous devez accepter les conditions de vente.';
-      return e;
-    },
-  };
+  const FIELDS = ['name', 'phone', 'email', 'deliveryZone', 'city', 'address', 'paymentMethod', 'cgv'];
 
-  function validate(step: number) {
-    const errors = validators[step]();
-    const names = ['name', 'phone', 'email', 'deliveryZone', 'city', 'address', 'paymentMethod', 'cgv'];
-    names.forEach((n) => setError(n, errors[n] ?? null));
-    const first = Object.keys(errors)[0];
-    if (first) {
-      const el = form.elements.namedItem(first);
-      (el instanceof RadioNodeList ? (el[0] as HTMLElement) : (el as HTMLElement))?.focus();
-    }
-    return !first;
+  function validate() {
+    const e: Record<string, string> = {};
+    if (value('name').length < 2) e.name = 'Indiquez votre nom complet.';
+    if (!isValidPhone(value('phone'))) e.phone = 'Numéro invalide. Exemple : 90 00 00 00 ou +228 90 00 00 00.';
+    if (!isValidEmail(value('email'))) e.email = 'Adresse e-mail invalide. Exemple : vous@exemple.com.';
+    const zone = value('deliveryZone');
+    if (!zone) e.deliveryZone = 'Choisissez une zone ou le retrait au dépôt.';
+    if (zone && zone !== 'retrait' && value('address').length < 4) e.address = 'Indiquez une adresse ou un point de repère.';
+    if (!value('paymentMethod')) e.paymentMethod = 'Choisissez un moyen de paiement.';
+    if (!(field('cgv') as HTMLInputElement).checked) e.cgv = 'Vous devez accepter les conditions de vente.';
+    FIELDS.forEach((n) => setError(n, e[n] ?? null));
+    focusFirst(e);
+    return Object.keys(e).length === 0;
   }
 
-  function showStep(step: number, moveFocus = true) {
-    form.querySelectorAll<HTMLElement>('[data-step]').forEach((s) => (s.hidden = Number(s.dataset.step) !== step));
-    document.querySelectorAll<HTMLElement>('[data-step-indicator]').forEach((li) => {
-      const i = Number(li.dataset.stepIndicator);
-      li.className = `rounded-xl border px-1 py-2.5 ${i <= step ? 'border-brand-900 bg-brand-900 text-white' : 'border-line bg-white text-muted'}`;
-      if (i === step) li.setAttribute('aria-current', 'step');
-      else li.removeAttribute('aria-current');
-    });
-    if (moveFocus) $<HTMLElement>(`[data-step="${step}"] h2`).focus();
+  function focusFirst(errors: Record<string, string>) {
+    const first = FIELDS.find((n) => errors[n]);
+    if (!first) return;
+    const el = form.elements.namedItem(first);
+    const target = el instanceof RadioNodeList ? (el[0] as HTMLElement) : (el as HTMLElement);
+    target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    target?.focus({ preventScroll: true });
   }
 
-  form.querySelectorAll<HTMLButtonElement>('[data-next]').forEach((b) =>
-    b.addEventListener('click', () => {
-      const current = Number(b.closest<HTMLElement>('[data-step]')!.dataset.step);
-      if (validate(current)) {
-        showStep(Number(b.dataset.next));
-        track('checkout_progress', { step: Number(b.dataset.next) });
-      }
-    }),
-  );
-  form.querySelectorAll<HTMLButtonElement>('[data-prev]').forEach((b) => b.addEventListener('click', () => showStep(Number(b.dataset.prev))));
-
-  function renderSummary() {
-    const lines = quote?.lines ?? items.map((i) => ({ name: `${i.name} – ${i.variantLabel}`, unitPrice: i.price, quantity: i.quantity }));
-    $('[data-summary-lines]').replaceChildren(
-      ...lines.map((l) => {
-        const li = document.createElement('li');
-        li.className = 'flex justify-between gap-3 py-2';
-        const label = document.createElement('span');
-        label.textContent = `${l.name} × ${l.quantity}`;
-        const price = document.createElement('span');
-        price.className = 'shrink-0 font-semibold';
-        price.textContent = formatPrice(l.unitPrice * l.quantity);
-        li.append(label, price);
-        return li;
+  // Articles regroupés par marque, avec photo, format, quantité et prix.
+  function renderItems() {
+    const lines = quote?.lines ?? items.map((i) => ({ productName: i.name, variantLabel: i.variantLabel, unitPrice: i.price, quantity: i.quantity, image: i.image ?? null, color: i.color, brandName: i.brandName ?? 'AfriSime' }));
+    $('[data-item-count]').textContent = String(lines.reduce((n, l) => n + l.quantity, 0));
+    const groups = new Map<string, typeof lines>();
+    for (const l of lines) groups.set(l.brandName || 'AfriSime', [...(groups.get(l.brandName || 'AfriSime') ?? []), l]);
+    const template = $<HTMLTemplateElement>('#group-template');
+    const summaryLines: HTMLElement[] = [];
+    $('[data-summary-groups]').replaceChildren(
+      ...[...groups].map(([name, groupLines]) => {
+        const box = template.content.firstElementChild!.cloneNode(true) as HTMLElement;
+        box.querySelector('[data-group-name]')!.textContent = name;
+        box.querySelector('[data-group-lines]')!.replaceChildren(
+          ...groupLines.map((l) => {
+            const li = document.createElement('li');
+            li.className = 'flex items-center gap-3 px-4 py-3';
+            const thumb = document.createElement('span');
+            thumb.className = 'grid size-14 shrink-0 place-items-center overflow-hidden rounded-lg text-lg font-extrabold';
+            if (l.image) {
+              const img = Object.assign(document.createElement('img'), { src: `/img/${l.image}.webp?taille=mini`, alt: '', className: 'size-full bg-white object-contain' });
+              thumb.append(img);
+            } else {
+              thumb.style.cssText = `background:${l.color}1f;color:${l.color}`;
+              thumb.textContent = l.productName.charAt(0);
+            }
+            const text = document.createElement('span');
+            text.className = 'min-w-0 flex-1 text-sm';
+            const title = Object.assign(document.createElement('span'), { className: 'line-clamp-2', textContent: l.productName });
+            const meta = Object.assign(document.createElement('span'), { className: 'block text-xs text-muted', textContent: `${l.variantLabel} · ${formatPrice(l.unitPrice)} × ${l.quantity}` });
+            text.append(title, meta);
+            const price = Object.assign(document.createElement('span'), { className: 'shrink-0 font-bold', textContent: formatPrice(l.unitPrice * l.quantity) });
+            li.append(thumb, text, price);
+            summaryLines.push(document.createElement('li'));
+            return li;
+          }),
+        );
+        return box;
       }),
     );
+    // Liste technique (une entrée par ligne) utilisée par les tests de bout en bout.
+    $('[data-summary-lines]').replaceChildren(...summaryLines);
+  }
+
+  function renderTotals() {
     const zone = value('deliveryZone');
-    $('[data-address-fields]').hidden = zone === 'retrait';
+    $('[data-address-fields]').hidden = !zone || zone === 'retrait';
     if (!quote) return;
     const t = quote.totals;
     $('[data-subtotal]').textContent = formatPrice(t.subtotal);
@@ -297,6 +341,7 @@ const steps = ['Panier', 'Coordonnées', 'Livraison', 'Paiement', 'Confirmation'
     $('[data-discount]').textContent = `− ${formatPrice(t.discount)}${quote.promo?.code ? ` (${quote.promo.code})` : ''}`;
     $('[data-delivery]').textContent = zone ? (t.delivery === 0 ? 'Gratuite' : formatPrice(t.delivery)) : 'À choisir';
     $('[data-total]').textContent = formatPrice(t.total);
+    $('[data-total-mobile]').textContent = formatPrice(t.total);
     const note = $('[data-summary-note]');
     const notes = [...quote.problems, ...(quote.promo && !quote.promo.applied ? [quote.promo.message] : []), ...(quote.pro ? ['Prix professionnels appliqués.'] : [])];
     note.textContent = notes.join(' ');
@@ -309,22 +354,32 @@ const steps = ['Panier', 'Coordonnées', 'Livraison', 'Paiement', 'Confirmation'
       quote = q;
       if (q.promo && !q.promo.applied) setPromo('');
     }
-    renderSummary();
+    renderItems();
+    renderTotals();
   }
+
   form.addEventListener('change', (e) => {
-    if ((e.target as HTMLInputElement).name === 'deliveryZone') refreshQuote();
-    else renderSummary();
+    const target = e.target as HTMLInputElement;
+    if (target.name) setError(target.name, null);
+    if (target.name === 'deliveryZone') refreshQuote();
+    else renderTotals();
   });
 
   let submitting = false;
+  const submits = [...form.querySelectorAll<HTMLButtonElement>('[data-submit]')];
+  const setBusy = (busy: boolean) =>
+    submits.forEach((b) => {
+      b.disabled = busy;
+      b.textContent = busy ? 'Validation en cours…' : 'Passer la commande';
+    });
+
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    if (submitting || !validate(3)) return;
+    if (submitting || !validate()) return;
     submitting = true;
-    const submit = $<HTMLButtonElement>('button[type="submit"]', form);
-    submit.disabled = true;
-    submit.textContent = 'Validation en cours…';
+    setBusy(true);
     formError.hidden = true;
+    track('begin_checkout_submit', { value: quote?.totals.total });
 
     try {
       const res = await fetch('/api/orders', {
@@ -343,8 +398,7 @@ const steps = ['Panier', 'Coordonnées', 'Livraison', 'Paiement', 'Confirmation'
       if (!res.ok) {
         const errors: Record<string, string> = data.errors ?? {};
         Object.entries(errors).forEach(([n, m]) => setError(n, m));
-        const firstStep = errors.name || errors.phone || errors.email ? 1 : errors.deliveryZone || errors.address ? 2 : 3;
-        if (Object.keys(errors).length) showStep(firstStep);
+        focusFirst(errors);
         throw new Error(errors.items ?? errors.promoCode ?? data.error ?? "La commande n'a pas pu être validée.");
       }
       try {
@@ -358,16 +412,16 @@ const steps = ['Panier', 'Coordonnées', 'Livraison', 'Paiement', 'Confirmation'
     } catch (err) {
       formError.textContent = err instanceof TypeError ? "Connexion impossible. Vérifiez votre réseau : votre commande n'a pas été enregistrée." : (err as Error).message;
       formError.hidden = false;
-      formError.focus();
+      formError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      formError.focus({ preventScroll: true });
       submitting = false;
-      submit.disabled = false;
-      submit.textContent = 'Valider la commande';
+      setBusy(false);
     }
   });
 
   if (items.length) {
-    renderSummary();
+    renderItems();
+    renderTotals();
     refreshQuote();
-    showStep(1, false);
   }
 </script>

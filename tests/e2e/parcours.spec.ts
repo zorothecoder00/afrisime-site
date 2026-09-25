@@ -1,7 +1,7 @@
 // Parcours critiques de la recette (§21). Base locale ou de CI avec le contenu de départ
 // importé (npm run content:import) et PAYMENT_PROVIDER=simulation.
 import { expect, test } from '@playwright/test';
-import { addFirstProduct, dismissConsent, fillCheckout } from './helpers';
+import { addFirstProduct, dismissConsent, fillCheckout, submitOrder } from './helpers';
 
 test('REC-01 navigation : les menus principaux mènent aux pages @mobile', async ({ page, isMobile }) => {
   await page.goto('/');
@@ -52,7 +52,7 @@ test('REC-04/05 panier et commande à la livraison : total juste, numéro unique
   await expect(page.locator('[data-subtotal]')).toHaveText(expected);
 
   await fillCheckout(page, { zone: /Retrait au dépôt/, payment: /Paiement à la livraison/ });
-  await page.getByRole('button', { name: 'Valider la commande' }).click();
+  await submitOrder(page);
   await expect(page).toHaveURL(/\/commande\/confirmation\?n=AFS-/);
   await expect(page.getByRole('heading', { name: /commande est confirmée/ })).toBeVisible();
   await expect(page.getByText(/^AFS-\d{8}-[A-Z0-9]{6}$/)).toBeVisible();
@@ -75,7 +75,7 @@ test('Panier : seuls les articles cochés sont commandés, les autres restent', 
 
   await fillCheckout(page, { zone: /Retrait au dépôt/, payment: /Paiement à la livraison/ });
   await expect(page.locator('[data-summary-lines] li')).toHaveCount(1);
-  await page.getByRole('button', { name: 'Valider la commande' }).click();
+  await submitOrder(page);
   await expect(page).toHaveURL(/\/commande\/confirmation/);
   await page.goto('/panier');
   await expect(page.locator('[data-lines] li')).toHaveCount(1);
@@ -85,7 +85,7 @@ test('Panier : seuls les articles cochés sont commandés, les autres restent', 
 test('REC-06 paiement en ligne : échec puis succès, sans double commande', async ({ page }) => {
   await addFirstProduct(page);
   await fillCheckout(page, { zone: /Lomé centre/, payment: /^Mobile Money/ });
-  await page.getByRole('button', { name: 'Valider la commande' }).click();
+  await submitOrder(page);
 
   await expect(page).toHaveURL(/\/commande\/paiement\/simulation/);
   await page.getByRole('button', { name: 'Simuler un échec' }).click();
