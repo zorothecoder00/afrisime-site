@@ -12,6 +12,10 @@ export type CartItem = {
   slug: string;
   color: string;
   image?: string | null;
+  /** Coché dans le panier : seuls les articles cochés partent à la commande (coché par défaut). */
+  selected?: boolean;
+  /** Marque, pour regrouper les lignes du panier. */
+  brandName?: string;
 };
 
 const KEY = 'afs-cart-v1';
@@ -57,6 +61,16 @@ export const cart = {
   },
   remove(productId: string, variantId: string) {
     write(read().filter((i) => !(i.productId === productId && i.variantId === variantId)));
+  },
+  /** Articles cochés, ceux qui partent à la commande. */
+  selectedItems: () => read().filter((i) => i.selected !== false),
+  setSelected(keys: { productId: string; variantId: string }[] | 'all', selected: boolean) {
+    const match = (i: CartItem) => keys === 'all' || keys.some((k) => k.productId === i.productId && k.variantId === i.variantId);
+    write(read().map((i) => (match(i) ? { ...i, selected } : i)), false);
+  },
+  /** Après une commande : ne garde que les articles qui n'ont pas été commandés. */
+  removeSelected() {
+    write(read().filter((i) => i.selected === false));
   },
   replace(items: CartItem[]) {
     write(items);
@@ -109,6 +123,12 @@ function schedulePush() {
   pushTimer = setTimeout(push, 500);
 }
 
+/** Les cases cochées ne sont pas sauvegardées sur le compte : on garde celles de cet appareil. */
+function keepSelection(items: CartItem[]) {
+  const local = read();
+  return items.map((i) => ({ ...i, selected: local.find((l) => l.productId === i.productId && l.variantId === i.variantId)?.selected ?? true }));
+}
+
 /** Au chargement : fusionne le panier du navigateur avec celui du compte (quantité la plus grande). */
 async function pull() {
   if (sessionState() === 'visiteur') return;
@@ -129,7 +149,7 @@ async function pull() {
     else merged.push(local);
   }
   if (JSON.stringify(toSaved(merged)) === JSON.stringify(toSaved(saved))) {
-    write(saved, false); // déjà à jour : on reprend simplement les prix du catalogue
+    write(keepSelection(saved), false); // déjà à jour : on reprend simplement les prix du catalogue
     return;
   }
   // Le serveur valide la fusion et renvoie les lignes avec les prix du catalogue.
@@ -138,7 +158,7 @@ async function pull() {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ items: toSaved(merged) }),
   }).catch(() => null);
-  write(put?.ok ? ((await put.json()) as { items: CartItem[] }).items : merged, false);
+  write(keepSelection(put?.ok ? ((await put.json()) as { items: CartItem[] }).items : merged), false);
 }
 
 function renderCount() {

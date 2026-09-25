@@ -10,6 +10,7 @@ export type QuoteLine = {
   name: string;
   slug: string;
   color: string;
+  brandName: string;
   image: string | null;
   unitPrice: number;
   publicPrice: number;

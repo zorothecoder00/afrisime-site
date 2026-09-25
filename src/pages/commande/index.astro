@@ -157,7 +157,8 @@ const steps = ['Panier', 'Coordonnées', 'Livraison', 'Paiement', 'Confirmation'
   const $ = <T extends HTMLElement>(sel: string, root: ParentNode = document) => root.querySelector<T>(sel)!;
   const form = $<HTMLFormElement>('[data-checkout-form]');
   const formError = $('[data-form-error]');
-  const items = cart.items();
+  // Seuls les articles cochés dans le panier sont commandés.
+  const items = cart.selectedItems();
   let quote: QuoteResponse | null = null;
 
   function session(key: string, value?: string) {
@@ -351,7 +352,7 @@ const steps = ['Panier', 'Coordonnées', 'Livraison', 'Paiement', 'Confirmation'
       } catch {}
       setPromo('');
       track('purchase', { transaction_id: data.order.number, value: data.order.totals.total, currency: 'XOF' });
-      cart.clear();
+      cart.removeSelected();
       // Paiement en ligne : page du prestataire ; sinon (ou en cas d'indisponibilité) page de confirmation.
       location.href = data.paymentUrl ?? data.confirmationUrl;
     } catch (err) {

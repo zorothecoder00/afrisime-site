@@ -1,83 +1,149 @@
 ---
+// Panier, sur le modèle d'Alibaba : articles regroupés par marque avec cases à cocher
+// (seuls les articles cochés partent à la commande), récapitulatif collant à droite,
+// barre de commande fixe en bas sur mobile. Les prix et totaux viennent du serveur (/api/checkout/quote).
 import Layout from '../layouts/Layout.astro';
 import Breadcrumbs from '../components/ui/Breadcrumbs.astro';
 import Icon from '../components/ui/Icon.astro';
 ---
 
 <Layout title="Mon panier" noindex>
-  <div class="container-page py-8">
+  <div class="container-page pb-28 pt-5 lg:pb-12">
     <Breadcrumbs items={[{ label: 'Panier' }]} />
-    <h1 class="mt-4 text-3xl sm:text-4xl">Mon panier</h1>
 
     <!-- Chargement -->
-    <div class="mt-8 space-y-3" data-state="loading">
-      <div class="skeleton h-24"></div>
-      <div class="skeleton h-24"></div>
+    <div class="mt-5 space-y-3" data-state="loading">
+      <div class="skeleton h-16"></div>
+      <div class="skeleton h-32"></div>
+      <div class="skeleton h-32"></div>
     </div>
 
     <!-- Panier vide -->
-    <div class="card mt-8 p-10 text-center" data-state="empty" hidden>
-      <Icon name="cart" size={44} class="mx-auto text-muted" />
-      <h2 class="mt-4 text-xl">Votre panier est vide</h2>
+    <div class="mt-5 rounded-2xl bg-white p-10 text-center ring-1 ring-line" data-state="empty" hidden>
+      <Icon name="cart" size={48} class="mx-auto text-muted" />
+      <h1 class="mt-4 text-xl">Votre panier est vide</h1>
       <p class="mt-2 text-sm text-muted">Parcourez nos rayons et ajoutez vos produits du quotidien.</p>
-      <a href="/boutique" class="btn btn-primary mt-6">Aller à la boutique</a>
+      <a href="/boutique" class="btn btn-accent mt-6">Aller à la boutique</a>
     </div>
 
     <!-- Panier rempli -->
-    <div class="mt-8 grid gap-8 lg:grid-cols-[1fr_380px]" data-state="filled" hidden>
-      <div>
-        <div class="alert-info alert mb-4" data-notice hidden role="status"></div>
-        <ul class="card divide-y divide-line" data-lines></ul>
-        <div class="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm">
+    <div class="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_360px]" data-state="filled" hidden>
+      <div class="min-w-0 space-y-3">
+        <div class="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-white px-4 py-3 ring-1 ring-line">
+          <h1 class="text-xl font-bold !text-ink">Panier (<span data-count>0</span>)</h1>
+          <div class="flex items-center gap-4 text-sm">
+            <label class="flex cursor-pointer items-center gap-2 font-semibold">
+              <input type="checkbox" class="size-4 accent-brand-700" data-select-all />Tout sélectionner
+            </label>
+            <button type="button" class="font-semibold text-danger hover:underline disabled:opacity-40" data-remove-selected>Supprimer la sélection</button>
+          </div>
+        </div>
+
+        <div class="alert-info alert" data-notice hidden role="status"></div>
+
+        <div class="space-y-3" data-lines></div>
+
+        <div class="flex flex-wrap items-center justify-between gap-3 px-1 text-sm">
           <a href="/boutique" class="font-bold text-brand-700 hover:underline">← Continuer mes achats</a>
           <p class="text-muted" data-saved-note>Votre panier est sauvegardé sur cet appareil.</p>
-          <button type="button" class="font-semibold text-danger hover:underline" data-clear-cart>Vider le panier</button>
         </div>
       </div>
 
-      <aside class="card h-fit p-6 lg:sticky lg:top-40">
-        <h2 class="text-xl">Récapitulatif</h2>
-        <form class="mt-4 flex gap-2" data-promo-form>
-          <label for="promo" class="sr-only">Code promo</label>
-          <input id="promo" name="promo" class="input !py-2.5 uppercase" placeholder="Code promo" autocomplete="off" />
-          <button type="submit" class="btn btn-secondary btn-sm">Appliquer</button>
-        </form>
-        <p class="mt-1 text-xs" data-promo-status aria-live="polite"></p>
-        <dl class="mt-5 space-y-2 text-sm" aria-busy="false" data-totals>
-          <div class="flex justify-between"><dt>Sous-total</dt><dd class="font-semibold" data-subtotal></dd></div>
-          <div class="flex justify-between text-brand-700" data-discount-row hidden><dt>Remise</dt><dd class="font-semibold" data-discount></dd></div>
-          <div class="flex justify-between text-muted"><dt>Livraison</dt><dd>Calculée à l'étape suivante</dd></div>
-        </dl>
-        <div class="mt-4 flex items-baseline justify-between border-t border-line pt-4">
-          <span class="font-bold">Total estimé</span>
-          <span class="text-2xl font-extrabold text-brand-900" data-total></span>
-        </div>
-        <p class="mt-3 rounded-lg bg-brand-50 px-3 py-2 text-xs text-brand-800" data-free-delivery hidden></p>
-        <p class="mt-3 rounded-lg bg-brand-900 px-3 py-2 text-xs font-semibold text-white" data-pro-note hidden>Prix professionnels appliqués à votre compte.</p>
-        <a href="/commande" class="btn btn-primary mt-5 w-full !py-4" data-checkout>Passer la commande <Icon name="arrow" size={18} /></a>
-        <p class="mt-3 flex items-center justify-center gap-1.5 text-xs text-muted"><Icon name="shield" size={14} />Paiement sécurisé · Mobile Money · Carte</p>
+      <!-- Récapitulatif -->
+      <aside class="h-fit space-y-3 lg:sticky lg:top-24" aria-labelledby="titre-recap">
+        <section class="rounded-2xl bg-white p-5 ring-1 ring-line">
+          <h2 id="titre-recap" class="text-lg font-bold !text-ink">Récapitulatif de la commande</h2>
+          <dl class="mt-4 space-y-2.5 text-sm" aria-busy="false" data-totals>
+            <div class="flex justify-between"><dt>Articles (<span data-selected-count>0</span>)</dt><dd class="font-semibold" data-subtotal></dd></div>
+            <div class="flex justify-between text-danger" data-discount-row hidden><dt>Remise <span data-promo-code></span></dt><dd class="font-semibold" data-discount></dd></div>
+            <div class="flex justify-between text-muted"><dt>Livraison</dt><dd>Calculée à l'étape suivante</dd></div>
+          </dl>
+
+          <div class="mt-4" data-free-delivery hidden>
+            <p class="text-xs text-brand-800" data-free-delivery-text></p>
+            <div class="mt-1.5 h-1.5 overflow-hidden rounded-full bg-brand-100"><div class="h-full rounded-full bg-brand-600 transition-all" style="width:0%" data-free-delivery-bar></div></div>
+          </div>
+
+          <div class="mt-4 flex items-baseline justify-between border-t border-line pt-4">
+            <span class="font-bold">Sous-total</span>
+            <span class="text-2xl font-extrabold text-ink" data-total></span>
+          </div>
+          <p class="mt-2 rounded-lg bg-brand-900 px-3 py-2 text-xs font-semibold text-white" data-pro-note hidden>Prix professionnels appliqués à votre compte.</p>
+
+          <a href="/commande" class="btn btn-accent mt-4 w-full !rounded-full !py-3.5 !text-base aria-disabled:pointer-events-none aria-disabled:opacity-40" data-checkout>
+            <span>Passer la commande (<span data-checkout-count>0</span>)</span>
+          </a>
+
+          <details class="mt-4 text-sm" data-promo-details>
+            <summary class="cursor-pointer font-semibold text-brand-700">Ajouter un code promo</summary>
+            <form class="mt-2 flex gap-2" data-promo-form>
+              <label for="promo" class="sr-only">Code promo</label>
+              <input id="promo" name="promo" class="input !py-2 uppercase" placeholder="Code promo" autocomplete="off" />
+              <button type="submit" class="btn btn-secondary btn-sm">Appliquer</button>
+            </form>
+            <p class="mt-1 text-xs" data-promo-status aria-live="polite"></p>
+          </details>
+        </section>
+
+        <section class="rounded-2xl bg-white p-5 text-sm ring-1 ring-line" aria-labelledby="titre-protections">
+          <h2 id="titre-protections" class="font-bold !text-ink">Protections AfriSime</h2>
+          <ul class="mt-3 space-y-2 text-muted">
+            <li class="flex gap-2"><Icon name="shield" size={16} class="mt-0.5 shrink-0 text-brand-600" />Paiement sécurisé, jamais d'accès à vos données bancaires</li>
+            <li class="flex gap-2"><Icon name="refresh" size={16} class="mt-0.5 shrink-0 text-brand-600" />Remplacement ou remboursement si un produit n'est pas conforme</li>
+            <li class="flex gap-2"><Icon name="truck" size={16} class="mt-0.5 shrink-0 text-brand-600" />Livraison suivie, ou retrait gratuit au dépôt</li>
+          </ul>
+          <p class="mt-4 text-xs font-semibold text-muted">Moyens de paiement</p>
+          <ul class="mt-2 flex flex-wrap gap-1.5 text-xs font-bold">
+            {['T-Money', 'Flooz', 'Visa', 'Mastercard', 'À la livraison'].map((m) => <li class="rounded-md border border-line px-2 py-1">{m}</li>)}
+          </ul>
+        </section>
       </aside>
     </div>
   </div>
 
+  <!-- Barre de commande mobile -->
+  <div class="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-white/95 px-4 py-3 backdrop-blur lg:hidden" data-mobile-bar hidden>
+    <div class="flex items-center gap-3">
+      <label class="flex items-center gap-2 text-xs font-semibold"><input type="checkbox" class="size-4 accent-brand-700" data-select-all />Tout</label>
+      <p class="ml-auto text-right leading-tight">
+        <span class="block text-xs text-muted">Sous-total</span>
+        <span class="text-lg font-extrabold" data-total-mobile></span>
+      </p>
+      <a href="/commande" class="btn btn-accent !rounded-full aria-disabled:pointer-events-none aria-disabled:opacity-40" data-checkout><span>Commander (<span data-checkout-count>0</span>)</span></a>
+    </div>
+  </div>
+
+  <template id="group-template">
+    <section class="overflow-hidden rounded-2xl bg-white ring-1 ring-line">
+      <header class="flex items-center gap-3 border-b border-line px-4 py-3">
+        <input type="checkbox" class="size-4 accent-brand-700" data-select-group />
+        <Icon name="store" size={18} class="text-brand-600" />
+        <h2 class="text-sm font-extrabold !text-ink" data-group-name></h2>
+        <span class="text-xs text-muted">· Vendu et livré par AfriSime</span>
+      </header>
+      <ul class="divide-y divide-line" data-group-lines></ul>
+    </section>
+  </template>
+
   <template id="line-template">
-    <li class="flex gap-4 p-4">
-      <a data-link class="grid size-20 shrink-0 place-items-center overflow-hidden rounded-xl text-2xl font-extrabold" data-thumb></a>
-      <div class="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center">
+    <li class="flex gap-3 p-4">
+      <input type="checkbox" class="mt-8 size-4 shrink-0 accent-brand-700" data-select-line />
+      <a data-link class="grid size-20 shrink-0 place-items-center overflow-hidden rounded-xl bg-canvas text-2xl font-extrabold sm:size-24" data-thumb></a>
+      <div class="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-start">
         <div class="min-w-0 flex-1">
-          <a data-link class="font-bold text-brand-900 hover:text-brand-600" data-name></a>
-          <p class="text-sm text-muted" data-variant></p>
-          <p class="text-sm font-semibold" data-unit-price></p>
+          <a data-link class="line-clamp-2 text-[15px] text-ink hover:text-brand-700" data-name></a>
+          <p class="mt-1"><span class="inline-block rounded-md bg-canvas px-2 py-0.5 text-xs text-muted" data-variant></span></p>
+          <p class="mt-1.5 text-sm font-bold" data-unit-price></p>
         </div>
-        <div class="flex items-center justify-between gap-4 sm:justify-end">
-          <div class="flex items-center rounded-lg border border-line">
-            <button type="button" class="px-3 py-2" data-step="-1"><span class="sr-only">Diminuer</span>−</button>
+        <div class="flex items-center justify-between gap-4 sm:flex-col sm:items-end">
+          <div class="flex items-center rounded-lg border border-line bg-white">
+            <button type="button" class="px-3 py-1.5" data-step="-1"><span class="sr-only">Diminuer</span>−</button>
             <input type="number" min="1" max="999" inputmode="numeric" class="w-12 border-0 bg-transparent text-center font-bold focus:outline-none" data-qty />
-            <button type="button" class="px-3 py-2" data-step="1"><span class="sr-only">Augmenter</span>+</button>
+            <button type="button" class="px-3 py-1.5" data-step="1"><span class="sr-only">Augmenter</span>+</button>
           </div>
-          <p class="w-28 text-right font-extrabold text-brand-900" data-line-total></p>
-          <button type="button" class="text-muted hover:text-danger" data-remove></button>
+          <p class="text-right text-lg font-extrabold text-ink" data-line-total></p>
         </div>
+        <button type="button" class="self-start text-muted hover:text-danger" data-remove></button>
       </div>
     </li>
   </template>
@@ -90,74 +156,125 @@ import Icon from '../components/ui/Icon.astro';
   import { track } from '../scripts/analytics';
 
   const $ = <T extends HTMLElement>(sel: string) => document.querySelector<T>(sel)!;
-  const template = $<HTMLTemplateElement>('#line-template');
+  const $$ = <T extends HTMLElement>(sel: string) => [...document.querySelectorAll<T>(sel)];
+  const lineTemplate = $<HTMLTemplateElement>('#line-template');
+  const groupTemplate = $<HTMLTemplateElement>('#group-template');
   const list = $('[data-lines]');
   const notice = $('[data-notice]');
   const promoStatus = $('[data-promo-status]');
   let lastQuote: QuoteResponse | null = null;
 
-  function renderLines(items: CartItem[]) {
-    list.replaceChildren(
-      ...items.map((item) => {
-        const li = template.content.firstElementChild!.cloneNode(true) as HTMLElement;
-        li.querySelectorAll<HTMLAnchorElement>('[data-link]').forEach((a) => (a.href = `/boutique/${item.slug}`));
-        const thumb = li.querySelector<HTMLElement>('[data-thumb]')!;
-        thumb.setAttribute('aria-hidden', 'true');
-        thumb.tabIndex = -1;
-        if (item.image) {
-          const img = document.createElement('img');
-          img.src = `/img/${item.image}.webp?taille=mini`;
-          img.alt = '';
-          img.className = 'size-full bg-white object-contain';
-          thumb.append(img);
-        } else {
-          thumb.style.cssText = `background:${item.color}1f;color:${item.color}`;
-          thumb.textContent = item.name.charAt(0);
-        }
-        li.querySelector('[data-name]')!.textContent = item.name;
-        li.querySelector('[data-variant]')!.textContent = item.variantLabel;
-        li.querySelector('[data-unit-price]')!.textContent = `${formatPrice(item.price)} l'unité`;
-        li.querySelector('[data-line-total]')!.textContent = formatPrice(item.price * item.quantity);
-        const qty = li.querySelector<HTMLInputElement>('[data-qty]')!;
-        qty.value = String(item.quantity);
-        qty.setAttribute('aria-label', `Quantité pour ${item.name}`);
-        qty.addEventListener('change', () => cart.setQuantity(item.productId, item.variantId, Math.max(1, Math.floor(Number(qty.value)) || 1)));
-        li.querySelectorAll<HTMLButtonElement>('[data-step]').forEach((b) =>
-          b.addEventListener('click', () => cart.setQuantity(item.productId, item.variantId, item.quantity + Number(b.dataset.step))),
-        );
-        const remove = li.querySelector<HTMLButtonElement>('[data-remove]')!;
-        remove.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>';
-        remove.setAttribute('aria-label', `Retirer ${item.name} du panier`);
-        remove.addEventListener('click', () => cart.remove(item.productId, item.variantId));
-        return li;
-      }),
+  const isSelected = (i: CartItem) => i.selected !== false;
+  const keyOf = (i: { productId: string; variantId: string }) => ({ productId: i.productId, variantId: i.variantId });
+
+  function lineElement(item: CartItem) {
+    const li = lineTemplate.content.firstElementChild!.cloneNode(true) as HTMLElement;
+    li.querySelectorAll<HTMLAnchorElement>('[data-link]').forEach((a) => (a.href = `/boutique/${item.slug}`));
+    const thumb = li.querySelector<HTMLElement>('[data-thumb]')!;
+    thumb.setAttribute('aria-hidden', 'true');
+    thumb.tabIndex = -1;
+    if (item.image) {
+      const img = document.createElement('img');
+      img.src = `/img/${item.image}.webp?taille=mini`;
+      img.alt = '';
+      img.className = 'size-full bg-white object-contain';
+      thumb.append(img);
+    } else {
+      thumb.style.cssText = `background:${item.color}1f;color:${item.color}`;
+      thumb.textContent = item.name.charAt(0);
+    }
+    const check = li.querySelector<HTMLInputElement>('[data-select-line]')!;
+    check.checked = isSelected(item);
+    check.setAttribute('aria-label', `Sélectionner ${item.name}`);
+    check.addEventListener('change', () => cart.setSelected([keyOf(item)], check.checked));
+    li.querySelector('[data-name]')!.textContent = item.name;
+    li.querySelector('[data-variant]')!.textContent = `Format : ${item.variantLabel}`;
+    li.querySelector('[data-unit-price]')!.textContent = `${formatPrice(item.price)} l'unité`;
+    li.querySelector('[data-line-total]')!.textContent = formatPrice(item.price * item.quantity);
+    const qty = li.querySelector<HTMLInputElement>('[data-qty]')!;
+    qty.value = String(item.quantity);
+    qty.setAttribute('aria-label', `Quantité pour ${item.name}`);
+    qty.addEventListener('change', () => cart.setQuantity(item.productId, item.variantId, Math.max(1, Math.floor(Number(qty.value)) || 1)));
+    li.querySelectorAll<HTMLButtonElement>('[data-step]').forEach((b) =>
+      b.addEventListener('click', () => cart.setQuantity(item.productId, item.variantId, item.quantity + Number(b.dataset.step))),
     );
+    const remove = li.querySelector<HTMLButtonElement>('[data-remove]')!;
+    remove.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>';
+    remove.setAttribute('aria-label', `Retirer ${item.name} du panier`);
+    remove.addEventListener('click', () => cart.remove(item.productId, item.variantId));
+    return li;
   }
 
-  function renderTotals(q: QuoteResponse) {
-    $('[data-subtotal]').textContent = formatPrice(q.totals.subtotal);
-    $('[data-discount-row]').hidden = q.totals.discount === 0;
-    $('[data-discount]').textContent = `− ${formatPrice(q.totals.discount)}`;
-    $('[data-total]').textContent = formatPrice(q.totals.total - q.totals.delivery);
-    $('[data-pro-note]').hidden = !q.pro;
-    const free = $('[data-free-delivery]');
-    const missing = q.freeThreshold - q.totals.subtotal;
-    free.hidden = q.freeThreshold <= 0;
-    free.textContent = missing > 0 ? `Plus que ${formatPrice(missing)} pour la livraison offerte à Lomé.` : 'Livraison offerte à Lomé centre et périphérie.';
-    if (q.promo) {
+  /** Lignes regroupées par marque, comme les boutiques fournisseurs d'Alibaba. */
+  function renderLines(items: CartItem[]) {
+    const groups = new Map<string, CartItem[]>();
+    for (const item of items) {
+      const name = item.brandName || 'AfriSime';
+      groups.set(name, [...(groups.get(name) ?? []), item]);
+    }
+    list.replaceChildren(
+      ...[...groups].map(([name, groupItems]) => {
+        const section = groupTemplate.content.firstElementChild!.cloneNode(true) as HTMLElement;
+        section.querySelector('[data-group-name]')!.textContent = name;
+        const check = section.querySelector<HTMLInputElement>('[data-select-group]')!;
+        const selected = groupItems.filter(isSelected).length;
+        check.checked = selected === groupItems.length;
+        check.indeterminate = selected > 0 && selected < groupItems.length;
+        check.setAttribute('aria-label', `Sélectionner les articles ${name}`);
+        check.addEventListener('change', () => cart.setSelected(groupItems.map(keyOf), check.checked));
+        section.querySelector('[data-group-lines]')!.replaceChildren(...groupItems.map(lineElement));
+        return section;
+      }),
+    );
+
+    const selectedItems = items.filter(isSelected);
+    const count = items.reduce((n, i) => n + i.quantity, 0);
+    const selectedCount = selectedItems.reduce((n, i) => n + i.quantity, 0);
+    $('[data-count]').textContent = String(count);
+    $('[data-selected-count]').textContent = String(selectedCount);
+    $$('[data-checkout-count]').forEach((el) => (el.textContent = String(selectedCount)));
+    $$('[data-checkout]').forEach((a) => a.setAttribute('aria-disabled', String(selectedItems.length === 0)));
+    $$<HTMLInputElement>('[data-select-all]').forEach((c) => {
+      c.checked = selectedItems.length === items.length;
+      c.indeterminate = selectedItems.length > 0 && selectedItems.length < items.length;
+    });
+    $<HTMLButtonElement>('[data-remove-selected]').disabled = selectedItems.length === 0;
+  }
+
+  function renderTotals(q: QuoteResponse | null) {
+    const t = q?.totals ?? { subtotal: 0, discount: 0, delivery: 0, total: 0 };
+    $('[data-subtotal]').textContent = formatPrice(t.subtotal);
+    $('[data-discount-row]').hidden = t.discount === 0;
+    $('[data-discount]').textContent = `− ${formatPrice(t.discount)}`;
+    $('[data-promo-code]').textContent = q?.promo?.applied && q.promo.code ? `(${q.promo.code})` : '';
+    const total = formatPrice(t.total - t.delivery);
+    $('[data-total]').textContent = total;
+    $('[data-total-mobile]').textContent = total;
+    $('[data-pro-note]').hidden = !q?.pro;
+
+    const threshold = q?.freeThreshold ?? 0;
+    const missing = threshold - t.subtotal;
+    $('[data-free-delivery]').hidden = threshold <= 0 || !q;
+    $('[data-free-delivery-text]').textContent =
+      missing > 0 ? `Plus que ${formatPrice(missing)} pour la livraison offerte à Lomé.` : 'Livraison offerte à Lomé centre et périphérie.';
+    $('[data-free-delivery-bar]').style.width = `${threshold > 0 ? Math.min(100, Math.round((t.subtotal / threshold) * 100)) : 0}%`;
+
+    if (q?.promo) {
       promoStatus.className = `mt-1 text-xs font-semibold ${q.promo.applied ? 'text-brand-700' : 'text-danger'}`;
       promoStatus.textContent = q.promo.message;
+      $<HTMLDetailsElement>('[data-promo-details]').open = true;
     } else {
       promoStatus.textContent = '';
     }
   }
 
-  /** Aligne le panier sur le serveur : prix du moment (ou prix pro), articles retirés de la vente. */
+  /** Aligne le panier sur le serveur (prix du moment, articles retirés), puis calcule le total des articles cochés. */
   async function refresh() {
     const items = cart.items();
     $('[data-state="loading"]').hidden = true;
     $('[data-state="empty"]').hidden = items.length > 0;
     $('[data-state="filled"]').hidden = items.length === 0;
+    $('[data-mobile-bar]').hidden = items.length === 0;
     if (!items.length) return;
     renderLines(items);
     $<HTMLInputElement>('#promo').value = getPromo();
@@ -170,22 +287,39 @@ import Icon from '../components/ui/Icon.astro';
       notice.hidden = false;
       return;
     }
-    lastQuote = q;
     const changed: string[] = [...q.problems];
     const next: CartItem[] = q.lines.map((l) => {
       const before = items.find((i) => i.productId === l.productId && i.variantId === l.variantId);
       if (before && before.price !== l.unitPrice) changed.push(`Le prix de « ${l.productName} » a été mis à jour.`);
-      return { productId: l.productId, variantId: l.variantId, name: l.productName, variantLabel: l.variantLabel, price: l.unitPrice, quantity: l.quantity, slug: l.slug, color: l.color, image: l.image };
+      return {
+        productId: l.productId,
+        variantId: l.variantId,
+        name: l.productName,
+        variantLabel: l.variantLabel,
+        price: l.unitPrice,
+        quantity: l.quantity,
+        slug: l.slug,
+        color: l.color,
+        image: l.image,
+        brandName: l.brandName,
+        selected: before ? isSelected(before) : true,
+      };
     });
     if (q.promo && !q.promo.applied) setPromo('');
-    const key = (i: CartItem) => [i.productId, i.variantId, i.name, i.variantLabel, i.price, i.quantity, i.slug, i.color, i.image ?? ''].join('|');
-    const differs = next.map(key).join('\n') !== items.map(key).join('\n');
+    const key = (i: CartItem) => [i.productId, i.variantId, i.name, i.variantLabel, i.price, i.quantity, i.slug, i.color, i.image ?? '', i.brandName ?? '', isSelected(i)].join('|');
     if (changed.length) {
       notice.textContent = [...new Set(changed)].join(' ');
       notice.hidden = false;
     }
-    if (differs) cart.replace(next); // redéclenche refresh via l'événement afs:cart
-    else renderTotals(q);
+    if (next.map(key).join('\n') !== items.map(key).join('\n')) {
+      cart.replace(next); // redéclenche refresh via l'événement afs:cart
+      return;
+    }
+
+    // Totaux des seuls articles cochés (un second devis si la sélection est partielle).
+    const selected = next.filter(isSelected);
+    lastQuote = selected.length === next.length ? q : selected.length ? await fetchQuote(selected, { promoCode: getPromo() }) : null;
+    renderTotals(lastQuote);
   }
 
   let timer: number | undefined;
@@ -195,15 +329,21 @@ import Icon from '../components/ui/Icon.astro';
     timer = window.setTimeout(refresh, 250);
   });
 
+  $$<HTMLInputElement>('[data-select-all]').forEach((c) => c.addEventListener('change', () => cart.setSelected('all', c.checked)));
+  $('[data-remove-selected]').addEventListener('click', () => {
+    const selected = cart.selectedItems();
+    if (selected.length && confirm(`Retirer ${selected.length} article${selected.length > 1 ? 's' : ''} du panier ?`)) {
+      cart.replace(cart.items().filter((i) => !isSelected(i)));
+    }
+  });
   $('[data-promo-form]').addEventListener('submit', (e) => {
     e.preventDefault();
     setPromo($<HTMLInputElement>('#promo').value.trim().toUpperCase());
     refresh();
   });
-  $('[data-clear-cart]').addEventListener('click', () => {
-    if (confirm('Vider entièrement le panier ?')) cart.clear();
-  });
-  $('[data-checkout]').addEventListener('click', () => track('begin_checkout', { value: lastQuote?.totals.subtotal ?? cart.subtotal() }));
+  $$('[data-checkout]').forEach((a) =>
+    a.addEventListener('click', () => track('begin_checkout', { value: lastQuote?.totals.subtotal ?? 0 })),
+  );
 
   refresh();
 </script>

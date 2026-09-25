@@ -61,6 +61,27 @@ test('REC-04/05 panier et commande à la livraison : total juste, numéro unique
   await expect(page.getByRole('heading', { name: 'Votre panier est vide' })).toBeVisible();
 });
 
+test('Panier : seuls les articles cochés sont commandés, les autres restent', async ({ page }) => {
+  await page.goto('/boutique');
+  await dismissConsent(page);
+  const buttons = page.locator('[data-product]:visible [data-add-to-cart]');
+  await buttons.nth(0).click();
+  await buttons.nth(1).click();
+  await page.goto('/panier');
+  await expect(page.locator('[data-lines] li')).toHaveCount(2);
+  const kept = (await page.locator('[data-lines] li').nth(1).locator('[data-name]').innerText()).trim();
+  await page.locator('[data-select-line]').nth(1).uncheck();
+  await expect(page.locator('[data-checkout-count]').first()).toHaveText('1');
+
+  await fillCheckout(page, { zone: /Retrait au dépôt/, payment: /Paiement à la livraison/ });
+  await expect(page.locator('[data-summary-lines] li')).toHaveCount(1);
+  await page.getByRole('button', { name: 'Valider la commande' }).click();
+  await expect(page).toHaveURL(/\/commande\/confirmation/);
+  await page.goto('/panier');
+  await expect(page.locator('[data-lines] li')).toHaveCount(1);
+  await expect(page.locator('[data-lines] [data-name]')).toHaveText(kept);
+});
+
 test('REC-06 paiement en ligne : échec puis succès, sans double commande', async ({ page }) => {
   await addFirstProduct(page);
   await fillCheckout(page, { zone: /Lomé centre/, payment: /^Mobile Money/ });

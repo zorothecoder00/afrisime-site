@@ -18,6 +18,8 @@ export type QuotedLine = {
   variantLabel: string;
   slug: string;
   color: string;
+  /** Marque (regroupement des lignes dans le panier). */
+  brandName: string;
   image: string | null;
   unitPrice: number;
   publicPrice: number;
@@ -34,7 +36,7 @@ export async function quote(input: {
   promoCode?: unknown;
   user?: { accountType?: string | null; proStatus?: string | null } | null;
 }) {
-  const [{ products, categoryOf }, settings] = await Promise.all([getCatalog(), getSettings()]);
+  const [{ products, categoryOf, brandOf }, settings] = await Promise.all([getCatalog(), getSettings()]);
   const byId = new Map(products.map((p) => [p.id, p]));
   const pro = isValidatedPro(input.user);
   const lines: QuotedLine[] = [];
@@ -64,6 +66,7 @@ export async function quote(input: {
       variantLabel: variant.label,
       slug: product.slug,
       color: categoryOf(product).data.color,
+      brandName: brandOf(product).data.name,
       image: product.data.images[0]?.id ?? null,
       unitPrice: unitPriceFor(variant, pro),
       publicPrice: variant.price,
