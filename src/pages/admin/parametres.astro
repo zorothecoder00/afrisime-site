@@ -11,13 +11,16 @@ import { getPaymentProvider } from '../../lib/payments/providers';
 import { can } from '../../lib/roles';
 import { getSettings, saveSettings } from '../../lib/settings';
 import { isValidEmail } from '../../lib/validation';
+import { imageUrl, storeUpload, UploadError } from '../../lib/media';
 import type { DeliveryZone, PaymentMethod } from '../../data/site';
 import { CRON_SECRET, NOTIFY_WEBHOOK_URL, STAFF_NOTIFY_EMAIL } from 'astro:env/server';
 
 const me = Astro.locals.user!;
 const canGlobal = can(me.role, { settings: ['update'] });
 const canCommerce = can(me.role, { catalog: ['update'] });
-if (!canGlobal && !canCommerce) return new Response('Accès refusé.', { status: 403 });
+// Mot du dirigeant : contenu de la page Qui sommes-nous, modifiable aussi par l'administrateur web.
+const canWelcome = canGlobal || can(me.role, { content: ['publish'] });
+if (!canGlobal && !canCommerce && !canWelcome) return new Response('Accès refusé.', { status: 403 });
 const errors: string[] = [];
 
 if (Astro.request.method === 'POST') {
@@ -36,6 +39,29 @@ if (Astro.request.method === 'POST') {
       await saveSettings('identity', { name: str(form, 'name', 60) || 'AfriSime', tagline: str(form, 'tagline', 120), description: str(form, 'description', 300), topBar: str(form, 'topBar', 120) }, me.id);
       await saveSettings('contact', { phone: str(form, 'phone', 30), whatsapp: str(form, 'whatsapp', 20).replace(/\D/g, ''), email, address: str(form, 'address', 200), hours: str(form, 'hours', 100) }, me.id);
       await saveSettings('social', social, me.id);
+    }
+  }
+
+  if (action === 'mot') {
+    if (!canWelcome) return new Response('Accès refusé.', { status: 403 });
+    const current = (await getSettings()).welcome;
+    let photoId = bool(form, 'removePhoto') ? '' : current.photoId;
+    const photo = form.get('photo');
+    if (photo && typeof photo !== 'string' && photo.size > 0) {
+      try {
+        photoId = (await storeUpload(photo, { uploadedBy: me.id, alt: `Portrait de ${str(form, 'name', 120)}` })).id;
+      } catch (err) {
+        errors.push(err instanceof UploadError ? err.message : "La photo n'a pas pu être enregistrée.");
+      }
+    }
+    const message = str(form, 'message', 4000);
+    if (bool(form, 'enabled') && message.length < 20) errors.push('Le message est trop court.');
+    if (!errors.length) {
+      await saveSettings(
+        'welcome',
+        { enabled: bool(form, 'enabled'), title: str(form, 'title', 120), name: str(form, 'name', 120), role: str(form, 'role', 120), photoId, message },
+        me.id,
+      );
     }
   }
 
@@ -157,6 +183,39 @@ const ok = Astro.url.searchParams.get('ok');
           ))}
         </div>
         <button class="btn btn-primary btn-sm mt-4">Enregistrer livraison et paiement</button>
+      </form>
+    )
+  }
+
+  {
+    canWelcome && (
+      <form method="post" enctype="multipart/form-data" class="card mt-6 grid gap-4 p-5 sm:grid-cols-2" id="mot-du-dirigeant">
+        <input type="hidden" name="action" value="mot" />
+        <div class="sm:col-span-2">
+          <h2 class="text-xl">Mot du dirigeant</h2>
+          <p class="hint">Affiché sur la page <a href="/afrisime#histoire" target="_blank" class="underline">Qui sommes-nous › Notre histoire</a>.</p>
+        </div>
+        <label class="flex items-center gap-2 text-sm font-semibold sm:col-span-2"><input type="checkbox" name="enabled" checked={s.welcome.enabled} class="size-4 accent-brand-700" />Afficher le mot du dirigeant</label>
+        <label class="block sm:col-span-2"><span class="label">Titre</span><input name="title" value={s.welcome.title} maxlength="120" class="input !py-2" /></label>
+        <label class="block"><span class="label">Nom</span><input name="name" value={s.welcome.name} maxlength="120" class="input !py-2" placeholder="Prénom NOM" /></label>
+        <label class="block"><span class="label">Fonction</span><input name="role" value={s.welcome.role} maxlength="120" class="input !py-2" /></label>
+        <label class="block sm:col-span-2">
+          <span class="label">Message</span>
+          <textarea name="message" rows="10" maxlength="4000" class="input">{s.welcome.message}</textarea>
+          <span class="hint block">Laissez une ligne vide entre deux paragraphes.</span>
+        </label>
+        <div class="sm:col-span-2">
+          <span class="label">Photo</span>
+          {s.welcome.photoId && (
+            <div class="mb-2 flex items-center gap-3">
+              <img src={imageUrl(s.welcome.photoId, 'mini')} alt="" class="h-20 w-16 rounded-lg object-cover" />
+              <label class="flex items-center gap-2 text-sm text-danger"><input type="checkbox" name="removePhoto" />Retirer</label>
+            </div>
+          )}
+          <input type="file" name="photo" accept="image/jpeg,image/png,image/webp" class="input" />
+          <span class="hint block">Portrait vertical de préférence. Sans photo, les initiales du nom s'affichent.</span>
+        </div>
+        <div class="sm:col-span-2"><button class="btn btn-primary btn-sm">Enregistrer</button></div>
       </form>
     )
   }

@@ -25,6 +25,17 @@ export type Settings = {
   navigation: NavItem[];
   delivery: { zones: DeliveryZone[]; freeThreshold: number };
   payments: { methods: PaymentMethod[] };
+  /** Mot de bienvenue du dirigeant (page Qui sommes-nous › Notre histoire). */
+  welcome: {
+    enabled: boolean;
+    title: string;
+    name: string;
+    role: string;
+    /** Photo (médiathèque) ; vide : initiales. */
+    photoId: string;
+    /** Paragraphes séparés par une ligne vide. */
+    message: string;
+  };
   seo: {
     /** Identifiant Google Tag Manager (GTM-XXXX), chargé uniquement après consentement. */
     gtmId: string;
@@ -43,6 +54,20 @@ export const DEFAULT_SETTINGS: Settings = {
   delivery: { zones: DELIVERY_ZONES, freeThreshold: FREE_DELIVERY_THRESHOLD },
   payments: { methods: PAYMENT_METHODS },
   seo: { gtmId: '', googleVerification: '' },
+  welcome: {
+    enabled: true,
+    title: 'Le mot du Directeur général',
+    name: 'Le Directeur général',
+    role: 'Directeur général, AfriSime',
+    photoId: '',
+    message: [
+      'Chers clients, chers partenaires,',
+      "Bienvenue chez AfriSime. Notre ambition est simple : que chaque famille, chaque commerçant et chaque entreprise du Togo trouve les produits du quotidien au bon prix, au bon moment et en bonne quantité.",
+      "Depuis nos débuts à Lomé, nous avançons avec une conviction : la distribution alimentaire peut être plus fiable, plus proche et plus juste. C'est pourquoi nous travaillons main dans la main avec les producteurs locaux, nos fournisseurs et nos équipes, et que nous investissons dans des outils modernes comme ce site.",
+      "Que vous achetiez pour votre maison ou pour votre commerce, vous pouvez compter sur notre engagement : des produits de qualité, un service à l'écoute et des prix transparents.",
+      'Merci de votre confiance, et à très bientôt chez AfriSime.',
+    ].join('\n\n'),
+  },
 };
 
 export function getSettings(): Promise<Settings> {

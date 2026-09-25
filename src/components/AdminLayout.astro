@@ -23,7 +23,7 @@ const nav = [
   { label: 'FAQ', href: '/admin/faq', show: can(me.role, { content: ['update'] }) },
   { label: 'Médias', href: '/admin/medias', show: can(me.role, { content: ['update'] }) || can(me.role, { catalog: ['update'] }) },
   { label: 'SEO & menus', href: '/admin/seo', show: can(me.role, { seo: ['update'] }) },
-  { label: 'Paramètres', href: '/admin/parametres', show: can(me.role, { settings: ['update'] }) || can(me.role, { catalog: ['update'] }) },
+  { label: 'Paramètres', href: '/admin/parametres', show: can(me.role, { settings: ['update'] }) || can(me.role, { catalog: ['update'] }) || can(me.role, { content: ['publish'] }) },
   { label: 'Rapports', href: '/admin/rapports', show: can(me.role, { report: ['read'] }) },
   { label: 'Journal', href: '/admin/journal', show: can(me.role, { audit: ['read'] }) },
 ].filter((item) => item.show);
