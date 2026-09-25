@@ -96,7 +96,6 @@ const ok = Astro.url.searchParams.get('ok');
         <label class="block"><span class="label">Nom</span><input name="name" value={s.identity.name} class="input !py-2" /></label>
         <label class="block"><span class="label">Signature</span><input name="tagline" value={s.identity.tagline} class="input !py-2" /></label>
         <label class="block sm:col-span-2"><span class="label">Description (moteurs de recherche)</span><textarea name="description" rows="2" maxlength="300" class="input">{s.identity.description}</textarea></label>
-        <label class="block sm:col-span-2"><span class="label">Message du bandeau supérieur</span><input name="topBar" value={s.identity.topBar} class="input !py-2" /></label>
         <label class="block"><span class="label">Téléphone</span><input name="phone" value={s.contact.phone} class="input !py-2" /></label>
         <label class="block"><span class="label">WhatsApp (format international, ex. 22890000000)</span><input name="whatsapp" value={s.contact.whatsapp} class="input !py-2" /></label>
         <label class="block"><span class="label">E-mail</span><input name="email" type="email" value={s.contact.email} class="input !py-2" /></label>
