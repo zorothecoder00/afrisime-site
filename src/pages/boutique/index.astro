@@ -1,8 +1,12 @@
 ---
+// Boutique, sur le modèle des résultats de recherche Alibaba : grande barre de recherche,
+// rayons en pastilles, filtres à gauche, tri en onglets, filtres rapides et filtres actifs
+// au-dessus d'une grille de cartes, pagination numérotée. Recherche et filtres sont instantanés
+// (côté navigateur) et reflétés dans l'URL, donc partageables.
 import Layout from '../../layouts/Layout.astro';
 import ProductCard from '../../components/ProductCard.astro';
 import Breadcrumbs from '../../components/ui/Breadcrumbs.astro';
-import Icon from '../../components/ui/Icon.astro';
+import Icon, { type IconName } from '../../components/ui/Icon.astro';
 import { getCatalog, lowestVariant } from '../../lib/catalog';
 import { STATUS_LABELS } from '../../lib/format';
 
@@ -11,34 +15,69 @@ const sorted = [...products].sort((a, b) => b.data.popularity - a.data.popularit
 
 const packagings = [...new Set(products.flatMap((p) => p.data.variants.map((v) => v.unit)))].sort();
 const countBy = (fn: (p: (typeof products)[number]) => boolean) => products.filter(fn).length;
+
+const sorts = [
+  { id: 'pertinence', label: 'Pertinence' },
+  { id: 'popularite', label: 'Populaires' },
+  { id: 'nouveautes', label: 'Nouveautés' },
+  { id: 'prix-asc', label: 'Prix croissant' },
+  { id: 'prix-desc', label: 'Prix décroissant' },
+];
+// Filtres rapides : raccourcis vers des cases du panneau de filtres.
+const quick = [
+  { name: 'dispo', value: 'disponible', label: 'Disponible', icon: 'check' },
+  { name: 'badge', value: 'promotion', label: 'En promotion', icon: 'tag' },
+  { name: 'origine', value: 'local', label: 'Produits locaux', icon: 'leaf' },
+  { name: 'badge', value: 'b2b', label: 'Formats pro', icon: 'building' },
+  { name: 'badge', value: 'nouveau', label: 'Nouveautés', icon: 'star' },
+] as const;
+const legend = 'text-sm font-extrabold text-ink';
 ---
 
 <Layout
   title="Boutique"
   description="Catalogue AfriSime : riz, huiles, farines, boissons, produits locaux et entretien. Prix détail et gros, livraison à Lomé et au Togo."
 >
-  <section class="border-b border-line bg-brand-50">
-    <div class="container-page py-8">
+  <!-- Recherche et rayons -->
+  <section class="border-b border-line bg-white">
+    <div class="container-page py-5">
       <Breadcrumbs items={[{ label: 'Boutique' }]} />
-      <h1 class="mt-4 text-3xl sm:text-4xl" data-title>Boutique</h1>
-      <form class="relative mt-5 max-w-2xl" role="search" data-search-form>
+      <form class="mt-4 flex max-w-3xl items-stretch overflow-hidden rounded-full border-2 border-accent-500 bg-white focus-within:ring-4 focus-within:ring-accent-100" role="search" data-search-form>
         <label for="q" class="sr-only">Rechercher dans le catalogue</label>
-        <input id="q" name="q" type="search" class="input !rounded-full !py-3.5 pl-12 text-base" placeholder="Riz, huile 5 L, AFS-CER-001…" autocomplete="off" />
-        <Icon name="search" class="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted" />
+        <span class="grid place-items-center pl-5 text-muted"><Icon name="search" size={20} /></span>
+        <input id="q" name="q" type="search" class="min-w-0 flex-1 border-0 bg-transparent px-3 py-3 text-base focus:outline-none" placeholder="Riz, huile 5 L, AFS-CER-001…" autocomplete="off" />
+        <button type="submit" class="m-1 rounded-full bg-accent-500 px-5 text-sm font-extrabold text-brand-950 hover:bg-accent-600 hover:text-white sm:px-8">Rechercher</button>
       </form>
+      <ul class="mt-4 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Rayons">
+        <li>
+          <button type="button" class="chip" data-category-chip="" aria-pressed="true">Tous les rayons</button>
+        </li>
+        {
+          categories.map((c) => (
+            <li>
+              <button type="button" class="chip" data-category-chip={c.id} aria-pressed="false">
+                <span class="grid size-5 place-items-center rounded-full text-white" style={`background:${c.data.color}`}>
+                  <Icon name={c.data.icon as IconName} size={12} />
+                </span>
+                {c.data.name}
+              </button>
+            </li>
+          ))
+        }
+      </ul>
     </div>
   </section>
 
-  <div class="container-page grid gap-8 py-8 lg:grid-cols-[260px_1fr]">
+  <div class="container-page grid grid-cols-1 gap-6 py-6 lg:grid-cols-[250px_1fr]">
     <!-- Filtres -->
     <aside>
       <details class="group lg:!block" data-filters-panel open>
         <summary class="btn btn-secondary w-full list-none lg:hidden">
           <Icon name="filter" size={18} />Filtres <span class="badge badge-b2b" data-active-count hidden></span>
         </summary>
-        <form class="mt-4 space-y-6 lg:mt-0" data-filters>
+        <form class="mt-3 space-y-6 rounded-2xl bg-white p-4 ring-1 ring-line lg:mt-0" data-filters>
           <fieldset>
-            <legend class="text-sm font-extrabold uppercase tracking-wide text-brand-900">Catégories</legend>
+            <legend class={legend}>Catégories</legend>
             <ul class="mt-3 space-y-2">
               {
                 categories.map((c) => (
@@ -55,7 +94,19 @@ const countBy = (fn: (p: (typeof products)[number]) => boolean) => products.filt
           </fieldset>
 
           <fieldset>
-            <legend class="text-sm font-extrabold uppercase tracking-wide text-brand-900">Marques</legend>
+            <legend class={legend}>Prix (FCFA)</legend>
+            <div class="mt-3 flex items-center gap-2">
+              <label class="sr-only" for="prix-min">Prix minimum</label>
+              <input id="prix-min" name="prixMin" type="number" min="0" step="100" inputmode="numeric" placeholder="Min" class="input !px-3 !py-2" />
+              <span aria-hidden="true">–</span>
+              <label class="sr-only" for="prix-max">Prix maximum</label>
+              <input id="prix-max" name="prixMax" type="number" min="0" step="100" inputmode="numeric" placeholder="Max" class="input !px-3 !py-2" />
+            </div>
+            <button type="submit" class="btn btn-secondary btn-sm mt-2 w-full">Appliquer</button>
+          </fieldset>
+
+          <fieldset>
+            <legend class={legend}>Marques</legend>
             <ul class="mt-3 space-y-2">
               {
                 brands.map((b) => (
@@ -63,6 +114,7 @@ const countBy = (fn: (p: (typeof products)[number]) => boolean) => products.filt
                     <label class="flex items-center gap-2 text-sm">
                       <input type="checkbox" name="marque" value={b.id} class="size-4 accent-brand-700" />
                       <span class="flex-1">{b.data.name}</span>
+                      <span class="text-xs text-muted">{countBy((p) => p.data.brand.id === b.id)}</span>
                     </label>
                   </li>
                 ))
@@ -71,25 +123,15 @@ const countBy = (fn: (p: (typeof products)[number]) => boolean) => products.filt
           </fieldset>
 
           <fieldset>
-            <legend class="text-sm font-extrabold uppercase tracking-wide text-brand-900">Prix (FCFA)</legend>
-            <div class="mt-3 flex items-center gap-2">
-              <label class="sr-only" for="prix-min">Prix minimum</label>
-              <input id="prix-min" name="prixMin" type="number" min="0" step="100" inputmode="numeric" placeholder="Min" class="input !py-2" />
-              <span aria-hidden="true">–</span>
-              <label class="sr-only" for="prix-max">Prix maximum</label>
-              <input id="prix-max" name="prixMax" type="number" min="0" step="100" inputmode="numeric" placeholder="Max" class="input !py-2" />
-            </div>
-          </fieldset>
-
-          <fieldset>
-            <legend class="text-sm font-extrabold uppercase tracking-wide text-brand-900">Disponibilité</legend>
+            <legend class={legend}>Disponibilité</legend>
             <ul class="mt-3 space-y-2">
               {
                 Object.entries(STATUS_LABELS).map(([id, label]) => (
                   <li>
                     <label class="flex items-center gap-2 text-sm">
                       <input type="checkbox" name="dispo" value={id} class="size-4 accent-brand-700" />
-                      {label}
+                      <span class="flex-1">{label}</span>
+                      <span class="text-xs text-muted">{countBy((p) => p.data.status === id)}</span>
                     </label>
                   </li>
                 ))
@@ -98,13 +140,13 @@ const countBy = (fn: (p: (typeof products)[number]) => boolean) => products.filt
           </fieldset>
 
           <fieldset>
-            <legend class="text-sm font-extrabold uppercase tracking-wide text-brand-900">Conditionnement</legend>
-            <div class="mt-3 flex flex-wrap gap-2">
+            <legend class={legend}>Conditionnement</legend>
+            <div class="mt-3 flex flex-wrap gap-1.5">
               {
                 packagings.map((u) => (
                   <label class="cursor-pointer">
                     <input type="checkbox" name="format" value={u} class="peer sr-only" />
-                    <span class="inline-block rounded-full border border-line px-3 py-1 text-xs font-semibold capitalize peer-checked:border-brand-700 peer-checked:bg-brand-700 peer-checked:text-white peer-focus-visible:outline-2 peer-focus-visible:outline-accent-500">
+                    <span class="inline-block rounded-md border border-line px-2.5 py-1 text-xs font-semibold capitalize peer-checked:border-brand-700 peer-checked:bg-brand-700 peer-checked:text-white peer-focus-visible:outline-2 peer-focus-visible:outline-accent-500">
                       {u}
                     </span>
                   </label>
@@ -114,44 +156,62 @@ const countBy = (fn: (p: (typeof products)[number]) => boolean) => products.filt
           </fieldset>
 
           <fieldset>
-            <legend class="text-sm font-extrabold uppercase tracking-wide text-brand-900">Origine</legend>
+            <legend class={legend}>Origine</legend>
             <ul class="mt-3 space-y-2">
-              <li><label class="flex items-center gap-2 text-sm"><input type="checkbox" name="origine" value="local" class="size-4 accent-brand-700" />Produit local</label></li>
-              <li><label class="flex items-center gap-2 text-sm"><input type="checkbox" name="origine" value="importe" class="size-4 accent-brand-700" />Importé</label></li>
+              <li><label class="flex items-center gap-2 text-sm"><input type="checkbox" name="origine" value="local" class="size-4 accent-brand-700" /><span class="flex-1">Produit local</span><span class="text-xs text-muted">{countBy((p) => p.data.origin === 'local')}</span></label></li>
+              <li><label class="flex items-center gap-2 text-sm"><input type="checkbox" name="origine" value="importe" class="size-4 accent-brand-700" /><span class="flex-1">Importé</span><span class="text-xs text-muted">{countBy((p) => p.data.origin === 'importe')}</span></label></li>
             </ul>
           </fieldset>
 
           <fieldset>
-            <legend class="text-sm font-extrabold uppercase tracking-wide text-brand-900">Offres</legend>
+            <legend class={legend}>Offres</legend>
             <ul class="mt-3 space-y-2">
               <li><label class="flex items-center gap-2 text-sm"><input type="checkbox" name="badge" value="promotion" class="size-4 accent-brand-700" />En promotion</label></li>
               <li><label class="flex items-center gap-2 text-sm"><input type="checkbox" name="badge" value="nouveau" class="size-4 accent-brand-700" />Nouveautés</label></li>
               <li><label class="flex items-center gap-2 text-sm"><input type="checkbox" name="badge" value="b2b" class="size-4 accent-brand-700" />Formats pro (B2B)</label></li>
             </ul>
+            <button type="reset" class="btn btn-ghost btn-sm mt-4 w-full">Réinitialiser les filtres</button>
           </fieldset>
-
-          <button type="reset" class="btn btn-ghost btn-sm w-full">Réinitialiser les filtres</button>
         </form>
       </details>
     </aside>
 
     <!-- Résultats -->
-    <section aria-labelledby="resultats">
-      <div class="flex flex-wrap items-center justify-between gap-3">
-        <p id="resultats" class="text-sm text-muted" aria-live="polite" data-result-count>{products.length} produits</p>
-        <label class="flex items-center gap-2 text-sm">
-          <span class="font-semibold">Trier par</span>
-          <select name="tri" class="input !w-auto !py-2" data-sort>
-            <option value="pertinence">Pertinence</option>
-            <option value="popularite">Popularité</option>
-            <option value="nouveautes">Nouveautés</option>
-            <option value="prix-asc">Prix croissant</option>
-            <option value="prix-desc">Prix décroissant</option>
-          </select>
-        </label>
+    <section aria-labelledby="resultats" class="min-w-0">
+      <div class="rounded-2xl bg-white p-3 ring-1 ring-line sm:p-4">
+        <div class="flex flex-wrap items-baseline justify-between gap-2">
+          <h1 class="text-lg font-bold !text-ink sm:text-xl" data-title>Boutique</h1>
+          <p id="resultats" class="text-sm text-muted" aria-live="polite" data-result-count>{products.length} produits</p>
+        </div>
+
+        <div class="relative mt-3 flex gap-1 overflow-x-auto border-b border-line [scrollbar-width:none]" role="radiogroup" aria-label="Trier par" data-sort>
+          {
+            sorts.map((s) => (
+              <label class="shrink-0 cursor-pointer">
+                <input type="radio" name="tri" value={s.id} class="peer sr-only" />
+                <span class="-mb-px block whitespace-nowrap border-b-2 border-transparent px-3 py-2 text-sm font-semibold text-muted transition hover:text-ink peer-checked:border-accent-500 peer-checked:text-ink peer-focus-visible:outline-2 peer-focus-visible:outline-accent-500">
+                  {s.label}
+                </span>
+              </label>
+            ))
+          }
+        </div>
+
+        <div class="mt-3 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] sm:flex-wrap sm:overflow-visible sm:pb-0 [&::-webkit-scrollbar]:hidden" aria-label="Filtres rapides">
+          {
+            quick.map((f) => (
+              <button type="button" class="chip" data-quick={`${f.name}:${f.value}`} aria-pressed="false">
+                <Icon name={f.icon} size={14} />
+                {f.label}
+              </button>
+            ))
+          }
+        </div>
+
+        <div class="mt-3 flex flex-wrap items-center gap-2 text-sm" data-active-filters hidden></div>
       </div>
 
-      <ul class="mt-5 grid grid-cols-2 gap-2.5 sm:gap-4 xl:grid-cols-3" data-grid>
+      <ul class="mt-4 grid grid-cols-2 gap-2.5 sm:gap-4 md:grid-cols-3 xl:grid-cols-4" data-grid>
         {
           sorted.map((p) => {
             const cat = categoryOf(p);
@@ -179,7 +239,7 @@ const countBy = (fn: (p: (typeof products)[number]) => boolean) => products.filt
       </ul>
 
       <!-- État vide -->
-      <div class="card mt-5 p-10 text-center" data-empty hidden>
+      <div class="mt-4 rounded-2xl bg-white p-10 text-center ring-1 ring-line" data-empty hidden>
         <Icon name="search" size={40} class="mx-auto text-muted" />
         <h2 class="mt-4 text-xl">Aucun produit ne correspond</h2>
         <p class="mx-auto mt-2 max-w-md text-sm text-muted">
@@ -191,33 +251,48 @@ const countBy = (fn: (p: (typeof products)[number]) => boolean) => products.filt
         </div>
       </div>
 
-      <nav aria-label="Pagination" class="mt-8 flex flex-wrap justify-center gap-2" data-pagination></nav>
+      <nav aria-label="Pagination" class="mt-8 flex flex-wrap items-center justify-center gap-1.5" data-pagination></nav>
     </section>
   </div>
 </Layout>
+
+<style>
+  @reference "../../styles/global.css";
+  .chip {
+    @apply inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-line bg-white px-3.5 py-1.5 text-sm font-semibold text-ink transition hover:border-brand-600;
+  }
+  .chip[aria-pressed='true'] {
+    @apply border-brand-800 bg-brand-900 text-white;
+  }
+</style>
 
 <script>
   import { searchScore } from '../../lib/search';
   import { track } from '../../scripts/analytics';
 
-  const PAGE_SIZE = 9;
+  const PAGE_SIZE = 12;
   const MULTI = ['categorie', 'marque', 'dispo', 'format', 'origine', 'badge'] as const;
+  type Multi = (typeof MULTI)[number];
 
   const grid = document.querySelector<HTMLElement>('[data-grid]')!;
   const items = [...grid.querySelectorAll<HTMLElement>('[data-product]')];
   const filtersForm = document.querySelector<HTMLFormElement>('[data-filters]')!;
   const searchForm = document.querySelector<HTMLFormElement>('[data-search-form]')!;
   const searchInput = searchForm.querySelector<HTMLInputElement>('input[name="q"]')!;
-  const sortSelect = document.querySelector<HTMLSelectElement>('[data-sort]')!;
+  const sortGroup = document.querySelector<HTMLElement>('[data-sort]')!;
   const countEl = document.querySelector<HTMLElement>('[data-result-count]')!;
   const emptyEl = document.querySelector<HTMLElement>('[data-empty]')!;
   const pager = document.querySelector<HTMLElement>('[data-pagination]')!;
   const titleEl = document.querySelector<HTMLElement>('[data-title]')!;
   const activeCount = document.querySelector<HTMLElement>('[data-active-count]')!;
+  const activeFilters = document.querySelector<HTMLElement>('[data-active-filters]')!;
   const panel = document.querySelector<HTMLDetailsElement>('[data-filters-panel]')!;
 
   // Sur mobile, les filtres sont repliés par défaut.
   if (window.matchMedia('(max-width: 1023px)').matches) panel.open = false;
+
+  const checkbox = (name: string, value: string) => filtersForm.querySelector<HTMLInputElement>(`input[name="${name}"][value="${CSS.escape(value)}"]`);
+  const sortValue = () => sortGroup.querySelector<HTMLInputElement>('input:checked')?.value ?? 'popularite';
 
   function readState() {
     const params = new URLSearchParams(location.search);
@@ -227,7 +302,7 @@ const countBy = (fn: (p: (typeof products)[number]) => boolean) => products.filt
       page: Math.max(1, Number(params.get('page')) || 1),
       prixMin: params.get('prixMin') ?? '',
       prixMax: params.get('prixMax') ?? '',
-      multi: Object.fromEntries(MULTI.map((k) => [k, params.getAll(k)])) as Record<(typeof MULTI)[number], string[]>,
+      multi: Object.fromEntries(MULTI.map((k) => [k, params.getAll(k)])) as Record<Multi, string[]>,
     };
   }
 
@@ -237,7 +312,8 @@ const countBy = (fn: (p: (typeof products)[number]) => boolean) => products.filt
     const data = new FormData(filtersForm);
     for (const key of MULTI) data.getAll(key).forEach((v) => params.append(key, String(v)));
     for (const key of ['prixMin', 'prixMax']) if (data.get(key)) params.set(key, String(data.get(key)));
-    if (sortSelect.value !== 'pertinence' || !searchInput.value) params.set('tri', sortSelect.value);
+    const sort = sortValue();
+    if (sort !== 'pertinence' || !searchInput.value) params.set('tri', sort);
     if (page > 1) params.set('page', String(page));
     history.replaceState(null, '', `${location.pathname}${params.size ? `?${params}` : ''}`);
     render();
@@ -245,12 +321,28 @@ const countBy = (fn: (p: (typeof products)[number]) => boolean) => products.filt
 
   function syncInputs(state: ReturnType<typeof readState>) {
     searchInput.value = state.q;
-    sortSelect.value = state.sort;
+    sortGroup.querySelectorAll<HTMLInputElement>('input').forEach((r) => (r.checked = r.value === state.sort));
     (filtersForm.elements.namedItem('prixMin') as HTMLInputElement).value = state.prixMin;
     (filtersForm.elements.namedItem('prixMax') as HTMLInputElement).value = state.prixMax;
     filtersForm.querySelectorAll<HTMLInputElement>('input[type="checkbox"]').forEach((cb) => {
-      cb.checked = state.multi[cb.name as (typeof MULTI)[number]]?.includes(cb.value) ?? false;
+      cb.checked = state.multi[cb.name as Multi]?.includes(cb.value) ?? false;
     });
+  }
+
+  /** Libellé d'un filtre coché, repris du panneau (ex. « Céréales & farines »). */
+  function filterLabel(name: string, value: string) {
+    const label = checkbox(name, value)?.closest('label');
+    return (label?.querySelector('span:not(.text-xs)')?.textContent ?? label?.textContent ?? value).trim();
+  }
+
+  function pill(text: string, onRemove: () => void) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'inline-flex items-center gap-1 rounded-full bg-brand-50 px-3 py-1 font-semibold text-brand-800 ring-1 ring-brand-200 hover:bg-brand-100';
+    b.setAttribute('aria-label', `Retirer le filtre ${text}`);
+    b.append(text, Object.assign(document.createElement('span'), { textContent: '×', className: 'text-base leading-none' }));
+    b.addEventListener('click', onRemove);
+    return b;
   }
 
   let lastTrackedQuery = '';
@@ -293,33 +385,78 @@ const countBy = (fn: (p: (typeof products)[number]) => boolean) => products.filt
     scored.forEach(({ el }) => grid.appendChild(el));
 
     const n = scored.length;
-    countEl.textContent = state.q
-      ? `${n} résultat${n > 1 ? 's' : ''} pour « ${state.q} »`
-      : `${n} produit${n > 1 ? 's' : ''}`;
-    titleEl.textContent = state.q ? `Résultats pour « ${state.q} »` : 'Boutique';
+    countEl.textContent = `${n} produit${n > 1 ? 's' : ''}`;
+    titleEl.textContent = state.q ? `Résultats pour « ${state.q} »` : 'Tous les produits';
     emptyEl.hidden = n > 0;
     const ask = emptyEl.querySelector<HTMLAnchorElement>('[data-ask-product]')!;
     ask.href = `/contact?sujet=produit${state.q ? `&message=${encodeURIComponent(`Je cherche : ${state.q}`)}` : ''}`;
+
+    // Pastilles de rayon (un seul rayon à la fois) et filtres rapides.
+    const cats = state.multi.categorie;
+    document.querySelectorAll<HTMLButtonElement>('[data-category-chip]').forEach((b) => {
+      const id = b.dataset.categoryChip!;
+      b.setAttribute('aria-pressed', String(id ? cats.length === 1 && cats[0] === id : cats.length === 0));
+    });
+    document.querySelectorAll<HTMLButtonElement>('[data-quick]').forEach((b) => {
+      const [name, value] = b.dataset.quick!.split(':');
+      b.setAttribute('aria-pressed', String(state.multi[name as Multi].includes(value)));
+    });
+
+    // Filtres actifs, retirables un par un.
+    const pills: HTMLElement[] = [];
+    if (state.q) pills.push(pill(`« ${state.q} »`, () => ((searchInput.value = ''), writeState())));
+    for (const key of MULTI) {
+      for (const value of state.multi[key]) {
+        pills.push(pill(filterLabel(key, value), () => {
+          const cb = checkbox(key, value);
+          if (cb) cb.checked = false;
+          writeState();
+        }));
+      }
+    }
+    if (state.prixMin || state.prixMax) {
+      pills.push(pill(`${state.prixMin || 0} – ${state.prixMax || '∞'} FCFA`, () => {
+        (filtersForm.elements.namedItem('prixMin') as HTMLInputElement).value = '';
+        (filtersForm.elements.namedItem('prixMax') as HTMLInputElement).value = '';
+        writeState();
+      }));
+    }
+    if (pills.length) {
+      const clear = document.createElement('button');
+      clear.type = 'button';
+      clear.className = 'font-semibold text-danger underline';
+      clear.textContent = 'Tout effacer';
+      clear.addEventListener('click', clearAll);
+      activeFilters.replaceChildren(...pills, clear);
+    }
+    activeFilters.hidden = pills.length === 0;
 
     const active = Object.values(state.multi).flat().length + (state.prixMin ? 1 : 0) + (state.prixMax ? 1 : 0);
     activeCount.textContent = String(active);
     activeCount.hidden = active === 0;
 
+    // Pagination numérotée avec flèches.
+    const pageButton = (label: string, target: number, opts: { current?: boolean; disabled?: boolean; aria?: string } = {}) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = label;
+      b.disabled = !!opts.disabled;
+      b.className = `grid h-10 min-w-10 place-items-center rounded-lg px-3 text-sm font-bold ${opts.current ? 'bg-brand-900 text-white' : 'bg-white text-ink ring-1 ring-line hover:ring-brand-600'} disabled:opacity-40`;
+      if (opts.current) b.setAttribute('aria-current', 'page');
+      b.setAttribute('aria-label', opts.aria ?? `Page ${target}`);
+      b.addEventListener('click', () => {
+        writeState(target);
+        grid.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+      return b;
+    };
     pager.replaceChildren(
       ...(pages > 1
-        ? Array.from({ length: pages }, (_, i) => {
-            const b = document.createElement('button');
-            b.type = 'button';
-            b.textContent = String(i + 1);
-            b.className = `btn btn-sm min-w-10 ${i + 1 === page ? 'btn-primary' : 'btn-secondary'}`;
-            if (i + 1 === page) b.setAttribute('aria-current', 'page');
-            b.setAttribute('aria-label', `Page ${i + 1}`);
-            b.addEventListener('click', () => {
-              writeState(i + 1);
-              grid.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            });
-            return b;
-          })
+        ? [
+            pageButton('‹', page - 1, { disabled: page === 1, aria: 'Page précédente' }),
+            ...Array.from({ length: pages }, (_, i) => pageButton(String(i + 1), i + 1, { current: i + 1 === page })),
+            pageButton('›', page + 1, { disabled: page === pages, aria: 'Page suivante' }),
+          ]
         : []),
     );
 
@@ -332,6 +469,12 @@ const countBy = (fn: (p: (typeof products)[number]) => boolean) => products.filt
     }
   }
 
+  function clearAll() {
+    filtersForm.reset();
+    searchInput.value = '';
+    setTimeout(() => writeState());
+  }
+
   let debounce: number | undefined;
   searchInput.addEventListener('input', () => {
     clearTimeout(debounce);
@@ -342,13 +485,29 @@ const countBy = (fn: (p: (typeof products)[number]) => boolean) => products.filt
     writeState();
   });
   filtersForm.addEventListener('change', () => writeState());
-  filtersForm.addEventListener('reset', () => setTimeout(() => writeState()));
-  sortSelect.addEventListener('change', () => writeState());
-  document.querySelector('[data-clear]')!.addEventListener('click', () => {
-    filtersForm.reset();
-    searchInput.value = '';
-    setTimeout(() => writeState());
+  filtersForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    writeState();
   });
+  filtersForm.addEventListener('reset', () => setTimeout(() => writeState()));
+  sortGroup.addEventListener('change', () => writeState());
+  document.querySelector('[data-clear]')!.addEventListener('click', clearAll);
+
+  document.querySelectorAll<HTMLButtonElement>('[data-category-chip]').forEach((b) =>
+    b.addEventListener('click', () => {
+      const id = b.dataset.categoryChip!;
+      filtersForm.querySelectorAll<HTMLInputElement>('input[name="categorie"]').forEach((cb) => (cb.checked = cb.value === id));
+      writeState();
+    }),
+  );
+  document.querySelectorAll<HTMLButtonElement>('[data-quick]').forEach((b) =>
+    b.addEventListener('click', () => {
+      const [name, value] = b.dataset.quick!.split(':');
+      const cb = checkbox(name, value);
+      if (cb) cb.checked = !cb.checked;
+      writeState();
+    }),
+  );
 
   syncInputs(readState());
   render();
