@@ -1,5 +1,6 @@
-// Informations générales du site. Les coordonnées ci-dessous sont des exemples
-// à remplacer par les vraies données d'AfriSime avant la mise en ligne.
+// Valeurs par défaut des paramètres du site. Elles sont modifiables dans le back-office
+// (Paramètres) : les valeurs enregistrées en base remplacent celles-ci (src/lib/settings.ts).
+// Les coordonnées ci-dessous sont des exemples à remplacer avant la mise en ligne.
 
 export const SITE = {
   name: 'AfriSime',
@@ -10,12 +11,10 @@ export const SITE = {
   currency: 'XOF',
   contact: {
     phone: '+228 90 00 00 00',
-    phoneHref: 'tel:+22890000000',
-    whatsapp: 'https://wa.me/22890000000',
+    whatsapp: '22890000000',
     email: 'contact@afrisime.com',
     address: 'Boulevard du 13 Janvier, Lomé, Togo',
     hours: 'Lun – Sam : 7h30 – 19h00',
-    mapQuery: 'Lomé, Togo',
   },
   social: [
     { label: 'Facebook', href: 'https://facebook.com/' },
@@ -23,6 +22,7 @@ export const SITE = {
     { label: 'LinkedIn', href: 'https://linkedin.com/' },
     { label: 'TikTok', href: 'https://tiktok.com/' },
   ],
+  topBar: 'Livraison offerte à Lomé dès 50 000 FCFA',
 };
 
 export type NavItem = { label: string; href: string; children?: { label: string; href: string }[] };
@@ -58,20 +58,23 @@ export const NAV: NavItem[] = [
   { label: 'Contact', href: '/contact' },
 ];
 
-// Zones de livraison et frais (FCFA). Le serveur recalcule toujours ces frais :
-// voir src/lib/pricing.ts.
-export const DELIVERY_ZONES = [
-  { id: 'retrait', label: 'Retrait au dépôt AfriSime (gratuit)', fee: 0, delay: 'Dès 2 h après confirmation' },
-  { id: 'lome-centre', label: 'Lomé centre', fee: 1000, delay: 'Sous 24 h' },
-  { id: 'lome-peripherie', label: 'Lomé périphérie (Agoè, Baguida, Adidogomé…)', fee: 2000, delay: '24 à 48 h' },
-  { id: 'grand-lome', label: 'Grand Lomé hors périphérie', fee: 3500, delay: '48 h' },
-  { id: 'interieur', label: 'Intérieur du pays', fee: 7500, delay: '3 à 5 jours' },
-] as const;
+export type DeliveryZone = { id: string; label: string; fee: number; delay: string; freeAbove: boolean; active: boolean };
+
+// Zones de livraison et frais (FCFA). Le serveur recalcule toujours ces frais (src/lib/checkout.ts).
+export const DELIVERY_ZONES: DeliveryZone[] = [
+  { id: 'retrait', label: 'Retrait au dépôt AfriSime (gratuit)', fee: 0, delay: 'Dès 2 h après confirmation', freeAbove: false, active: true },
+  { id: 'lome-centre', label: 'Lomé centre', fee: 1000, delay: 'Sous 24 h', freeAbove: true, active: true },
+  { id: 'lome-peripherie', label: 'Lomé périphérie (Agoè, Baguida, Adidogomé…)', fee: 2000, delay: '24 à 48 h', freeAbove: true, active: true },
+  { id: 'grand-lome', label: 'Grand Lomé hors périphérie', fee: 3500, delay: '48 h', freeAbove: false, active: true },
+  { id: 'interieur', label: 'Intérieur du pays', fee: 7500, delay: '3 à 5 jours', freeAbove: false, active: true },
+];
 
 export const FREE_DELIVERY_THRESHOLD = 50000;
 
-export const PAYMENT_METHODS = [
-  { id: 'mobile-money', label: 'Mobile Money (T-Money, Flooz)', description: 'Paiement sécurisé via notre prestataire.' },
-  { id: 'carte', label: 'Carte bancaire', description: 'Visa, Mastercard.' },
-  { id: 'livraison', label: 'Paiement à la livraison', description: 'En espèces ou Mobile Money à la réception.' },
-] as const;
+export type PaymentMethod = { id: 'mobile-money' | 'carte' | 'livraison'; label: string; description: string; enabled: boolean };
+
+export const PAYMENT_METHODS: PaymentMethod[] = [
+  { id: 'mobile-money', label: 'Mobile Money (T-Money, Flooz)', description: 'Paiement sécurisé via notre prestataire.', enabled: true },
+  { id: 'carte', label: 'Carte bancaire', description: 'Visa, Mastercard.', enabled: true },
+  { id: 'livraison', label: 'Paiement à la livraison', description: 'En espèces ou Mobile Money à la réception.', enabled: true },
+];

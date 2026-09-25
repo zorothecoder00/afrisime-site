@@ -2,6 +2,7 @@
 import Layout from '../layouts/Layout.astro';
 import PageHero from '../components/PageHero.astro';
 import Field from '../components/ui/Field.astro';
+import FileField from '../components/ui/FileField.astro';
 import Icon, { type IconName } from '../components/ui/Icon.astro';
 
 const offers: { id: string; icon: IconName; title: string; text: string }[] = [
@@ -67,6 +68,7 @@ const criteria = [
         <Field name="localisation" label="Localisation" required placeholder="Ville, région" />
         <Field name="need" label="Produits proposés et capacités" required textarea placeholder="Produits, conditionnements, volumes disponibles par mois, prix indicatifs…" class="sm:col-span-2" />
         <Field name="certifications" label="Certifications / agréments" placeholder="Ex. : autorisation de mise sur le marché, bio…" class="sm:col-span-2" />
+        <FileField label="Documents (catalogue, fiches produits, RCCM, agréments…)" class="sm:col-span-2" />
 
         <div class="sm:col-span-2">
           <label class="flex items-start gap-2 text-sm">

@@ -2,9 +2,16 @@
 import Layout from '../../layouts/Layout.astro';
 import Field from '../../components/ui/Field.astro';
 import Icon from '../../components/ui/Icon.astro';
-import { DELIVERY_ZONES, PAYMENT_METHODS } from '../../data/site';
 import { formatPrice } from '../../lib/format';
+import { onlinePaymentAvailable } from '../../lib/payments/service';
+import { activeZones, enabledPaymentMethods, getSettings } from '../../lib/settings';
 
+const settings = await getSettings();
+const zones = activeZones(settings);
+const online = onlinePaymentAvailable();
+const methods = enabledPaymentMethods(settings).map((m) =>
+  m.id !== 'livraison' && !online ? { ...m, description: 'Un conseiller vous envoie le lien de paiement après la commande.' } : m,
+);
 const steps = ['Panier', 'Coordonnées', 'Livraison', 'Paiement', 'Confirmation'];
 ---
 
@@ -38,6 +45,9 @@ const steps = ['Panier', 'Coordonnées', 'Livraison', 'Paiement', 'Confirmation'
         <!-- Étape 2 : coordonnées -->
         <section class="card p-6" data-step="1" aria-labelledby="etape-coordonnees">
           <h2 id="etape-coordonnees" class="text-xl focus:outline-none" tabindex="-1">Vos coordonnées</h2>
+          <p class="mt-2 text-sm text-muted" data-login-hint>
+            Déjà client ? <a href="/compte/connexion?retour=/commande" class="font-semibold underline">Connectez-vous</a> pour retrouver vos adresses et suivre vos commandes.
+          </p>
           <div class="mt-5 grid gap-4 sm:grid-cols-2">
             <Field name="name" label="Nom complet" required autocomplete="name" class="sm:col-span-2" />
             <Field name="phone" label="Téléphone" type="tel" required autocomplete="tel" inputmode="tel" placeholder="90 00 00 00" hint="Nous vous appelons pour confirmer la livraison." />
@@ -53,7 +63,7 @@ const steps = ['Panier', 'Coordonnées', 'Livraison', 'Paiement', 'Confirmation'
             <legend class="label">Zone ou mode de livraison <span class="text-danger">*</span></legend>
             <div class="space-y-2">
               {
-                DELIVERY_ZONES.map((z) => (
+                zones.map((z) => (
                   <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-line p-4 has-[:checked]:border-brand-700 has-[:checked]:bg-brand-50">
                     <input type="radio" name="deliveryZone" value={z.id} class="size-4 accent-brand-700" />
                     <span class="flex-1">
@@ -67,9 +77,15 @@ const steps = ['Panier', 'Coordonnées', 'Livraison', 'Paiement', 'Confirmation'
             </div>
             <p class="field-error" data-error-for="deliveryZone" hidden></p>
           </fieldset>
-          <div class="mt-5 grid gap-4 sm:grid-cols-2" data-address-fields>
-            <Field name="city" label="Ville / quartier" autocomplete="address-level2" placeholder="Lomé, Tokoin" />
-            <Field name="address" label="Adresse ou point de repère" autocomplete="street-address" placeholder="Rue, maison, repère…" />
+          <div class="mt-5" data-address-fields>
+            <div class="mb-4" data-saved-addresses hidden>
+              <label for="adresse-enregistree" class="label">Mes adresses</label>
+              <select id="adresse-enregistree" class="input"><option value="">Saisir une nouvelle adresse</option></select>
+            </div>
+            <div class="grid gap-4 sm:grid-cols-2">
+              <Field name="city" label="Ville / quartier" autocomplete="address-level2" placeholder="Lomé, Tokoin" />
+              <Field name="address" label="Adresse ou point de repère" autocomplete="street-address" placeholder="Rue, maison, repère…" />
+            </div>
           </div>
           <div class="mt-6 flex gap-2">
             <button type="button" class="btn btn-ghost" data-prev="1">Retour</button>
@@ -84,7 +100,7 @@ const steps = ['Panier', 'Coordonnées', 'Livraison', 'Paiement', 'Confirmation'
             <legend class="label">Moyen de paiement <span class="text-danger">*</span></legend>
             <div class="space-y-2">
               {
-                PAYMENT_METHODS.map((m) => (
+                methods.map((m) => (
                   <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-line p-4 has-[:checked]:border-brand-700 has-[:checked]:bg-brand-50">
                     <input type="radio" name="paymentMethod" value={m.id} class="size-4 accent-brand-700" />
                     <span>
@@ -124,6 +140,7 @@ const steps = ['Panier', 'Coordonnées', 'Livraison', 'Paiement', 'Confirmation'
           <span class="font-bold">Total</span>
           <span class="text-2xl font-extrabold text-brand-900" data-total></span>
         </div>
+        <p class="mt-3 text-xs text-muted" data-summary-note hidden></p>
         <a href="/panier" class="mt-4 inline-block text-sm font-semibold text-brand-700 hover:underline">Modifier le panier</a>
       </aside>
     </div>
@@ -132,7 +149,7 @@ const steps = ['Panier', 'Coordonnées', 'Livraison', 'Paiement', 'Confirmation'
 
 <script>
   import { cart } from '../../scripts/cart';
-  import { computeTotals } from '../../lib/pricing';
+  import { fetchQuote, getPromo, setPromo, type QuoteResponse } from '../../scripts/quote';
   import { formatPrice } from '../../lib/format';
   import { isValidEmail, isValidPhone } from '../../lib/validation';
   import { track } from '../../scripts/analytics';
@@ -141,6 +158,7 @@ const steps = ['Panier', 'Coordonnées', 'Livraison', 'Paiement', 'Confirmation'
   const form = $<HTMLFormElement>('[data-checkout-form]');
   const formError = $('[data-form-error]');
   const items = cart.items();
+  let quote: QuoteResponse | null = null;
 
   function session(key: string, value?: string) {
     try {
@@ -151,7 +169,6 @@ const steps = ['Panier', 'Coordonnées', 'Livraison', 'Paiement', 'Confirmation'
   }
   // Une clé par tentative de commande : un double envoi renvoie la même commande.
   const idempotencyKey = session('afs-checkout-key') ?? session('afs-checkout-key', crypto.randomUUID())!;
-  const promoCode = session('afs-promo') ?? '';
 
   $('[data-state="loading"]').hidden = true;
   $('[data-state="empty"]').hidden = items.length > 0;
@@ -160,16 +177,28 @@ const steps = ['Panier', 'Coordonnées', 'Livraison', 'Paiement', 'Confirmation'
   const field = (name: string) => form.elements.namedItem(name) as HTMLInputElement | RadioNodeList;
   const value = (name: string) => String((field(name) as HTMLInputElement)?.value ?? '').trim();
 
-  // Client connecté : coordonnées pré-remplies depuis son compte (champs encore vides seulement).
-  fetch('/api/auth/get-session')
+  // Client connecté : coordonnées et adresses enregistrées pré-remplies (champs encore vides seulement).
+  fetch('/api/account/addresses')
     .then((res) => (res.ok ? res.json() : null))
-    .then((session: { user?: { name?: string; email?: string; phone?: string | null } } | null) => {
-      const user = session?.user;
-      if (!user) return;
-      for (const [name, val] of [['name', user.name], ['email', user.email], ['phone', user.phone]] as const) {
+    .then((data: { user: { name: string; email: string; phone: string | null }; addresses: { id: string; label: string; city: string; address: string; isDefault: boolean }[] } | null) => {
+      if (!data) return;
+      $('[data-login-hint]').hidden = true;
+      for (const [name, val] of [['name', data.user.name], ['email', data.user.email], ['phone', data.user.phone]] as const) {
         const input = field(name) as HTMLInputElement | null;
         if (input && !input.value && val) input.value = val;
       }
+      if (!data.addresses.length) return;
+      const box = $('[data-saved-addresses]');
+      const select = $<HTMLSelectElement>('select', box);
+      for (const a of data.addresses) select.add(new Option(`${a.label} — ${a.address}, ${a.city}`, a.id, false, a.isDefault));
+      box.hidden = false;
+      const apply = () => {
+        const a = data.addresses.find((x) => x.id === select.value);
+        (field('city') as HTMLInputElement).value = a?.city ?? '';
+        (field('address') as HTMLInputElement).value = a?.address ?? '';
+      };
+      select.addEventListener('change', apply);
+      if (select.value) apply();
     })
     .catch(() => {});
 
@@ -244,29 +273,47 @@ const steps = ['Panier', 'Coordonnées', 'Livraison', 'Paiement', 'Confirmation'
   form.querySelectorAll<HTMLButtonElement>('[data-prev]').forEach((b) => b.addEventListener('click', () => showStep(Number(b.dataset.prev))));
 
   function renderSummary() {
+    const lines = quote?.lines ?? items.map((i) => ({ name: `${i.name} – ${i.variantLabel}`, unitPrice: i.price, quantity: i.quantity }));
     $('[data-summary-lines]').replaceChildren(
-      ...items.map((i) => {
+      ...lines.map((l) => {
         const li = document.createElement('li');
         li.className = 'flex justify-between gap-3 py-2';
         const label = document.createElement('span');
-        label.textContent = `${i.name} – ${i.variantLabel} × ${i.quantity}`;
+        label.textContent = `${l.name} × ${l.quantity}`;
         const price = document.createElement('span');
         price.className = 'shrink-0 font-semibold';
-        price.textContent = formatPrice(i.price * i.quantity);
+        price.textContent = formatPrice(l.unitPrice * l.quantity);
         li.append(label, price);
         return li;
       }),
     );
     const zone = value('deliveryZone');
-    const t = computeTotals(items.map((i) => ({ unitPrice: i.price, quantity: i.quantity })), zone, promoCode);
+    $('[data-address-fields]').hidden = zone === 'retrait';
+    if (!quote) return;
+    const t = quote.totals;
     $('[data-subtotal]').textContent = formatPrice(t.subtotal);
     $('[data-discount-row]').hidden = t.discount === 0;
-    $('[data-discount]').textContent = `− ${formatPrice(t.discount)}`;
+    $('[data-discount]').textContent = `− ${formatPrice(t.discount)}${quote.promo?.code ? ` (${quote.promo.code})` : ''}`;
     $('[data-delivery]').textContent = zone ? (t.delivery === 0 ? 'Gratuite' : formatPrice(t.delivery)) : 'À choisir';
     $('[data-total]').textContent = formatPrice(t.total);
-    $('[data-address-fields]').hidden = zone === 'retrait';
+    const note = $('[data-summary-note]');
+    const notes = [...quote.problems, ...(quote.promo && !quote.promo.applied ? [quote.promo.message] : []), ...(quote.pro ? ['Prix professionnels appliqués.'] : [])];
+    note.textContent = notes.join(' ');
+    note.hidden = !notes.length;
   }
-  form.addEventListener('change', renderSummary);
+
+  async function refreshQuote() {
+    const q = await fetchQuote(items, { promoCode: getPromo(), zoneId: value('deliveryZone') || undefined });
+    if (q) {
+      quote = q;
+      if (q.promo && !q.promo.applied) setPromo('');
+    }
+    renderSummary();
+  }
+  form.addEventListener('change', (e) => {
+    if ((e.target as HTMLInputElement).name === 'deliveryZone') refreshQuote();
+    else renderSummary();
+  });
 
   let submitting = false;
   form.addEventListener('submit', async (e) => {
@@ -284,7 +331,7 @@ const steps = ['Panier', 'Coordonnées', 'Livraison', 'Paiement', 'Confirmation'
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           idempotencyKey,
-          promoCode,
+          promoCode: getPromo(),
           customer: { name: value('name'), phone: value('phone'), email: value('email'), city: value('city'), address: value('address') },
           deliveryZone: value('deliveryZone'),
           paymentMethod: value('paymentMethod'),
@@ -297,15 +344,18 @@ const steps = ['Panier', 'Coordonnées', 'Livraison', 'Paiement', 'Confirmation'
         Object.entries(errors).forEach(([n, m]) => setError(n, m));
         const firstStep = errors.name || errors.phone || errors.email ? 1 : errors.deliveryZone || errors.address ? 2 : 3;
         if (Object.keys(errors).length) showStep(firstStep);
-        throw new Error(errors.items ?? data.error ?? 'La commande n\'a pas pu être validée.');
+        throw new Error(errors.items ?? errors.promoCode ?? data.error ?? "La commande n'a pas pu être validée.");
       }
-      session('afs-last-order', JSON.stringify(data.order));
-      try { sessionStorage.removeItem('afs-checkout-key'); sessionStorage.removeItem('afs-promo'); } catch {}
+      try {
+        sessionStorage.removeItem('afs-checkout-key');
+      } catch {}
+      setPromo('');
       track('purchase', { transaction_id: data.order.number, value: data.order.totals.total, currency: 'XOF' });
       cart.clear();
-      location.href = '/commande/confirmation';
+      // Paiement en ligne : page du prestataire ; sinon (ou en cas d'indisponibilité) page de confirmation.
+      location.href = data.paymentUrl ?? data.confirmationUrl;
     } catch (err) {
-      formError.textContent = err instanceof TypeError ? 'Connexion impossible. Vérifiez votre réseau : votre commande n\'a pas été enregistrée.' : (err as Error).message;
+      formError.textContent = err instanceof TypeError ? "Connexion impossible. Vérifiez votre réseau : votre commande n'a pas été enregistrée." : (err as Error).message;
       formError.hidden = false;
       formError.focus();
       submitting = false;
@@ -316,6 +366,7 @@ const steps = ['Panier', 'Coordonnées', 'Livraison', 'Paiement', 'Confirmation'
 
   if (items.length) {
     renderSummary();
+    refreshQuote();
     showStep(1, false);
   }
 </script>

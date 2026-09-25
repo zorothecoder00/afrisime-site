@@ -1,0 +1,36 @@
+---
+import { eq } from 'drizzle-orm';
+import Layout from '../../layouts/Layout.astro';
+import AccountNav from '../../components/AccountNav.astro';
+import PageHero from '../../components/PageHero.astro';
+import ProductCard from '../../components/ProductCard.astro';
+import { favorites } from '../../db/schema';
+import { getCatalog } from '../../lib/catalog';
+import { db } from '../../lib/db';
+
+const me = Astro.locals.user!;
+const rows = await db.select({ productId: favorites.productId }).from(favorites).where(eq(favorites.userId, me.id));
+const ids = new Set(rows.map((r) => r.productId));
+const { products, categoryOf, brandOf } = await getCatalog();
+const list = products.filter((p) => ids.has(p.id));
+---
+
+<Layout title="Mes favoris" noindex>
+  <PageHero title="Mes favoris" breadcrumbs={[{ label: 'Mon compte', href: '/compte' }, { label: 'Favoris' }]} />
+  <div class="container-page pt-6"><AccountNav current="favoris" /></div>
+  <div class="container-page py-10">
+    {
+      list.length === 0 ? (
+        <div class="card p-10 text-center">
+          <p class="font-semibold">Aucun favori pour le moment.</p>
+          <p class="mt-1 text-sm text-muted">Touchez le cœur d'un produit pour le retrouver ici.</p>
+          <a href="/boutique" class="btn btn-primary mt-5">Parcourir la boutique</a>
+        </div>
+      ) : (
+        <div class="grid grid-cols-1 gap-4 min-[420px]:grid-cols-2 lg:grid-cols-4">
+          {list.map((p) => <ProductCard product={p} category={categoryOf(p)} brand={brandOf(p)} />)}
+        </div>
+      )
+    }
+  </div>
+</Layout>

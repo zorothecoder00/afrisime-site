@@ -5,7 +5,8 @@ import { count, desc, eq, sql } from 'drizzle-orm';
 import AdminLayout from '../../components/AdminLayout.astro';
 import LeadsTable from '../../components/admin/LeadsTable.astro';
 import OrdersTable from '../../components/admin/OrdersTable.astro';
-import { leads, orders, user as users } from '../../db/schema';
+import { contents, leads, orders, products, user as users } from '../../db/schema';
+import { abandonedCarts, commerceStats } from '../../lib/reports';
 import { db } from '../../lib/db';
 import { formatPrice } from '../../lib/format';
 import { listLeads } from '../../lib/leads';
@@ -26,7 +27,7 @@ const [orderStats, leadStats, userStats, recentOrders, recentLeads] = await Prom
         .select({
           today: sql<number>`count(*) filter (where ${today})`.mapWith(Number),
           revenueToday: sql<number>`coalesce(sum(${orders.total}) filter (where ${today} and ${orders.status} <> 'annulee'), 0)`.mapWith(Number),
-          notSynced: sql<number>`count(*) filter (where ${orders.erpSyncedAt} is null)`.mapWith(Number),
+          notSynced: sql<number>`count(*) filter (where ${orders.erpSyncedAt} is null and ${orders.status} not in ('en-attente-paiement', 'annulee'))`.mapWith(Number),
         })
         .from(orders)
         .then((r) => r[0])
@@ -37,12 +38,37 @@ const [orderStats, leadStats, userStats, recentOrders, recentLeads] = await Prom
   canLeads ? listLeads({ limit: 8 }).then((r) => r.rows) : [],
 ]);
 
+const canPublish = can(me.role, { content: ['publish'] });
+const canPro = can(me.role, { pro: ['validate'] });
+const canCatalog = can(me.role, { catalog: ['read'] });
+const [toReview, prosPending, abandoned, month, catalogCounts] = await Promise.all([
+  canPublish ? db.select({ total: count() }).from(contents).where(eq(contents.status, 'a-valider')).then((r) => r[0].total) : null,
+  canPro ? db.select({ total: count() }).from(users).where(eq(users.proStatus, 'en-attente')).then((r) => r[0].total) : null,
+  canOrders ? abandonedCarts(200).then((r) => r.length) : null,
+  canOrders ? commerceStats(new Date(Date.now() - 30 * 86_400_000)) : null,
+  canCatalog
+    ? db
+        .select({
+          total: count(),
+          unavailable: sql<number>`count(*) filter (where ${products.status} = 'indisponible')`.mapWith(Number),
+        })
+        .from(products)
+        .then((r) => r[0])
+    : null,
+]);
+
 const stats = [
   orderStats && { label: "Commandes aujourd'hui", value: String(orderStats.today), href: '/admin/commandes' },
   orderStats && { label: "Chiffre d'affaires du jour", value: formatPrice(orderStats.revenueToday) },
+  month && { label: 'Ventes sur 30 jours', value: formatPrice(month.revenue), href: '/admin/rapports' },
+  month && { label: 'Panier moyen (30 j)', value: formatPrice(month.averageBasket), href: '/admin/rapports' },
+  abandoned !== null && { label: 'Paniers abandonnés', value: String(abandoned), href: '/admin/rapports#t-paniers' },
   orderStats && { label: "Non transmises à l'ERP", value: String(orderStats.notSynced), href: '/admin/commandes?erp=attente' },
   leadStats && { label: 'Nouveaux leads', value: String(leadStats.total), href: '/admin/leads?statut=nouveau' },
-  userStats && { label: 'Comptes', value: String(userStats.total) },
+  prosPending !== null && { label: 'Comptes pro à valider', value: String(prosPending), href: '/admin/utilisateurs?filtre=a-valider' },
+  toReview !== null && { label: 'Contenus à valider', value: String(toReview), href: '/admin/contenus?statut=a-valider' },
+  catalogCounts && { label: 'Produits (indisponibles)', value: `${catalogCounts.total} (${catalogCounts.unavailable})`, href: '/admin/catalogue' },
+  userStats && { label: 'Comptes', value: String(userStats.total), href: can(me.role, { user: ['list'] }) ? '/admin/utilisateurs' : undefined },
 ].filter(Boolean) as { label: string; value: string; href?: string }[];
 ---
 

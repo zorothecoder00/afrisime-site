@@ -23,11 +23,17 @@ document.querySelectorAll<HTMLFormElement>('form[data-lead-form]').forEach((form
     event.preventDefault();
     form.querySelectorAll<HTMLElement>('[data-error-for]').forEach((el) => setFieldError(form, el.dataset.errorFor!, null));
 
+    const formData = new FormData(form);
+    const consent = (form.elements.namedItem('consent') as HTMLInputElement | null)?.checked ?? false;
+    // Avec des documents joints, envoi en multipart ; sinon en JSON.
+    const hasFiles = [...formData.values()].some((v) => typeof v !== 'string' && v.size > 0);
     const data: Record<string, unknown> = {};
-    new FormData(form).forEach((value, key) => {
+    formData.forEach((value, key) => {
+      if (typeof value !== 'string') return;
       data[key] = data[key] ? `${data[key]}, ${value}` : value;
     });
-    data.consent = (form.elements.namedItem('consent') as HTMLInputElement | null)?.checked ?? false;
+    data.consent = consent;
+    formData.set('consent', String(consent));
 
     const label = submit?.textContent;
     if (submit) {
@@ -37,11 +43,12 @@ document.querySelectorAll<HTMLFormElement>('form[data-lead-form]').forEach((form
     if (status) status.hidden = true;
 
     try {
-      const res = await fetch('/api/leads', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
+      const res = await fetch(
+        '/api/leads',
+        hasFiles
+          ? { method: 'POST', body: formData }
+          : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) },
+      );
       const payload = await res.json().catch(() => ({}));
       if (!res.ok) {
         for (const [name, message] of Object.entries<string>(payload.errors ?? {})) setFieldError(form, name, message);

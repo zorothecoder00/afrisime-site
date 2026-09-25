@@ -11,6 +11,7 @@ export type CartItem = {
   quantity: number;
   slug: string;
   color: string;
+  image?: string | null;
 };
 
 const KEY = 'afs-cart-v1';
@@ -191,6 +192,7 @@ document.addEventListener('click', (event) => {
       price: variant.price,
       slug: base.slug,
       color: base.color,
+      image: base.image ?? null,
     },
     quantity,
   );

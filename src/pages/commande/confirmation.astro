@@ -1,96 +1,210 @@
 ---
+// Confirmation et suivi d'une commande par son lien secret (?n=numéro&t=jeton), envoyé
+// aussi par e-mail : paiement à finaliser ou à relancer, annulation tant que la préparation
+// n'a pas commencé, historique.
 import Layout from '../../layouts/Layout.astro';
+import OrderProgress from '../../components/OrderProgress.astro';
 import Icon from '../../components/ui/Icon.astro';
-import { SITE } from '../../data/site';
+import { audit } from '../../lib/audit';
+import { formatDate, formatPrice, ORDER_STATUS_LABELS } from '../../lib/format';
+import { afterStatusChange, CUSTOMER_CANCELLABLE, findOrderByToken, setOrderStatus } from '../../lib/orders';
+import { listPaymentsForOrder, ONLINE_METHODS, onlinePaymentAvailable } from '../../lib/payments/service';
+import { rateLimit } from '../../lib/server';
+import { activeZones, contactLinks, enabledPaymentMethods, getSettings } from '../../lib/settings';
+import { clean } from '../../lib/validation';
+
+const number = Astro.url.searchParams.get('n') ?? '';
+const token = Astro.url.searchParams.get('t') ?? '';
+let detail = await findOrderByToken(number, token);
+const settings = await getSettings();
+const links = contactLinks(settings.contact);
+let error = '';
+
+if (detail && Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  if (form.get('action') === 'cancel') {
+    if (!(await rateLimit(`annulation:${Astro.clientAddress}`, 5))) error = 'Trop de tentatives. Réessayez dans une minute.';
+    else if (!CUSTOMER_CANCELLABLE.includes(detail.row.status)) error = 'Cette commande est déjà en préparation : contactez-nous pour la modifier.';
+    else if (detail.row.paidAt) error = 'Cette commande est déjà payée : contactez le service client, qui organisera le remboursement.';
+    else {
+      const reason = clean(form.get('reason'), 300);
+      const ok = await setOrderStatus(detail.row.id, 'annulee', { source: 'client', from: detail.row.status, note: reason ? `Annulée par le client : ${reason}` : 'Annulée par le client' });
+      if (ok) {
+        await audit({ action: 'commande-annulee-client', target: detail.row.number, ipAddress: Astro.clientAddress });
+        await afterStatusChange(detail.row.number);
+        return Astro.redirect(`${Astro.url.pathname}?n=${encodeURIComponent(number)}&t=${token}&ok=annulee`, 303);
+      }
+      error = 'La commande a changé de statut entre-temps. Actualisez la page.';
+    }
+  }
+  detail = await findOrderByToken(number, token);
+}
+
+const row = detail?.row;
+const payments = row ? await listPaymentsForOrder(row.id) : [];
+const lastPayment = payments[0];
+const awaitingOnline = !!row && row.status === 'en-attente-paiement' && ONLINE_METHODS.includes(row.paymentMethod);
+const canPay = awaitingOnline && onlinePaymentAvailable();
+const zone = row && activeZones(settings).find((z) => z.id === row.deliveryZone);
+const method = row && enabledPaymentMethods(settings).find((m) => m.id === row.paymentMethod);
+const paymentResult = Astro.url.searchParams.get('paiement');
+const ok = Astro.url.searchParams.get('ok');
+Astro.response.headers.set('Cache-Control', 'no-store');
+// same-origin : le lien secret n'est jamais transmis à un autre site, et les formulaires de la page
+// gardent un en-tête Origin valide (no-referrer enverrait « Origin: null », refusé par la protection CSRF).
+Astro.response.headers.set('Referrer-Policy', 'same-origin');
 ---
 
-<Layout title="Commande confirmée" noindex>
+<Layout title="Ma commande" noindex>
   <div class="container-page max-w-3xl py-12">
-    <div class="card p-8 text-center" data-missing hidden>
-      <h1 class="text-2xl">Aucune commande récente</h1>
-      <p class="mt-2 text-muted">Si vous venez de commander, vérifiez votre e-mail ou contactez-nous avec votre numéro de commande.</p>
-      <div class="mt-6 flex justify-center gap-2">
-        <a href="/boutique" class="btn btn-primary">Retour à la boutique</a>
-        <a href="/contact" class="btn btn-secondary">Nous contacter</a>
-      </div>
-    </div>
+    {
+      !row ? (
+        <div class="card p-8 text-center">
+          <h1 class="text-2xl">Commande introuvable</h1>
+          <p class="mt-2 text-muted">Le lien est incomplet ou a expiré. Retrouvez votre commande avec son numéro et votre téléphone.</p>
+          <div class="mt-6 flex justify-center gap-2">
+            <a href="/suivi" class="btn btn-primary">Suivre une commande</a>
+            <a href="/contact" class="btn btn-secondary">Nous contacter</a>
+          </div>
+        </div>
+      ) : (
+        <div>
+          <div class="text-center">
+            <span class:list={['mx-auto grid size-16 place-items-center rounded-full', row.status === 'annulee' ? 'bg-danger-50 text-danger' : 'bg-brand-100 text-brand-700']}>
+              <Icon name={row.status === 'annulee' ? 'close' : 'check'} size={32} />
+            </span>
+            <h1 class="mt-5 text-3xl sm:text-4xl">
+              {row.status === 'annulee' ? 'Commande annulée' : awaitingOnline ? 'Commande enregistrée' : 'Merci, votre commande est confirmée !'}
+            </h1>
+            <p class="mt-3 text-muted">Numéro de commande</p>
+            <p class="mt-1 text-2xl font-extrabold tracking-wider text-brand-900">{row.number}</p>
+            <p class="mt-2 text-sm text-muted">Conservez ce numéro : il vous sera demandé pour tout suivi. Ajoutez cette page à vos favoris pour y revenir.</p>
+          </div>
 
-    <div data-order hidden>
-      <div class="text-center">
-        <span class="mx-auto grid size-16 place-items-center rounded-full bg-brand-100 text-brand-700"><Icon name="check" size={32} /></span>
-        <h1 class="mt-5 text-3xl sm:text-4xl">Merci, votre commande est enregistrée !</h1>
-        <p class="mt-3 text-muted">Numéro de commande</p>
-        <p class="mt-1 text-2xl font-extrabold tracking-wider text-brand-900" data-number></p>
-        <p class="mt-2 text-sm text-muted">Conservez ce numéro : il vous sera demandé pour tout suivi.</p>
-      </div>
+          {ok === 'annulee' && <p class="alert alert-success mt-8">Votre commande a bien été annulée.</p>}
+          {error && <p class="alert alert-error mt-8" role="alert">{error}</p>}
+          {paymentResult === 'reussi' && <p class="alert alert-success mt-8">Paiement reçu. Merci ! Votre commande part en préparation.</p>}
+          {paymentResult === 'echoue' && <p class="alert alert-error mt-8" role="alert">Le paiement n'a pas abouti. Aucun montant n'a été débité : vous pouvez réessayer.</p>}
+          {paymentResult === 'en-attente' && <p class="alert alert-info mt-8">Paiement en cours de vérification. Cette page se met à jour dès sa confirmation.</p>}
 
-      <div class="alert-info alert mt-8" data-payment-note hidden>
-        Paiement en attente : notre prestataire de paiement sera branché à cette étape. Pour ce prototype, un conseiller vous contactera pour finaliser le paiement.
-      </div>
+          {
+            awaitingOnline && (
+              <section class="card mt-8 border-accent-500 p-6" aria-labelledby="titre-paiement">
+                <h2 id="titre-paiement" class="text-xl">Paiement à finaliser : {formatPrice(row.total)}</h2>
+                {canPay ? (
+                  <form method="post" action="/commande/paiement" class="mt-4">
+                    <input type="hidden" name="n" value={row.number} />
+                    <input type="hidden" name="t" value={token} />
+                    <button type="submit" class="btn btn-accent w-full !py-4 !text-base sm:w-auto">
+                      {lastPayment?.status === 'echoue' || lastPayment?.status === 'annule' ? 'Réessayer le paiement' : 'Payer maintenant'}
+                    </button>
+                    <p class="mt-2 text-xs text-muted">Paiement sécurisé par notre prestataire ({method?.label}).</p>
+                  </form>
+                ) : (
+                  <p class="mt-3 text-sm">Un conseiller vous contacte au <strong>{row.customer.phone}</strong> pour vous envoyer le lien de paiement.</p>
+                )}
+              </section>
+            )
+          }
 
-      <section class="card mt-8 p-6" aria-labelledby="recap">
-        <h2 id="recap" class="text-xl">Récapitulatif</h2>
-        <ul class="mt-4 divide-y divide-line text-sm" data-lines></ul>
-        <dl class="mt-4 space-y-1 border-t border-line pt-4 text-sm">
-          <div class="flex justify-between"><dt>Sous-total</dt><dd data-subtotal></dd></div>
-          <div class="flex justify-between" data-discount-row><dt>Remise</dt><dd data-discount></dd></div>
-          <div class="flex justify-between"><dt>Livraison</dt><dd data-delivery></dd></div>
-          <div class="flex justify-between pt-2 text-lg font-extrabold text-brand-900"><dt>Total</dt><dd data-total></dd></div>
-        </dl>
-      </section>
+          <section class="card mt-6 p-6" aria-labelledby="titre-suivi">
+            <h2 id="titre-suivi" class="text-xl">Suivi</h2>
+            <div class="mt-4">
+              <OrderProgress status={row.status} />
+            </div>
+            <ul class="mt-4 space-y-1 text-sm text-muted">
+              {detail!.events.map(({ event }) => (
+                <li>
+                  {event.createdAt.toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Africa/Lome' })} — {ORDER_STATUS_LABELS[event.status]}
+                </li>
+              ))}
+            </ul>
+          </section>
 
-      <section class="card mt-6 p-6" aria-labelledby="suite">
-        <h2 id="suite" class="text-xl">Et maintenant ?</h2>
-        <ol class="mt-4 space-y-4 text-sm">
-          <li class="flex gap-3"><span class="grid size-7 shrink-0 place-items-center rounded-full bg-brand-900 text-xs font-bold text-white">1</span><span>Vous recevez une confirmation par e-mail à <strong data-email></strong>.</span></li>
-          <li class="flex gap-3"><span class="grid size-7 shrink-0 place-items-center rounded-full bg-brand-900 text-xs font-bold text-white">2</span><span>Un conseiller vous appelle au <strong data-phone></strong> pour confirmer le créneau.</span></li>
-          <li class="flex gap-3"><span class="grid size-7 shrink-0 place-items-center rounded-full bg-brand-900 text-xs font-bold text-white">3</span><span>Votre commande est préparée puis livrée, ou prête au retrait au dépôt.</span></li>
-        </ol>
-      </section>
+          <section class="card mt-6 p-6" aria-labelledby="recap">
+            <h2 id="recap" class="text-xl">Récapitulatif</h2>
+            <ul class="mt-4 divide-y divide-line text-sm">
+              {detail!.lines.map((l) => (
+                <li class="flex justify-between gap-3 py-2">
+                  <span>
+                    {l.name} × {l.quantity}
+                  </span>
+                  <span class="font-semibold">{formatPrice(l.unitPrice * l.quantity)}</span>
+                </li>
+              ))}
+            </ul>
+            <dl class="mt-4 space-y-1 border-t border-line pt-4 text-sm">
+              <div class="flex justify-between"><dt>Sous-total</dt><dd>{formatPrice(row.subtotal)}</dd></div>
+              {row.discount > 0 && <div class="flex justify-between"><dt>Remise {row.promoCode && `(${row.promoCode})`}</dt><dd>− {formatPrice(row.discount)}</dd></div>}
+              <div class="flex justify-between"><dt>Livraison</dt><dd>{row.delivery ? formatPrice(row.delivery) : 'Gratuite'}</dd></div>
+              <div class="flex justify-between pt-2 text-lg font-extrabold text-brand-900"><dt>Total</dt><dd>{formatPrice(row.total)}</dd></div>
+            </dl>
+            <dl class="mt-4 grid gap-3 border-t border-line pt-4 text-sm sm:grid-cols-2">
+              <div><dt class="text-muted">Livraison</dt><dd class="font-semibold">{zone?.label ?? row.deliveryZone}</dd>{row.deliveryZone !== 'retrait' && <dd>{row.customer.address}, {row.customer.city}</dd>}</div>
+              <div><dt class="text-muted">Paiement</dt><dd class="font-semibold">{method?.label ?? row.paymentMethod}</dd>{row.paidAt && <dd>Payé le {formatDate(row.paidAt)}</dd>}</div>
+            </dl>
+          </section>
 
-      <div class="mt-8 flex flex-col justify-center gap-2 sm:flex-row">
-        <a href="/boutique" class="btn btn-primary">Continuer mes achats</a>
-        <a href="/suivi" class="btn btn-secondary">Suivre ma commande</a>
-        <a href={SITE.contact.whatsapp} target="_blank" rel="noopener" class="btn btn-secondary"><Icon name="whatsapp" size={18} />Suivre sur WhatsApp</a>
-      </div>
-    </div>
+          {
+            row.status !== 'annulee' && (
+              <section class="card mt-6 p-6" aria-labelledby="suite">
+                <h2 id="suite" class="text-xl">Et maintenant ?</h2>
+                <ol class="mt-4 space-y-4 text-sm">
+                  <li class="flex gap-3"><span class="grid size-7 shrink-0 place-items-center rounded-full bg-brand-900 text-xs font-bold text-white">1</span><span>Vous recevez une confirmation par e-mail à <strong>{row.customer.email}</strong>.</span></li>
+                  <li class="flex gap-3"><span class="grid size-7 shrink-0 place-items-center rounded-full bg-brand-900 text-xs font-bold text-white">2</span><span>Un conseiller vous appelle au <strong>{row.customer.phone}</strong> pour confirmer le créneau.</span></li>
+                  <li class="flex gap-3"><span class="grid size-7 shrink-0 place-items-center rounded-full bg-brand-900 text-xs font-bold text-white">3</span><span>Votre commande est préparée puis livrée, ou prête au retrait au dépôt.</span></li>
+                </ol>
+              </section>
+            )
+          }
+
+          {
+            CUSTOMER_CANCELLABLE.includes(row.status) && !row.paidAt && (
+              <details class="card mt-6 p-6">
+                <summary class="cursor-pointer font-bold text-danger">Annuler cette commande</summary>
+                <form method="post" class="mt-4 space-y-3">
+                  <input type="hidden" name="action" value="cancel" />
+                  <label class="block">
+                    <span class="label">Motif <span class="font-normal text-muted">(facultatif)</span></span>
+                    <input name="reason" maxlength="300" class="input" />
+                  </label>
+                  <button type="submit" class="btn btn-secondary !border-danger !text-danger">Confirmer l'annulation</button>
+                  <p class="text-xs text-muted">Possible sans frais tant que la préparation n'a pas commencé (voir nos <a href="/legal/cgv" class="underline">CGV</a>).</p>
+                </form>
+              </details>
+            )
+          }
+
+          <div class="mt-8 flex flex-col justify-center gap-2 sm:flex-row">
+            <a href="/boutique" class="btn btn-primary">Continuer mes achats</a>
+            <a href={`/contact?sujet=reclamation&commande=${encodeURIComponent(row.number)}`} class="btn btn-secondary">Signaler un problème</a>
+            <a href={links.whatsappHref} target="_blank" rel="noopener" class="btn btn-secondary"><Icon name="whatsapp" size={18} />WhatsApp</a>
+          </div>
+        </div>
+      )
+    }
   </div>
 </Layout>
 
+{
+  paymentResult === 'en-attente' && row?.status === 'en-attente-paiement' && lastPayment && (
+    <div hidden data-poll={`/commande/paiement?n=${encodeURIComponent(row.number)}&t=${token}&p=${lastPayment.id}`} />
+  )
+}
+
 <script>
-  import { formatPrice } from '../../lib/format';
-
-  let order: any = null;
-  try {
-    order = JSON.parse(sessionStorage.getItem('afs-last-order') ?? 'null');
-  } catch {}
-
-  const $ = (sel: string) => document.querySelector<HTMLElement>(sel)!;
-  if (!order) {
-    $('[data-missing]').hidden = false;
+  // Paiement en cours de vérification : nouvelle vérification toutes les 10 s (2 minutes au plus).
+  const poll = document.querySelector<HTMLElement>('[data-poll]');
+  if (poll) {
+    let tries = 0;
+    try {
+      tries = Number(sessionStorage.getItem('afs-pay-poll') ?? 0);
+      sessionStorage.setItem('afs-pay-poll', String(tries + 1));
+    } catch {}
+    if (tries < 12) setTimeout(() => (location.href = poll.dataset.poll!), 10_000);
   } else {
-    $('[data-order]').hidden = false;
-    $('[data-number]').textContent = order.number;
-    $('[data-email]').textContent = order.customer.email;
-    $('[data-phone]').textContent = order.customer.phone;
-    $('[data-payment-note]').hidden = order.status !== 'en-attente-paiement';
-    $('[data-lines]').replaceChildren(
-      ...order.lines.map((l: any) => {
-        const li = document.createElement('li');
-        li.className = 'flex justify-between gap-3 py-2';
-        const a = document.createElement('span');
-        a.textContent = `${l.name} × ${l.quantity}`;
-        const b = document.createElement('span');
-        b.className = 'font-semibold';
-        b.textContent = formatPrice(l.unitPrice * l.quantity);
-        li.append(a, b);
-        return li;
-      }),
-    );
-    $('[data-subtotal]').textContent = formatPrice(order.totals.subtotal);
-    $('[data-discount-row]').hidden = order.totals.discount === 0;
-    $('[data-discount]').textContent = `− ${formatPrice(order.totals.discount)}`;
-    $('[data-delivery]').textContent = order.totals.delivery ? formatPrice(order.totals.delivery) : 'Gratuite';
-    $('[data-total]').textContent = formatPrice(order.totals.total);
+    try {
+      sessionStorage.removeItem('afs-pay-poll');
+    } catch {}
   }
 </script>

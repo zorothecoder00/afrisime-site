@@ -1,0 +1,32 @@
+---
+// Champs d'une campagne (création et modification).
+import type { campaigns } from '../../db/schema';
+import { toInputDateTime } from '../../lib/admin';
+import { imageUrl } from '../../lib/media';
+import { PLACEMENTS } from '../../lib/promotions';
+
+interface Props {
+  k?: typeof campaigns.$inferSelect;
+}
+const { k } = Astro.props;
+---
+
+<label class="block sm:col-span-2"><span class="label">Titre</span><input name="title" value={k?.title ?? ''} required maxlength="120" class="input !py-2" /></label>
+<label class="block sm:col-span-2">
+  <span class="label">Emplacement</span>
+  <select name="placement" class="input !py-2">
+    {Object.entries(PLACEMENTS).map(([id, label]) => <option value={id} selected={id === k?.placement}>{label}</option>)}
+  </select>
+</label>
+<label class="block sm:col-span-4"><span class="label">Texte</span><textarea name="text" rows="2" maxlength="400" class="input">{k?.text ?? ''}</textarea></label>
+<label class="block"><span class="label">Bouton : libellé</span><input name="ctaLabel" value={k?.ctaLabel ?? ''} maxlength="60" class="input !py-2" /></label>
+<label class="block"><span class="label">Bouton : lien</span><input name="ctaHref" value={k?.ctaHref ?? ''} class="input !py-2" placeholder="/boutique?badge=promotion" /></label>
+<label class="block"><span class="label">Début</span><input type="datetime-local" name="startsAt" value={toInputDateTime(k?.startsAt)} class="input !py-2" /></label>
+<label class="block"><span class="label">Fin</span><input type="datetime-local" name="endsAt" value={toInputDateTime(k?.endsAt)} class="input !py-2" /></label>
+<label class="block sm:col-span-2">
+  <span class="label">Image (accueil)</span>
+  {k?.imageId && <img src={imageUrl(k.imageId, 'mini')} alt="" class="mb-2 h-16 rounded" />}
+  <input type="file" name="image" accept="image/*" class="input !py-1.5" />
+</label>
+<label class="block"><span class="label">Ordre</span><input name="position" value={k?.position ?? 0} inputmode="numeric" class="input !py-2" /></label>
+<label class="flex items-end gap-2 pb-2 text-sm"><input type="checkbox" name="active" checked={k ? k.active : true} />Active</label>

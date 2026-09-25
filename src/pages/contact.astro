@@ -2,34 +2,37 @@
 import Layout from '../layouts/Layout.astro';
 import PageHero from '../components/PageHero.astro';
 import Field from '../components/ui/Field.astro';
+import FileField from '../components/ui/FileField.astro';
 import Icon from '../components/ui/Icon.astro';
-import { SITE } from '../data/site';
+import { contactLinks, getSettings } from '../lib/settings';
+const { contact } = await getSettings();
+const links = contactLinks(contact);
 
 const subjects = ['Question sur une commande', 'Recherche d\'un produit', 'Demande professionnelle (B2B)', 'Partenariat / fournisseur', 'Réclamation', 'Presse / média', 'Autre'];
 const mapSrc = `https://www.openstreetmap.org/export/embed.html?bbox=1.18%2C6.11%2C1.27%2C6.17&layer=mapnik`;
 ---
 
-<Layout title="Contact" description={`Contactez AfriSime à Lomé : ${SITE.contact.phone}, WhatsApp, e-mail, formulaire et plan d'accès.`}>
+<Layout title="Contact" description={`Contactez AfriSime à Lomé : ${contact.phone}, WhatsApp, e-mail, formulaire et plan d'accès.`}>
   <PageHero eyebrow="Contact" title="Parlons-en" intro="Une question, une commande, un projet ? Notre équipe vous répond du lundi au samedi." breadcrumbs={[{ label: 'Contact' }]} />
 
   <section class="section">
     <div class="container-page grid gap-10 lg:grid-cols-[1fr_1.4fr]">
       <div class="space-y-4">
-        <a href={SITE.contact.phoneHref} class="card flex items-center gap-4 p-5 hover:border-brand-600">
+        <a href={links.phoneHref} class="card flex items-center gap-4 p-5 hover:border-brand-600">
           <span class="grid size-12 place-items-center rounded-xl bg-brand-100 text-brand-700"><Icon name="phone" /></span>
-          <span><span class="block text-sm text-muted">Téléphone</span><strong class="text-brand-900">{SITE.contact.phone}</strong></span>
+          <span><span class="block text-sm text-muted">Téléphone</span><strong class="text-brand-900">{contact.phone}</strong></span>
         </a>
-        <a href={SITE.contact.whatsapp} target="_blank" rel="noopener" class="card flex items-center gap-4 p-5 hover:border-brand-600">
+        <a href={links.whatsappHref} target="_blank" rel="noopener" class="card flex items-center gap-4 p-5 hover:border-brand-600">
           <span class="grid size-12 place-items-center rounded-xl bg-brand-100 text-brand-700"><Icon name="whatsapp" /></span>
           <span><span class="block text-sm text-muted">WhatsApp</span><strong class="text-brand-900">Écrivez-nous</strong></span>
         </a>
-        <a href={`mailto:${SITE.contact.email}`} class="card flex items-center gap-4 p-5 hover:border-brand-600">
+        <a href={`mailto:${contact.email}`} class="card flex items-center gap-4 p-5 hover:border-brand-600">
           <span class="grid size-12 place-items-center rounded-xl bg-brand-100 text-brand-700"><Icon name="mail" /></span>
-          <span><span class="block text-sm text-muted">E-mail</span><strong class="text-brand-900">{SITE.contact.email}</strong></span>
+          <span><span class="block text-sm text-muted">E-mail</span><strong class="text-brand-900">{contact.email}</strong></span>
         </a>
         <div class="card flex items-center gap-4 p-5">
           <span class="grid size-12 place-items-center rounded-xl bg-brand-100 text-brand-700"><Icon name="pin" /></span>
-          <span><span class="block text-sm text-muted">Dépôt principal</span><strong class="text-brand-900">{SITE.contact.address}</strong><span class="block text-sm text-muted">{SITE.contact.hours}</span></span>
+          <span><span class="block text-sm text-muted">Dépôt principal</span><strong class="text-brand-900">{contact.address}</strong><span class="block text-sm text-muted">{contact.hours}</span></span>
         </div>
         <iframe
           title="Plan d'accès au dépôt AfriSime à Lomé"
@@ -51,6 +54,7 @@ const mapSrc = `https://www.openstreetmap.org/export/embed.html?bbox=1.18%2C6.11
         <Field name="sujet" label="Sujet" required options={subjects} />
         <Field name="commande" label="Numéro de commande" placeholder="AFS-…" hint="Si votre demande concerne une commande." class="sm:col-span-2" />
         <Field name="need" label="Message" required textarea class="sm:col-span-2" />
+        <FileField label="Photos ou documents" hint="Utile pour une réclamation (produit abîmé, erreur de livraison). PDF, JPG ou PNG, 5 Mo max." class="sm:col-span-2" />
 
         <div class="sm:col-span-2">
           <label class="flex items-start gap-2 text-sm">
@@ -75,4 +79,12 @@ const mapSrc = `https://www.openstreetmap.org/export/embed.html?bbox=1.18%2C6.11
   const message = document.querySelector<HTMLTextAreaElement>('textarea[name="need"]');
   if (params.get('sujet') === 'produit' && subject) subject.value = "Recherche d'un produit";
   if (params.get('message') && message) message.value = params.get('message')!.slice(0, 500);
+  const order = document.querySelector<HTMLInputElement>('input[name="commande"]');
+  if (params.get('commande') && order) order.value = params.get('commande')!.slice(0, 40);
+  if (params.get('sujet') === 'reclamation' && subject) subject.value = 'Réclamation';
+  // Une réclamation est suivie par le service client comme un lead de type « reclamation ».
+  const type = subject!.form!.querySelector<HTMLInputElement>('input[name="type"]')!;
+  const syncType = () => (type.value = subject?.value === 'Réclamation' ? 'reclamation' : 'contact');
+  subject?.addEventListener('change', syncType);
+  syncType();
 </script>

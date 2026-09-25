@@ -1,0 +1,26 @@
+---
+// Champs d'un code promo (création et modification).
+import type { promoCodes } from '../../db/schema';
+import { toInputDateTime } from '../../lib/admin';
+
+interface Props {
+  c?: typeof promoCodes.$inferSelect;
+}
+const { c } = Astro.props;
+---
+
+<label class="block sm:col-span-3"><span class="label">Description (affichée au client)</span><input name="description" value={c?.description ?? ''} maxlength="200" class="input !py-2" /></label>
+<label class="block">
+  <span class="label">Type</span>
+  <select name="kind" class="input !py-2">
+    <option value="pourcentage" selected={c?.kind !== 'montant'}>Pourcentage</option>
+    <option value="montant" selected={c?.kind === 'montant'}>Montant (FCFA)</option>
+  </select>
+</label>
+<label class="block"><span class="label">Valeur</span><input name="value" value={c?.value ?? ''} required inputmode="numeric" class="input !py-2" /></label>
+<label class="block"><span class="label">Remise maximum (FCFA)</span><input name="maxDiscount" value={c?.maxDiscount ?? ''} inputmode="numeric" class="input !py-2" /></label>
+<label class="block"><span class="label">Achat minimum (FCFA)</span><input name="minSubtotal" value={c?.minSubtotal ?? ''} inputmode="numeric" class="input !py-2" /></label>
+<label class="block"><span class="label">Utilisations max.</span><input name="usageLimit" value={c?.usageLimit ?? ''} inputmode="numeric" class="input !py-2" placeholder="Illimité" /></label>
+<label class="block"><span class="label">Début</span><input type="datetime-local" name="startsAt" value={toInputDateTime(c?.startsAt)} class="input !py-2" /></label>
+<label class="block"><span class="label">Fin</span><input type="datetime-local" name="endsAt" value={toInputDateTime(c?.endsAt)} class="input !py-2" /></label>
+<label class="flex items-end gap-2 pb-2 text-sm"><input type="checkbox" name="active" checked={c ? c.active : true} />Actif</label>

@@ -1,0 +1,25 @@
+---
+// Champ « documents joints » des formulaires de demande (PDF ou images, 5 Mo max chacun).
+interface Props {
+  label: string;
+  hint?: string;
+  class?: string;
+}
+const { label, hint = 'PDF, JPG ou PNG · 3 fichiers maximum · 5 Mo chacun.', class: className } = Astro.props;
+const id = `f-documents-${Math.random().toString(36).slice(2, 7)}`;
+---
+
+<div class={className}>
+  <label for={id} class="label">{label} <span class="font-normal text-muted">(facultatif)</span></label>
+  <input
+    id={id}
+    name="documents"
+    type="file"
+    multiple
+    accept="application/pdf,image/jpeg,image/png,image/webp"
+    class="input file:mr-3 file:rounded-lg file:border-0 file:bg-brand-100 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-brand-800"
+    aria-describedby={`${id}-hint ${id}-err`}
+  />
+  <p id={`${id}-hint`} class="hint">{hint}</p>
+  <p id={`${id}-err`} class="field-error" data-error-for="documents" hidden aria-live="polite"></p>
+</div>

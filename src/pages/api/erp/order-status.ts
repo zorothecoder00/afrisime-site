@@ -6,31 +6,20 @@
 //
 // L'ERP fait foi : tous les statuts sont acceptés, sans les règles d'enchaînement du back-office.
 import type { APIRoute } from 'astro';
-import { ERP_WEBHOOK_SECRET } from 'astro:env/server';
-import { timingSafeEqual } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import { orders } from '../../../db/schema';
 import { audit } from '../../../lib/audit';
 import { db } from '../../../lib/db';
+import { erpWebhookConfigured, isErpAuthorized } from '../../../lib/erp-auth';
 import { ORDER_STATUS_LABELS } from '../../../lib/format';
-import { notifyOrderStatus } from '../../../lib/integrations';
-import { setOrderStatus, type OrderStatus } from '../../../lib/orders';
+import { afterStatusChange, setOrderStatus, type OrderStatus } from '../../../lib/orders';
 import { json, rateLimit } from '../../../lib/server';
 import { clean } from '../../../lib/validation';
 
-export const prerender = false;
-
-function authorized(request: Request) {
-  if (!ERP_WEBHOOK_SECRET) return false;
-  const given = Buffer.from(request.headers.get('authorization')?.replace(/^Bearer\s+/i, '') ?? '');
-  const expected = Buffer.from(ERP_WEBHOOK_SECRET);
-  return given.length === expected.length && timingSafeEqual(given, expected);
-}
-
 export const POST: APIRoute = async ({ request, clientAddress }) => {
-  if (!ERP_WEBHOOK_SECRET) return json({ error: 'Webhook non configuré.' }, 503);
+  if (!erpWebhookConfigured()) return json({ error: 'Webhook non configuré.' }, 503);
   if (!(await rateLimit(`erp-webhook:${clientAddress}`, 120))) return json({ error: 'Trop de requêtes.' }, 429);
-  if (!authorized(request)) return json({ error: 'Non autorisé.' }, 401);
+  if (!isErpAuthorized(request)) return json({ error: 'Non autorisé.' }, 401);
 
   let body: Record<string, unknown>;
   try {
@@ -48,6 +37,6 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
 
   await setOrderStatus(order.id, status, { source: 'erp', note: clean(body.note, 500) });
   await audit({ action: 'commande-statut-erp', target: number, details: { from: order.status, to: status }, ipAddress: clientAddress });
-  await notifyOrderStatus({ number, phone: order.customer.phone, status }).catch(console.error);
+  await afterStatusChange(number);
   return json({ ok: true });
 };

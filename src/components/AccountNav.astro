@@ -1,0 +1,31 @@
+---
+// Navigation de l'espace client.
+interface Props {
+  current: 'commandes' | 'profil' | 'adresses' | 'favoris' | 'securite';
+}
+const { current } = Astro.props;
+const items = [
+  { id: 'commandes', label: 'Mes commandes', href: '/compte' },
+  { id: 'favoris', label: 'Mes favoris', href: '/compte/favoris' },
+  { id: 'adresses', label: 'Mes adresses', href: '/compte/adresses' },
+  { id: 'profil', label: 'Mon profil', href: '/compte/profil' },
+  { id: 'securite', label: 'Sécurité', href: '/compte/securite' },
+];
+---
+
+<nav aria-label="Espace client" class="flex gap-1 overflow-x-auto border-b border-line">
+  {
+    items.map((item) => (
+      <a
+        href={item.href}
+        class:list={[
+          'whitespace-nowrap border-b-2 px-4 py-3 text-sm font-semibold',
+          item.id === current ? 'border-brand-700 text-brand-900' : 'border-transparent text-muted hover:text-brand-700',
+        ]}
+        aria-current={item.id === current ? 'page' : undefined}
+      >
+        {item.label}
+      </a>
+    ))
+  }
+</nav>

@@ -16,6 +16,16 @@ const nav = [
   { label: 'Tableau de bord', href: '/admin', show: true },
   { label: 'Commandes', href: '/admin/commandes', show: can(me.role, { order: ['read'] }) },
   { label: 'Leads', href: '/admin/leads', show: can(me.role, { lead: ['read'] }) },
+  { label: 'Clients & équipe', href: '/admin/utilisateurs', show: can(me.role, { pro: ['validate'] }) || can(me.role, { user: ['list'] }) },
+  { label: 'Catalogue', href: '/admin/catalogue', show: can(me.role, { catalog: ['read'] }) },
+  { label: 'Promotions', href: '/admin/promotions', show: can(me.role, { catalog: ['update'] }) },
+  { label: 'Contenus', href: '/admin/contenus', show: can(me.role, { content: ['read'] }) },
+  { label: 'FAQ', href: '/admin/faq', show: can(me.role, { content: ['update'] }) },
+  { label: 'Médias', href: '/admin/medias', show: can(me.role, { content: ['update'] }) || can(me.role, { catalog: ['update'] }) },
+  { label: 'SEO & menus', href: '/admin/seo', show: can(me.role, { seo: ['update'] }) },
+  { label: 'Paramètres', href: '/admin/parametres', show: can(me.role, { settings: ['update'] }) || can(me.role, { catalog: ['update'] }) },
+  { label: 'Rapports', href: '/admin/rapports', show: can(me.role, { report: ['read'] }) },
+  { label: 'Journal', href: '/admin/journal', show: can(me.role, { audit: ['read'] }) },
 ].filter((item) => item.show);
 const isActive = (href: string) => (href === '/admin' ? path === '/admin' || path === '/admin/' : path.startsWith(href));
 ---
@@ -24,7 +34,10 @@ const isActive = (href: string) => (href === '/admin' ? path === '/admin' || pat
   <div class="border-b border-line bg-brand-950 text-white">
     <div class="container-page flex flex-wrap items-center justify-between gap-3 pt-5">
       <p class="text-xs font-bold uppercase tracking-[0.14em] text-brand-200">Back-office AfriSime</p>
-      <p class="text-sm text-brand-100">{me.name} · {ROLE_LABELS[me.role as RoleName]}</p>
+      <p class="text-sm text-brand-100">
+        {me.name} · {ROLE_LABELS[me.role as RoleName]} · <a href="/admin/aide" class="underline hover:text-white">Aide</a> ·
+        <a href="/" class="underline hover:text-white">Voir le site</a>
+      </p>
     </div>
     <nav aria-label="Navigation du back-office" class="container-page mt-3 flex gap-1 overflow-x-auto">
       {

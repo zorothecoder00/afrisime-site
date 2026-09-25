@@ -1,0 +1,79 @@
+---
+// Contenus : articles de la section Média (actualités, conseils, vidéos, événements, communiqués)
+// et pages (CGV, mentions légales…). Cycle : brouillon → à valider → publié / programmé → archivé.
+import { and, desc, eq, ne, type SQL } from 'drizzle-orm';
+import AdminLayout from '../../../components/AdminLayout.astro';
+import Tabs from '../../../components/admin/Tabs.astro';
+import { contents } from '../../../db/schema';
+import { deny } from '../../../lib/admin';
+import { CONTENT_STATUS_LABELS, isPublished } from '../../../lib/content';
+import { db } from '../../../lib/db';
+import { ARTICLE_TYPE_LABELS, formatDateTime } from '../../../lib/format';
+import { can } from '../../../lib/roles';
+
+const me = Astro.locals.user!;
+const denied = deny(me, { content: ['read'] });
+if (denied) return denied;
+const canEdit = can(me.role, { content: ['update'] });
+
+const pages = Astro.url.searchParams.get('type') === 'page';
+const statut = Astro.url.searchParams.get('statut') ?? '';
+const where: SQL[] = [pages ? eq(contents.type, 'page') : ne(contents.type, 'page')];
+if (statut) where.push(eq(contents.status, statut as keyof typeof CONTENT_STATUS_LABELS));
+const list = await db.select().from(contents).where(and(...where)).orderBy(desc(contents.updatedAt)).limit(200);
+const typeLabel = (t: string) => (t === 'page' ? 'Page' : (ARTICLE_TYPE_LABELS[t as keyof typeof ARTICLE_TYPE_LABELS] ?? t));
+const tone = { brouillon: 'badge-sur-commande', 'a-valider': 'badge-promotion', publie: 'badge-populaire', archive: 'badge-rupture' } as const;
+---
+
+<AdminLayout title="Contenus">
+  <Tabs items={[{ label: 'Articles & médias', href: '/admin/contenus' }, { label: 'Pages', href: '/admin/contenus?type=page' }]} />
+  {Astro.url.searchParams.get('ok') === 'supprime' && <p class="alert alert-success mb-4">Contenu supprimé.</p>}
+
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <form method="get" class="flex items-end gap-2">
+      {pages && <input type="hidden" name="type" value="page" />}
+      <label class="block">
+        <span class="label">Statut</span>
+        <select name="statut" class="input !py-2">
+          <option value="">Tous</option>
+          {Object.entries(CONTENT_STATUS_LABELS).map(([id, label]) => <option value={id} selected={id === statut}>{label}</option>)}
+        </select>
+      </label>
+      <button class="btn btn-secondary btn-sm">Filtrer</button>
+    </form>
+    {canEdit && <a href={`/admin/contenus/nouveau${pages ? '?type=page' : ''}`} class="btn btn-primary btn-sm">+ {pages ? 'Nouvelle page' : 'Nouveau contenu'}</a>}
+  </div>
+
+  <div class="card mt-4 overflow-x-auto">
+    <table class="w-full min-w-[680px] text-left text-sm">
+      <thead class="border-b border-line bg-canvas text-muted">
+        <tr>
+          <th class="px-4 py-3 font-semibold">Titre</th>
+          <th class="px-4 py-3 font-semibold">Type</th>
+          <th class="px-4 py-3 font-semibold">Statut</th>
+          <th class="px-4 py-3 font-semibold">Publication</th>
+          <th class="px-4 py-3 font-semibold">Modifié</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-line">
+        {list.length === 0 && <tr><td colspan="5" class="px-4 py-6 text-center text-muted">Aucun contenu.</td></tr>}
+        {
+          list.map((c) => (
+            <tr class="hover:bg-brand-50">
+              <td class="px-4 py-3">
+                <a href={`/admin/contenus/${c.id}`} class="font-semibold text-brand-800 underline">{c.title}</a>
+                <span class="block text-muted">/{c.type === 'page' ? 'legal' : 'media'}/{c.slug}</span>
+              </td>
+              <td class="px-4 py-3">{typeLabel(c.type)}</td>
+              <td class="px-4 py-3">
+                <span class={`badge ${tone[c.status]}`}>{c.status === 'publie' && !isPublished(c) ? 'Programmé' : CONTENT_STATUS_LABELS[c.status]}</span>
+              </td>
+              <td class="px-4 py-3">{c.publishedAt ? formatDateTime(c.publishedAt) : '—'}</td>
+              <td class="px-4 py-3">{formatDateTime(c.updatedAt)}</td>
+            </tr>
+          ))
+        }
+      </tbody>
+    </table>
+  </div>
+</AdminLayout>

@@ -7,7 +7,7 @@ import { admin, twoFactor } from 'better-auth/plugins';
 import * as schema from '../db/schema';
 import { audit } from './audit';
 import { db } from './db';
-import { sendPasswordResetLink } from './integrations';
+import { notifyPasswordReset } from './notifications';
 import { ac, roles } from './roles';
 import { SITE } from '../data/site';
 
@@ -21,7 +21,7 @@ export const auth = betterAuth({
     enabled: true,
     minPasswordLength: 10,
     revokeSessionsOnPasswordReset: true,
-    sendResetPassword: async ({ user, url }) => sendPasswordResetLink(user.email, url),
+    sendResetPassword: async ({ user, url }) => notifyPasswordReset(user.email, url),
   },
 
   user: {
@@ -29,6 +29,8 @@ export const auth = betterAuth({
       phone: { type: 'string', required: false },
       accountType: { type: 'string', required: false, defaultValue: 'particulier' },
       company: { type: 'string', required: false },
+      // Attribué par un commercial dans le back-office, jamais par le client lui-même.
+      proStatus: { type: 'string', required: false, defaultValue: 'aucun', input: false },
     },
   },
 
@@ -57,7 +59,12 @@ export const auth = betterAuth({
       create: {
         // Le type de compte vient du formulaire d'inscription : on n'accepte que les valeurs connues.
         before: async (data) => ({
-          data: { ...data, accountType: data.accountType === 'pro' ? 'pro' : 'particulier' },
+          data: {
+            ...data,
+            accountType: data.accountType === 'pro' ? 'pro' : 'particulier',
+            // Un compte pro est validé par un commercial avant d'accéder aux prix professionnels.
+            proStatus: data.accountType === 'pro' ? 'en-attente' : 'aucun',
+          },
         }),
       },
     },

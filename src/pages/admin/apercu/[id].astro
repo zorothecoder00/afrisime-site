@@ -1,0 +1,23 @@
+---
+// Prévisualisation d'un contenu, quel que soit son statut (équipe uniquement, jamais indexée ni mise en cache).
+import { eq } from 'drizzle-orm';
+import Layout from '../../../layouts/Layout.astro';
+import ArticleView from '../../../components/ArticleView.astro';
+import { contents } from '../../../db/schema';
+import { deny } from '../../../lib/admin';
+import { CONTENT_STATUS_LABELS } from '../../../lib/content';
+import { db } from '../../../lib/db';
+
+const denied = deny(Astro.locals.user, { content: ['read'] });
+if (denied) return denied;
+const [content] = await db.select().from(contents).where(eq(contents.id, Astro.params.id!)).limit(1);
+if (!content) return new Response(null, { status: 404 });
+const url = new URL(`/${content.type === 'page' ? 'legal' : 'media'}/${content.slug}`, Astro.site).href;
+---
+
+<Layout title={`Aperçu : ${content.title}`} noindex>
+  <div class="bg-accent-500 py-2 text-center text-sm font-bold text-brand-950">
+    Aperçu — statut : {CONTENT_STATUS_LABELS[content.status]} · <a href={`/admin/contenus/${content.id}`} class="underline">Retour à l'édition</a>
+  </div>
+  <ArticleView content={content} url={url} />
+</Layout>

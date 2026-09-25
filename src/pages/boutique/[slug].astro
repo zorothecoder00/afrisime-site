@@ -1,25 +1,35 @@
 ---
 import Layout from '../../layouts/Layout.astro';
+import FavoriteButton from '../../components/FavoriteButton.astro';
 import ProductCard from '../../components/ProductCard.astro';
 import Breadcrumbs from '../../components/ui/Breadcrumbs.astro';
 import Icon from '../../components/ui/Icon.astro';
-import ProductVisual from '../../components/ui/ProductVisual.astro';
-import { canBuyOnline, cartPayload, getCatalog, lowestVariant, type Product } from '../../lib/catalog';
+import ProductImage from '../../components/ui/ProductImage.astro';
+import { canBuyOnline, cartPayload, getCatalog, lowestVariant, productUrl, type Product } from '../../lib/catalog';
 import { BADGE_LABELS, STATUS_LABELS, formatPrice } from '../../lib/format';
-import { DELIVERY_ZONES, SITE } from '../../data/site';
+import { imageUrl } from '../../lib/media';
+import { findRedirect } from '../../lib/redirects';
+import { activeZones, contactLinks, getSettings } from '../../lib/settings';
+import { SITE } from '../../data/site';
 
-export async function getStaticPaths() {
-  const { products } = await getCatalog();
-  return products.map((product) => ({ params: { slug: product.id }, props: { product } }));
+const { products, categoryOf, brandOf } = await getCatalog();
+const product = products.find((x) => x.slug === Astro.params.slug);
+if (!product) {
+  // Adresse modifiée ou produit retiré : redirection si elle a été prévue, sinon page 404.
+  const redirect = await findRedirect(Astro.url.pathname);
+  if (redirect) return Astro.redirect(redirect.to, redirect.status as 301);
+  return new Response(null, { status: 404, statusText: 'Not Found' });
 }
 
-const { product } = Astro.props as { product: Product };
-const { products, categoryOf, brandOf } = await getCatalog();
+const settings = await getSettings();
+const links = contactLinks(settings.contact);
 const p = product.data;
 const category = categoryOf(product);
 const brand = brandOf(product);
 const defaultVariant = lowestVariant(product);
 const buyable = canBuyOnline(product);
+const hasProPrices = p.variants.some((v) => v.proPrice && v.proPrice < v.price);
+const cheapestDelivery = activeZones(settings).filter((z) => z.fee > 0).sort((a, b) => a.fee - b.fee)[0];
 
 const related = p.related
   .map((id) => products.find((x) => x.id === id))
@@ -34,6 +44,7 @@ const availability = {
   devis: 'https://schema.org/LimitedAvailability',
 }[p.status];
 
+const url = new URL(productUrl(product), Astro.site).href;
 const jsonLd = {
   '@context': 'https://schema.org',
   '@type': 'Product',
@@ -42,6 +53,7 @@ const jsonLd = {
   description: p.summary,
   category: category.data.name,
   brand: { '@type': 'Brand', name: brand.data.name },
+  image: p.images.map((i) => new URL(imageUrl(i.id), Astro.site).href),
   offers: p.variants.map((v) => ({
     '@type': 'Offer',
     sku: `${p.sku}-${v.id}`,
@@ -49,8 +61,17 @@ const jsonLd = {
     price: v.price,
     priceCurrency: SITE.currency,
     availability,
-    url: new URL(`/boutique/${product.id}`, Astro.site).href,
+    url,
   })),
+};
+const breadcrumbLd = {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: [
+    { '@type': 'ListItem', position: 1, name: 'Boutique', item: new URL('/boutique', Astro.site).href },
+    { '@type': 'ListItem', position: 2, name: category.data.name, item: new URL(`/boutique?categorie=${category.id}`, Astro.site).href },
+    { '@type': 'ListItem', position: 3, name: p.name, item: url },
+  ],
 };
 
 const whatsappText = encodeURIComponent(`Bonjour AfriSime, je souhaite des informations sur : ${p.name} (${p.sku}).`);
@@ -61,35 +82,91 @@ const statusStyle = {
   devis: 'bg-info-50 text-info border-info/20',
 }[p.status];
 const statusNote = {
-  disponible: 'En stock, prêt à être livré.',
+  disponible: p.stock !== null && p.stock > 0 && p.stock <= 10 ? `Plus que ${p.stock} en stock.` : 'En stock, prêt à être livré.',
   'sur-commande': 'Commandable en ligne : livraison sous 3 à 7 jours après confirmation.',
   indisponible: 'Réassort en cours. Contactez-nous pour connaître la date de retour.',
   devis: 'Ce produit est vendu sur devis selon les volumes.',
 }[p.status];
+const leadTime = p.leadTime || (p.status === 'sur-commande' ? '3 à 7 jours' : 'Sous 24 h à Lomé centre');
+const devisHref = `/b2b?produit=${encodeURIComponent(p.name)}#devis`;
 ---
 
-<Layout title={`${p.name} – ${brand.data.name}`} description={`${p.summary} Réf. ${p.sku}. À partir de ${formatPrice(defaultVariant.price)}.`} jsonLd={jsonLd}>
+<Layout
+  title={p.seoTitle || `${p.name} – ${brand.data.name}`}
+  description={p.seoDescription || `${p.summary} Réf. ${p.sku}. À partir de ${formatPrice(defaultVariant.price)}.`}
+  imageId={p.images[0]?.id}
+  jsonLd={[jsonLd, breadcrumbLd]}
+>
   <div class="container-page py-6">
     <Breadcrumbs items={[{ label: 'Boutique', href: '/boutique' }, { label: category.data.name, href: `/boutique?categorie=${category.id}` }, { label: p.name }]} />
   </div>
 
   <section class="container-page grid gap-8 pb-12 lg:grid-cols-2 lg:gap-14">
-    <!-- Visuel -->
-    <div>
+    <!-- Galerie -->
+    <div data-gallery>
       <div class="card group relative overflow-hidden">
-        <ProductVisual name={p.name} color={category.data.color} icon={category.data.icon} size="lg" class="aspect-square transition duration-500 group-hover:scale-110" />
-        <div class="absolute left-4 top-4 flex flex-wrap gap-1.5">
+        {
+          p.images.length > 0 ? (
+            <button type="button" class="block w-full cursor-zoom-in" data-zoom aria-label="Agrandir la photo">
+              <img
+                src={imageUrl(p.images[0].id)}
+                alt={p.images[0].alt || p.name}
+                width={p.images[0].width ?? undefined}
+                height={p.images[0].height ?? undefined}
+                fetchpriority="high"
+                class="aspect-square w-full bg-white object-contain"
+                data-main-image
+              />
+              <span class="absolute bottom-3 right-3 grid size-10 place-items-center rounded-full bg-white/90 text-brand-900 shadow">
+                <Icon name="zoom" size={18} />
+              </span>
+            </button>
+          ) : (
+            <ProductImage name={p.name} color={category.data.color} icon={category.data.icon} size="lg" eager class="aspect-square w-full" />
+          )
+        }
+        <div class="pointer-events-none absolute left-4 top-4 flex flex-wrap gap-1.5">
           {p.badges.map((b) => <span class={`badge badge-${b}`}>{BADGE_LABELS[b]}</span>)}
         </div>
       </div>
+      {
+        p.images.length > 1 && (
+          <ul class="mt-3 grid grid-cols-5 gap-2" aria-label="Autres photos">
+            {p.images.map((img, i) => (
+              <li>
+                <button
+                  type="button"
+                  class="card block w-full overflow-hidden aria-pressed:border-brand-700 aria-pressed:ring-2 aria-pressed:ring-brand-200"
+                  data-thumb={imageUrl(img.id)}
+                  data-alt={img.alt || p.name}
+                  aria-pressed={i === 0 ? 'true' : 'false'}
+                  aria-label={`Photo ${i + 1}`}
+                >
+                  <img src={imageUrl(img.id, 'mini')} alt="" loading="lazy" class="aspect-square w-full bg-white object-contain" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )
+      }
       <p class="mt-2 text-center text-xs text-muted">Photo non contractuelle</p>
+
+      <dialog class="m-auto max-h-[92vh] max-w-[92vw] rounded-2xl bg-white p-0 backdrop:bg-black/70" data-zoom-dialog aria-label="Photo agrandie">
+        <form method="dialog" class="absolute right-2 top-2">
+          <button class="grid size-10 place-items-center rounded-full bg-white text-brand-900 shadow" aria-label="Fermer"><Icon name="close" /></button>
+        </form>
+        <img src="" alt="" class="max-h-[90vh] w-auto object-contain" data-zoom-image />
+      </dialog>
     </div>
 
     <!-- Achat -->
     <div>
-      <p class="text-sm font-semibold text-muted">
-        <a href={`/boutique?marque=${brand.id}`} class="hover:text-brand-600">{brand.data.name}</a> · Réf. {p.sku}
-      </p>
+      <div class="flex items-start justify-between gap-3">
+        <p class="text-sm font-semibold text-muted">
+          <a href={`/boutique?marque=${brand.id}`} class="hover:text-brand-600">{brand.data.name}</a> · Réf. {p.sku}
+        </p>
+        <FavoriteButton productId={product.id} name={p.name} withLabel />
+      </div>
       <h1 class="mt-2 text-3xl sm:text-4xl">{p.name}</h1>
       <p class="mt-3 text-lg text-muted">{p.summary}</p>
 
@@ -126,12 +203,20 @@ const statusNote = {
 
         {
           p.status !== 'devis' && (
-            <p class="mt-6 flex items-baseline gap-3">
-              <span class="text-4xl font-extrabold text-brand-900" data-price-display>{formatPrice(defaultVariant.price)}</span>
-              <s class="text-lg text-muted" data-compare-display hidden={!defaultVariant.compareAtPrice}>
-                {defaultVariant.compareAtPrice ? formatPrice(defaultVariant.compareAtPrice) : ''}
-              </s>
-            </p>
+            <div class="mt-6">
+              <p class="flex items-baseline gap-3">
+                <span class="text-4xl font-extrabold text-brand-900" data-price-display>{formatPrice(defaultVariant.price)}</span>
+                <s class="text-lg text-muted" data-compare-display hidden={!defaultVariant.compareAtPrice}>
+                  {defaultVariant.compareAtPrice ? formatPrice(defaultVariant.compareAtPrice) : ''}
+                </s>
+              </p>
+              {hasProPrices && (
+                <p class="mt-2 inline-flex items-center gap-2 rounded-lg bg-brand-900 px-3 py-1.5 text-sm font-semibold text-white" data-pro-price hidden>
+                  <span class="badge badge-populaire">Pro</span>
+                  <span>Votre prix professionnel : <strong data-pro-price-value /></span>
+                </p>
+              )}
+            </div>
           )
         }
 
@@ -159,22 +244,22 @@ const statusNote = {
           }
           {
             !buyable && (
-              <a href={`/b2b?produit=${encodeURIComponent(p.name)}#devis`} class="btn btn-primary flex-1 !py-4 !text-base">
+              <a href={devisHref} class="btn btn-primary flex-1 !py-4 !text-base">
                 Demander un devis
               </a>
             )
           }
         </div>
         <div class="mt-3 flex flex-col gap-2 sm:flex-row">
-          <a href={`/b2b?produit=${encodeURIComponent(p.name)}#devis`} class="btn btn-secondary flex-1" hidden={!buyable}>Prix pro / gros volume</a>
-          <a href={`${SITE.contact.whatsapp}?text=${whatsappText}`} target="_blank" rel="noopener" class="btn btn-ghost flex-1">
+          <a href={devisHref} class="btn btn-secondary flex-1" hidden={!buyable}>Prix pro / gros volume</a>
+          <a href={`${links.whatsappHref}?text=${whatsappText}`} target="_blank" rel="noopener" class="btn btn-ghost flex-1">
             <Icon name="whatsapp" size={18} />Poser une question
           </a>
         </div>
       </form>
 
       <ul class="mt-8 grid gap-3 text-sm sm:grid-cols-3">
-        <li class="flex items-center gap-2"><Icon name="truck" size={18} class="text-brand-600" />Livraison dès {formatPrice(DELIVERY_ZONES[1].fee)}</li>
+        {cheapestDelivery && <li class="flex items-center gap-2"><Icon name="truck" size={18} class="text-brand-600" />Livraison dès {formatPrice(cheapestDelivery.fee)}</li>}
         <li class="flex items-center gap-2"><Icon name="store" size={18} class="text-brand-600" />Retrait gratuit au dépôt</li>
         <li class="flex items-center gap-2"><Icon name="shield" size={18} class="text-brand-600" />Paiement sécurisé</li>
       </ul>
@@ -186,12 +271,13 @@ const statusNote = {
     <div class="container-page grid gap-10 py-12 lg:grid-cols-[2fr_1fr]">
       <div>
         <h2 class="text-2xl">Description</h2>
-        <p class="mt-3 leading-relaxed text-ink">{p.description}</p>
+        {p.description.split(/\n{2,}/).map((para) => <p class="mt-3 leading-relaxed text-ink">{para}</p>)}
         <h2 class="mt-10 text-2xl">Caractéristiques</h2>
         <dl class="mt-4 divide-y divide-line rounded-2xl border border-line">
           <div class="grid grid-cols-2 gap-4 px-4 py-3 text-sm"><dt class="text-muted">Référence</dt><dd class="font-semibold">{p.sku}</dd></div>
           <div class="grid grid-cols-2 gap-4 px-4 py-3 text-sm"><dt class="text-muted">Catégorie</dt><dd class="font-semibold">{category.data.name}</dd></div>
           <div class="grid grid-cols-2 gap-4 px-4 py-3 text-sm"><dt class="text-muted">Marque</dt><dd class="font-semibold">{brand.data.name}</dd></div>
+          <div class="grid grid-cols-2 gap-4 px-4 py-3 text-sm"><dt class="text-muted">Origine</dt><dd class="font-semibold">{p.origin === 'local' ? 'Produit local' : 'Importé'}</dd></div>
           {p.features.map((f) => (
             <div class="grid grid-cols-2 gap-4 px-4 py-3 text-sm"><dt class="text-muted">{f.label}</dt><dd class="font-semibold">{f.value}</dd></div>
           ))}
@@ -206,13 +292,13 @@ const statusNote = {
           </div>
           <div class="card p-4">
             <dt class="text-muted">Délai indicatif</dt>
-            <dd class="mt-1 font-bold">{p.status === 'sur-commande' ? '3 à 7 jours' : 'Sous 24 h à Lomé centre'}</dd>
+            <dd class="mt-1 font-bold">{leadTime}</dd>
           </div>
         </dl>
         <div class="mt-4 rounded-2xl bg-brand-900 p-5 text-white">
           <p class="font-bold">Vous achetez en volume ?</p>
           <p class="mt-1 text-sm text-brand-200">Commerçants, restaurants, entreprises : obtenez un prix adapté à vos quantités.</p>
-          <a href={`/b2b?produit=${encodeURIComponent(p.name)}#devis`} class="btn btn-accent btn-sm mt-4">Demander un prix pro</a>
+          <a href={devisHref} class="btn btn-accent btn-sm mt-4">Demander un prix pro</a>
         </div>
       </aside>
     </div>
@@ -235,12 +321,25 @@ const statusNote = {
 <script>
   import { formatPrice } from '../../lib/format';
   import { track } from '../../scripts/analytics';
+  import { SYNC_STATE_KEY } from '../../scripts/cart';
 
   const form = document.querySelector<HTMLFormElement>('[data-product-form]')!;
   const priceEl = document.querySelector<HTMLElement>('[data-price-display]');
   const compareEl = document.querySelector<HTMLElement>('[data-compare-display]');
   const weightEl = document.querySelector<HTMLElement>('[data-weight-display]');
+  const proEl = document.querySelector<HTMLElement>('[data-pro-price]');
   const qty = document.getElementById('quantite') as HTMLInputElement | null;
+  const productId = form.dataset.productId!;
+  let proPrices: Record<string, number> | null = null;
+
+  const selectedVariant = () => form.querySelector<HTMLInputElement>('input[name="variante"]:checked')!;
+
+  function renderProPrice() {
+    if (!proEl) return;
+    const price = proPrices?.[selectedVariant().value];
+    proEl.hidden = !price;
+    if (price) proEl.querySelector('[data-pro-price-value]')!.textContent = formatPrice(price);
+  }
 
   form.addEventListener('change', (e) => {
     const input = e.target as HTMLInputElement;
@@ -251,6 +350,7 @@ const statusNote = {
       compareEl.textContent = input.dataset.compare ? formatPrice(Number(input.dataset.compare)) : '';
     }
     if (weightEl) weightEl.textContent = `${input.dataset.weight} kg`;
+    renderProPrice();
   });
 
   form.querySelectorAll<HTMLButtonElement>('[data-qty-step]').forEach((b) =>
@@ -260,5 +360,40 @@ const statusNote = {
     }),
   );
 
-  track('view_item', { item_id: form.dataset.productId });
+  // Prix professionnels : demandés seulement si le produit en a et que le visiteur a peut-être un compte.
+  let visitor = false;
+  try {
+    visitor = sessionStorage.getItem(SYNC_STATE_KEY) === 'visiteur';
+  } catch {}
+  if (proEl && !visitor) {
+    fetch(`/api/pro-prices?ids=${encodeURIComponent(productId)}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { prices: Record<string, Record<string, number>> } | null) => {
+        proPrices = data?.prices[productId] ?? null;
+        renderProPrice();
+      })
+      .catch(() => {});
+  }
+
+  // Galerie : vignettes et agrandissement.
+  const main = document.querySelector<HTMLImageElement>('[data-main-image]');
+  const dialog = document.querySelector<HTMLDialogElement>('[data-zoom-dialog]')!;
+  const zoomImage = dialog.querySelector<HTMLImageElement>('[data-zoom-image]')!;
+  document.querySelectorAll<HTMLButtonElement>('[data-thumb]').forEach((b) =>
+    b.addEventListener('click', () => {
+      if (!main) return;
+      main.src = b.dataset.thumb!;
+      main.alt = b.dataset.alt!;
+      document.querySelectorAll('[data-thumb]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    }),
+  );
+  document.querySelector('[data-zoom]')?.addEventListener('click', () => {
+    if (!main) return;
+    zoomImage.src = main.src;
+    zoomImage.alt = main.alt;
+    dialog.showModal();
+  });
+  dialog.addEventListener('click', (e) => e.target === dialog && dialog.close());
+
+  track('view_item', { item_id: productId });
 </script>

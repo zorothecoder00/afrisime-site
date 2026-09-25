@@ -1,0 +1,37 @@
+---
+// Paiement en ligne d'une commande.
+//   POST (n, t)     : démarre ou relance le paiement puis redirige vers la page du prestataire.
+//   GET (n, t, p)   : retour du prestataire. L'état est relu chez lui (jamais déduit de l'URL),
+//                     puis le client revient sur la page de sa commande.
+import { findOrderByToken } from '../../../lib/orders';
+import { findPayment, PaymentError, refreshPayment, startPayment } from '../../../lib/payments/service';
+import { rateLimit } from '../../../lib/server';
+
+Astro.response.headers.set('Cache-Control', 'no-store');
+const back = (number: string, token: string, extra = '') => `/commande/confirmation?n=${encodeURIComponent(number)}&t=${token}${extra}`;
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const number = String(form.get('n') ?? '');
+  const token = String(form.get('t') ?? '');
+  const detail = await findOrderByToken(number, token);
+  if (!detail) return Astro.redirect('/suivi', 303);
+  if (!(await rateLimit(`paiement:${Astro.clientAddress}`, 10))) return Astro.redirect(back(number, token, '&paiement=echoue'), 303);
+  try {
+    return Astro.redirect(await startPayment(detail.row), 303);
+  } catch (err) {
+    if (!(err instanceof PaymentError)) console.error(err);
+    return Astro.redirect(back(number, token, '&paiement=echoue'), 303);
+  }
+}
+
+const number = Astro.url.searchParams.get('n') ?? '';
+const token = Astro.url.searchParams.get('t') ?? '';
+const detail = await findOrderByToken(number, token);
+if (!detail) return Astro.redirect('/suivi');
+const payment = await findPayment(Astro.url.searchParams.get('p') ?? '');
+if (!payment || payment.orderId !== detail.row.id) return Astro.redirect(back(number, token));
+const state = await refreshPayment(payment);
+const result = state === 'reussi' ? 'reussi' : state === 'en-attente' ? 'en-attente' : 'echoue';
+return Astro.redirect(back(number, token, `&paiement=${result}`));
+---

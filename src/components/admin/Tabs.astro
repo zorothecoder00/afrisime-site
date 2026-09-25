@@ -1,0 +1,26 @@
+---
+// Onglets secondaires d'une section du back-office.
+interface Props {
+  items: { label: string; href: string }[];
+}
+const { items } = Astro.props;
+const path = Astro.url.pathname.replace(/\/$/, '');
+const active = (href: string) => path === href || (href !== items[0].href && path.startsWith(href));
+---
+
+<nav aria-label="Sous-sections" class="mb-6 flex gap-1 overflow-x-auto border-b border-line">
+  {
+    items.map((item) => (
+      <a
+        href={item.href}
+        class:list={[
+          'whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-semibold',
+          active(item.href) ? 'border-brand-700 text-brand-900' : 'border-transparent text-muted hover:text-brand-700',
+        ]}
+        aria-current={active(item.href) ? 'page' : undefined}
+      >
+        {item.label}
+      </a>
+    ))
+  }
+</nav>

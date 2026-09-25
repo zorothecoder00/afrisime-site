@@ -2,13 +2,6 @@
 import Layout from '../layouts/Layout.astro';
 import Breadcrumbs from '../components/ui/Breadcrumbs.astro';
 import Icon from '../components/ui/Icon.astro';
-import { getCatalog } from '../lib/catalog';
-
-// Prix et statuts à jour, pour corriger un panier enregistré avec d'anciens prix.
-const { products } = await getCatalog();
-const catalog = Object.fromEntries(
-  products.map((p) => [p.id, { status: p.data.status, variants: Object.fromEntries(p.data.variants.map((v) => [v.id, v.price])) }]),
-);
 ---
 
 <Layout title="Mon panier" noindex>
@@ -37,7 +30,7 @@ const catalog = Object.fromEntries(
         <ul class="card divide-y divide-line" data-lines></ul>
         <div class="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm">
           <a href="/boutique" class="font-bold text-brand-700 hover:underline">← Continuer mes achats</a>
-          <p class="text-muted">Votre panier est sauvegardé sur cet appareil.</p>
+          <p class="text-muted" data-saved-note>Votre panier est sauvegardé sur cet appareil.</p>
           <button type="button" class="font-semibold text-danger hover:underline" data-clear-cart>Vider le panier</button>
         </div>
       </div>
@@ -50,7 +43,7 @@ const catalog = Object.fromEntries(
           <button type="submit" class="btn btn-secondary btn-sm">Appliquer</button>
         </form>
         <p class="mt-1 text-xs" data-promo-status aria-live="polite"></p>
-        <dl class="mt-5 space-y-2 text-sm">
+        <dl class="mt-5 space-y-2 text-sm" aria-busy="false" data-totals>
           <div class="flex justify-between"><dt>Sous-total</dt><dd class="font-semibold" data-subtotal></dd></div>
           <div class="flex justify-between text-brand-700" data-discount-row hidden><dt>Remise</dt><dd class="font-semibold" data-discount></dd></div>
           <div class="flex justify-between text-muted"><dt>Livraison</dt><dd>Calculée à l'étape suivante</dd></div>
@@ -59,17 +52,17 @@ const catalog = Object.fromEntries(
           <span class="font-bold">Total estimé</span>
           <span class="text-2xl font-extrabold text-brand-900" data-total></span>
         </div>
-        <p class="mt-3 rounded-lg bg-brand-50 px-3 py-2 text-xs text-brand-800" data-free-delivery></p>
+        <p class="mt-3 rounded-lg bg-brand-50 px-3 py-2 text-xs text-brand-800" data-free-delivery hidden></p>
+        <p class="mt-3 rounded-lg bg-brand-900 px-3 py-2 text-xs font-semibold text-white" data-pro-note hidden>Prix professionnels appliqués à votre compte.</p>
         <a href="/commande" class="btn btn-primary mt-5 w-full !py-4" data-checkout>Passer la commande <Icon name="arrow" size={18} /></a>
         <p class="mt-3 flex items-center justify-center gap-1.5 text-xs text-muted"><Icon name="shield" size={14} />Paiement sécurisé · Mobile Money · Carte</p>
       </aside>
     </div>
   </div>
 
-  <script type="application/json" id="catalog-prices" set:html={JSON.stringify(catalog)} />
   <template id="line-template">
     <li class="flex gap-4 p-4">
-      <a data-link class="grid size-20 shrink-0 place-items-center rounded-xl text-2xl font-extrabold" data-thumb></a>
+      <a data-link class="grid size-20 shrink-0 place-items-center overflow-hidden rounded-xl text-2xl font-extrabold" data-thumb></a>
       <div class="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center">
         <div class="min-w-0 flex-1">
           <a data-link class="font-bold text-brand-900 hover:text-brand-600" data-name></a>
@@ -92,64 +85,35 @@ const catalog = Object.fromEntries(
 
 <script>
   import { cart, type CartItem } from '../scripts/cart';
-  import { computeTotals, isValidPromoCode } from '../lib/pricing';
+  import { fetchQuote, getPromo, setPromo, type QuoteResponse } from '../scripts/quote';
   import { formatPrice } from '../lib/format';
   import { track } from '../scripts/analytics';
-  import { FREE_DELIVERY_THRESHOLD as threshold } from '../data/site';
 
-  const PROMO_KEY = 'afs-promo';
-  const catalog: Record<string, { status: string; variants: Record<string, number> }> = JSON.parse(
-    document.getElementById('catalog-prices')!.textContent!,
-  );
   const $ = <T extends HTMLElement>(sel: string) => document.querySelector<T>(sel)!;
   const template = $<HTMLTemplateElement>('#line-template');
   const list = $('[data-lines]');
   const notice = $('[data-notice]');
+  const promoStatus = $('[data-promo-status]');
+  let lastQuote: QuoteResponse | null = null;
 
-  function getPromo() {
-    try { return sessionStorage.getItem(PROMO_KEY) ?? ''; } catch { return ''; }
-  }
-  function setPromo(code: string) {
-    try { code ? sessionStorage.setItem(PROMO_KEY, code) : sessionStorage.removeItem(PROMO_KEY); } catch {}
-  }
-
-  // Aligne le panier sur le catalogue : prix mis à jour, articles retirés de la vente supprimés.
-  function reconcile() {
-    const messages: string[] = [];
-    const next: CartItem[] = [];
-    for (const item of cart.items()) {
-      const ref = catalog[item.productId];
-      const price = ref?.variants[item.variantId];
-      if (!ref || price === undefined || ref.status === 'indisponible' || ref.status === 'devis') {
-        messages.push(`« ${item.name} » n'est plus disponible en ligne et a été retiré.`);
-        continue;
-      }
-      if (price !== item.price) messages.push(`Le prix de « ${item.name} » a été mis à jour.`);
-      next.push({ ...item, price });
-    }
-    if (messages.length) {
-      cart.replace(next);
-      notice.textContent = messages.join(' ');
-      notice.hidden = false;
-    }
-  }
-
-  function render() {
-    const items = cart.items();
-    $('[data-state="loading"]').hidden = true;
-    $('[data-state="empty"]').hidden = items.length > 0;
-    $('[data-state="filled"]').hidden = items.length === 0;
-    if (!items.length) return;
-
+  function renderLines(items: CartItem[]) {
     list.replaceChildren(
       ...items.map((item) => {
         const li = template.content.firstElementChild!.cloneNode(true) as HTMLElement;
         li.querySelectorAll<HTMLAnchorElement>('[data-link]').forEach((a) => (a.href = `/boutique/${item.slug}`));
         const thumb = li.querySelector<HTMLElement>('[data-thumb]')!;
-        thumb.style.cssText = `background:${item.color}1f;color:${item.color}`;
-        thumb.textContent = item.name.charAt(0);
         thumb.setAttribute('aria-hidden', 'true');
         thumb.tabIndex = -1;
+        if (item.image) {
+          const img = document.createElement('img');
+          img.src = `/img/${item.image}.webp?taille=mini`;
+          img.alt = '';
+          img.className = 'size-full bg-white object-contain';
+          thumb.append(img);
+        } else {
+          thumb.style.cssText = `background:${item.color}1f;color:${item.color}`;
+          thumb.textContent = item.name.charAt(0);
+        }
         li.querySelector('[data-name]')!.textContent = item.name;
         li.querySelector('[data-variant]')!.textContent = item.variantLabel;
         li.querySelector('[data-unit-price]')!.textContent = `${formatPrice(item.price)} l'unité`;
@@ -168,46 +132,78 @@ const catalog = Object.fromEntries(
         return li;
       }),
     );
-
-    const promo = getPromo();
-    const totals = computeTotals(items.map((i) => ({ unitPrice: i.price, quantity: i.quantity })), undefined, promo);
-    $('[data-subtotal]').textContent = formatPrice(totals.subtotal);
-    $('[data-discount-row]').hidden = totals.discount === 0;
-    $('[data-discount]').textContent = `− ${formatPrice(totals.discount)}`;
-    $('[data-total]').textContent = formatPrice(totals.total);
-    $<HTMLInputElement>('#promo').value = promo;
-    const missing = threshold - totals.subtotal;
-    $('[data-free-delivery]').textContent =
-      missing > 0
-        ? `Plus que ${formatPrice(missing)} pour la livraison offerte à Lomé.`
-        : 'Livraison offerte à Lomé centre et périphérie.';
   }
+
+  function renderTotals(q: QuoteResponse) {
+    $('[data-subtotal]').textContent = formatPrice(q.totals.subtotal);
+    $('[data-discount-row]').hidden = q.totals.discount === 0;
+    $('[data-discount]').textContent = `− ${formatPrice(q.totals.discount)}`;
+    $('[data-total]').textContent = formatPrice(q.totals.total - q.totals.delivery);
+    $('[data-pro-note]').hidden = !q.pro;
+    const free = $('[data-free-delivery]');
+    const missing = q.freeThreshold - q.totals.subtotal;
+    free.hidden = q.freeThreshold <= 0;
+    free.textContent = missing > 0 ? `Plus que ${formatPrice(missing)} pour la livraison offerte à Lomé.` : 'Livraison offerte à Lomé centre et périphérie.';
+    if (q.promo) {
+      promoStatus.className = `mt-1 text-xs font-semibold ${q.promo.applied ? 'text-brand-700' : 'text-danger'}`;
+      promoStatus.textContent = q.promo.message;
+    } else {
+      promoStatus.textContent = '';
+    }
+  }
+
+  /** Aligne le panier sur le serveur : prix du moment (ou prix pro), articles retirés de la vente. */
+  async function refresh() {
+    const items = cart.items();
+    $('[data-state="loading"]').hidden = true;
+    $('[data-state="empty"]').hidden = items.length > 0;
+    $('[data-state="filled"]').hidden = items.length === 0;
+    if (!items.length) return;
+    renderLines(items);
+    $<HTMLInputElement>('#promo').value = getPromo();
+    $('[data-totals]').setAttribute('aria-busy', 'true');
+
+    const q = await fetchQuote(items, { promoCode: getPromo() });
+    $('[data-totals]').setAttribute('aria-busy', 'false');
+    if (!q) {
+      notice.textContent = 'Impossible de vérifier les prix pour le moment. Ils seront confirmés à la commande.';
+      notice.hidden = false;
+      return;
+    }
+    lastQuote = q;
+    const changed: string[] = [...q.problems];
+    const next: CartItem[] = q.lines.map((l) => {
+      const before = items.find((i) => i.productId === l.productId && i.variantId === l.variantId);
+      if (before && before.price !== l.unitPrice) changed.push(`Le prix de « ${l.productName} » a été mis à jour.`);
+      return { productId: l.productId, variantId: l.variantId, name: l.productName, variantLabel: l.variantLabel, price: l.unitPrice, quantity: l.quantity, slug: l.slug, color: l.color, image: l.image };
+    });
+    if (q.promo && !q.promo.applied) setPromo('');
+    const key = (i: CartItem) => [i.productId, i.variantId, i.name, i.variantLabel, i.price, i.quantity, i.slug, i.color, i.image ?? ''].join('|');
+    const differs = next.map(key).join('\n') !== items.map(key).join('\n');
+    if (changed.length) {
+      notice.textContent = [...new Set(changed)].join(' ');
+      notice.hidden = false;
+    }
+    if (differs) cart.replace(next); // redéclenche refresh via l'événement afs:cart
+    else renderTotals(q);
+  }
+
+  let timer: number | undefined;
+  document.addEventListener('afs:cart', () => {
+    renderLines(cart.items());
+    clearTimeout(timer);
+    timer = window.setTimeout(refresh, 250);
+  });
 
   $('[data-promo-form]').addEventListener('submit', (e) => {
     e.preventDefault();
-    const code = $<HTMLInputElement>('#promo').value.trim().toUpperCase();
-    const status = $('[data-promo-status]');
-    if (!code) {
-      setPromo('');
-      status.textContent = '';
-    } else if (isValidPromoCode(code)) {
-      setPromo(code);
-      status.className = 'mt-1 text-xs font-semibold text-brand-700';
-      status.textContent = `Code ${code} appliqué.`;
-    } else {
-      setPromo('');
-      status.className = 'mt-1 text-xs font-semibold text-danger';
-      status.textContent = 'Ce code promo n\'est pas valide.';
-    }
-    render();
+    setPromo($<HTMLInputElement>('#promo').value.trim().toUpperCase());
+    refresh();
   });
-
   $('[data-clear-cart]').addEventListener('click', () => {
     if (confirm('Vider entièrement le panier ?')) cart.clear();
   });
-  $('[data-checkout]').addEventListener('click', () => track('begin_checkout', { value: cart.subtotal() }));
+  $('[data-checkout]').addEventListener('click', () => track('begin_checkout', { value: lastQuote?.totals.subtotal ?? cart.subtotal() }));
 
-  document.addEventListener('afs:cart', render);
-  reconcile();
-  render();
+  refresh();
 </script>

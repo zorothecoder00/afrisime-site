@@ -1,7 +1,10 @@
 ---
 import Icon from './ui/Icon.astro';
 import Logo from './ui/Logo.astro';
-import { SITE } from '../data/site';
+import { contactLinks, getSettings } from '../lib/settings';
+
+const { contact, social, identity } = await getSettings();
+const links = contactLinks(contact);
 
 const columns = [
   {
@@ -53,10 +56,10 @@ const legal = [
         Distribution alimentaire à Lomé : produits locaux et importés, en gros, demi-gros et détail.
       </p>
       <ul class="mt-5 space-y-2 text-sm">
-        <li class="flex gap-2"><Icon name="pin" size={16} class="mt-0.5 shrink-0" />{SITE.contact.address}</li>
-        <li><a href={SITE.contact.phoneHref} class="flex gap-2 hover:text-white"><Icon name="phone" size={16} />{SITE.contact.phone}</a></li>
-        <li><a href={`mailto:${SITE.contact.email}`} class="flex gap-2 hover:text-white"><Icon name="mail" size={16} />{SITE.contact.email}</a></li>
-        <li class="flex gap-2"><Icon name="clock" size={16} />{SITE.contact.hours}</li>
+        <li class="flex gap-2"><Icon name="pin" size={16} class="mt-0.5 shrink-0" />{contact.address}</li>
+        <li><a href={links.phoneHref} class="flex gap-2 hover:text-white"><Icon name="phone" size={16} />{contact.phone}</a></li>
+        <li><a href={`mailto:${contact.email}`} class="flex gap-2 hover:text-white"><Icon name="mail" size={16} />{contact.email}</a></li>
+        <li class="flex gap-2"><Icon name="clock" size={16} />{contact.hours}</li>
       </ul>
     </div>
 
@@ -96,7 +99,7 @@ const legal = [
       </form>
       <ul class="mt-6 flex flex-wrap gap-2">
         {
-          SITE.social.map((s) => (
+          social.map((s) => (
             <li>
               <a href={s.href} target="_blank" rel="noopener" class="inline-block rounded-full border border-brand-700 px-3 py-1.5 text-xs font-semibold hover:bg-brand-800">
                 {s.label}
@@ -110,7 +113,7 @@ const legal = [
 
   <div class="border-t border-brand-800">
     <div class="container-page flex flex-col gap-3 py-5 text-xs text-brand-200 md:flex-row md:items-center md:justify-between">
-      <p>© {new Date().getFullYear()} AfriSime. Tous droits réservés.</p>
+      <p>© {new Date().getFullYear()} {identity.name}. Tous droits réservés.</p>
       <ul class="flex flex-wrap gap-x-5 gap-y-2">
         {legal.map((l) => <li><a href={l.href} class="hover:text-white">{l.label}</a></li>)}
         <li><button type="button" class="hover:text-white" data-open-consent>Gérer les cookies</button></li>

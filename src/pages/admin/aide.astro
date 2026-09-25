@@ -1,0 +1,12 @@
+---
+// Guide de l'administrateur, affiché dans le back-office (source : docs/guide-administrateur.md).
+import AdminLayout from '../../components/AdminLayout.astro';
+import { renderMarkdown } from '../../lib/markdown';
+import guide from '../../../docs/guide-administrateur.md?raw';
+
+const html = renderMarkdown(guide.replace(/^# .*\n/, ''));
+---
+
+<AdminLayout title="Guide de l'administrateur">
+  <div class="card prose-afs max-w-4xl p-6 sm:p-10 [&_table]:w-full [&_table]:text-sm [&_td]:border-t [&_td]:border-line [&_td]:py-2 [&_td]:pr-3 [&_th]:py-2 [&_th]:pr-3 [&_th]:text-left" set:html={html} />
+</AdminLayout>

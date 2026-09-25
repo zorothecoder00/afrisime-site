@@ -15,6 +15,13 @@
       "when": 1790270574277,
       "tag": "0001_historiques_panier",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790324772498,
+      "tag": "0002_cms_paiements",
+      "breakpoints": true
     }
   ]
 }

@@ -2,8 +2,11 @@
 import Layout from '../layouts/Layout.astro';
 import PageHero from '../components/PageHero.astro';
 import Field from '../components/ui/Field.astro';
+import FileField from '../components/ui/FileField.astro';
 import Icon, { type IconName } from '../components/ui/Icon.astro';
-import { SITE } from '../data/site';
+import { contactLinks, getSettings } from '../lib/settings';
+const { contact } = await getSettings();
+const links = contactLinks(contact);
 
 const segments: { id: string; icon: IconName; title: string; text: string; points: string[] }[] = [
   { id: 'commercants', icon: 'store', title: 'Commerçants & boutiques', text: 'Réassort rapide pour boutiques de quartier, superettes et kiosques.', points: ['Prix demi-gros dès 5 cartons', 'Livraison en 24 h', 'Commande par WhatsApp'] },
@@ -30,7 +33,7 @@ const steps = [
   >
     <div class="mt-8 flex flex-col gap-3 sm:flex-row">
       <a href="#devis" class="btn btn-primary">Demander un devis</a>
-      <a href={SITE.contact.phoneHref} class="btn btn-secondary"><Icon name="phone" size={18} />Appeler un commercial</a>
+      <a href={links.phoneHref} class="btn btn-secondary"><Icon name="phone" size={18} />Appeler un commercial</a>
     </div>
   </PageHero>
 
@@ -76,8 +79,8 @@ const steps = [
         <p class="mt-3 text-muted">Réponse sous 24 h ouvrées. Plus votre demande est précise, plus notre offre sera juste.</p>
         <div class="card mt-6 space-y-3 p-5 text-sm">
           <p class="font-bold text-brand-900">Vous préférez échanger directement ?</p>
-          <a href={SITE.contact.phoneHref} class="flex items-center gap-2 hover:text-brand-600"><Icon name="phone" size={16} />{SITE.contact.phone}</a>
-          <a href={SITE.contact.whatsapp} target="_blank" rel="noopener" class="flex items-center gap-2 hover:text-brand-600"><Icon name="whatsapp" size={16} />WhatsApp commercial</a>
+          <a href={links.phoneHref} class="flex items-center gap-2 hover:text-brand-600"><Icon name="phone" size={16} />{contact.phone}</a>
+          <a href={links.whatsappHref} target="_blank" rel="noopener" class="flex items-center gap-2 hover:text-brand-600"><Icon name="whatsapp" size={16} />WhatsApp commercial</a>
         </div>
       </div>
 
@@ -95,6 +98,7 @@ const steps = [
         <Field name="need" label="Produits et volumes souhaités" required textarea placeholder="Ex. : 20 sacs de riz 50 kg, 10 bidons d'huile 20 L par mois" class="sm:col-span-2" />
         <Field name="frequence" label="Fréquence" options={['Ponctuelle', 'Hebdomadaire', 'Bimensuelle', 'Mensuelle']} />
         <Field name="budget" label="Volume mensuel estimé" options={['Moins de 500 000 FCFA', '500 000 – 2 000 000 FCFA', '2 – 10 millions FCFA', 'Plus de 10 millions FCFA']} />
+        <FileField label="Documents (liste de produits, cahier des charges, RCCM…)" class="sm:col-span-2" />
 
         <div class="sm:col-span-2">
           <label class="flex items-start gap-2 text-sm">

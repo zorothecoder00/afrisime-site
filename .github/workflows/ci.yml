@@ -1,0 +1,61 @@
+# Intégration continue : types, tests unitaires, build, puis parcours E2E sur une base PostgreSQL
+# jetable (jamais sur la production). Le déploiement est fait par Vercel (Preview pour les branches
+# et pull requests = staging, Production pour main) une fois les vérifications passées.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verifier:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: afrisime
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/afrisime
+      BETTER_AUTH_SECRET: ci-secret-ci-secret-ci-secret-ci-secret-00
+      BETTER_AUTH_URL: http://localhost:4321
+      SITE_URL: http://localhost:4321
+      PAYMENT_PROVIDER: simulation
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Vérification des types
+        run: npx astro check
+      - name: Tests unitaires
+        run: npm test
+      - name: Build
+        run: npm run build
+      - name: Base de test (migrations + contenu de départ)
+        run: |
+          npm run db:migrate
+          npm run content:import
+      - name: Navigateurs Playwright
+        run: npx playwright install --with-deps chromium
+      - name: Tests de bout en bout
+        run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: rapport-playwright
+          path: playwright-report/
+          retention-days: 7

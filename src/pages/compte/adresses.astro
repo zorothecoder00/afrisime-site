@@ -1,0 +1,93 @@
+---
+import { and, asc, count, desc, eq } from 'drizzle-orm';
+import Layout from '../../layouts/Layout.astro';
+import AccountNav from '../../components/AccountNav.astro';
+import PageHero from '../../components/PageHero.astro';
+import { addresses } from '../../db/schema';
+import { db } from '../../lib/db';
+import { clean } from '../../lib/validation';
+
+const me = Astro.locals.user!;
+const MAX_ADDRESSES = 10;
+let error = '';
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const action = form.get('action');
+  const id = clean(form.get('id'), 60);
+  const mine = and(eq(addresses.id, id), eq(addresses.userId, me.id));
+
+  if (action === 'delete') await db.delete(addresses).where(mine);
+  if (action === 'default') {
+    await db.transaction(async (tx) => {
+      await tx.update(addresses).set({ isDefault: false }).where(eq(addresses.userId, me.id));
+      await tx.update(addresses).set({ isDefault: true }).where(mine);
+    });
+  }
+  if (action === 'add') {
+    const label = clean(form.get('label'), 60);
+    const city = clean(form.get('city'), 120);
+    const address = clean(form.get('address'), 300);
+    const [{ total }] = await db.select({ total: count() }).from(addresses).where(eq(addresses.userId, me.id));
+    if (label.length < 2 || city.length < 2 || address.length < 4) error = 'Renseignez un nom, une ville et une adresse.';
+    else if (total >= MAX_ADDRESSES) error = `${MAX_ADDRESSES} adresses au maximum.`;
+    else await db.insert(addresses).values({ id: crypto.randomUUID(), userId: me.id, label, city, address, isDefault: total === 0 });
+  }
+  if (!error) return Astro.redirect('/compte/adresses', 303);
+}
+
+const list = await db.select().from(addresses).where(eq(addresses.userId, me.id)).orderBy(desc(addresses.isDefault), asc(addresses.label));
+---
+
+<Layout title="Mes adresses" noindex>
+  <PageHero title="Mes adresses" breadcrumbs={[{ label: 'Mon compte', href: '/compte' }, { label: 'Adresses' }]} />
+  <div class="container-page pt-6"><AccountNav current="adresses" /></div>
+  <div class="container-page grid gap-8 py-10 lg:grid-cols-[1fr_360px]">
+    <section aria-labelledby="titre-liste">
+      <h2 id="titre-liste" class="sr-only">Adresses enregistrées</h2>
+      {
+        list.length === 0 ? (
+          <p class="card p-8 text-center text-muted">Aucune adresse enregistrée. Ajoutez-en une pour commander plus vite.</p>
+        ) : (
+          <ul class="grid gap-3 sm:grid-cols-2">
+            {list.map((a) => (
+              <li class="card flex flex-col p-5">
+                <p class="font-bold text-brand-900">
+                  {a.label} {a.isDefault && <span class="badge badge-populaire ml-1">Par défaut</span>}
+                </p>
+                <p class="mt-1 flex-1 text-sm text-muted">
+                  {a.address}
+                  <br />
+                  {a.city}
+                </p>
+                <div class="mt-4 flex gap-2">
+                  {!a.isDefault && (
+                    <form method="post">
+                      <input type="hidden" name="action" value="default" />
+                      <input type="hidden" name="id" value={a.id} />
+                      <button class="btn btn-secondary btn-sm">Par défaut</button>
+                    </form>
+                  )}
+                  <form method="post">
+                    <input type="hidden" name="action" value="delete" />
+                    <input type="hidden" name="id" value={a.id} />
+                    <button class="btn btn-ghost btn-sm text-danger">Supprimer</button>
+                  </form>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )
+      }
+    </section>
+    <form method="post" class="card h-fit space-y-4 p-6">
+      <h2 class="text-lg">Ajouter une adresse</h2>
+      {error && <p class="alert alert-error" role="alert">{error}</p>}
+      <input type="hidden" name="action" value="add" />
+      <label class="block"><span class="label">Nom</span><input name="label" required maxlength="60" class="input" placeholder="Maison, Boutique…" /></label>
+      <label class="block"><span class="label">Ville / quartier</span><input name="city" required maxlength="120" class="input" autocomplete="address-level2" /></label>
+      <label class="block"><span class="label">Adresse ou point de repère</span><textarea name="address" required maxlength="300" rows="3" class="input" autocomplete="street-address"></textarea></label>
+      <button class="btn btn-primary w-full">Enregistrer</button>
+    </form>
+  </div>
+</Layout>

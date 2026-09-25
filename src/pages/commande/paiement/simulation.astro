@@ -1,0 +1,36 @@
+---
+// Faux prestataire de paiement, pour tester le parcours en développement (PAYMENT_PROVIDER=simulation).
+// Indisponible sur un site de production.
+import { eq } from 'drizzle-orm';
+import Layout from '../../../layouts/Layout.astro';
+import { orders, payments } from '../../../db/schema';
+import { db } from '../../../lib/db';
+import { formatPrice } from '../../../lib/format';
+import { findPayment } from '../../../lib/payments/service';
+
+if (!import.meta.env.DEV) return new Response(null, { status: 404 });
+const payment = await findPayment(Astro.url.searchParams.get('p') ?? '');
+if (!payment) return new Response('Paiement inconnu.', { status: 404 });
+const [order] = await db.select().from(orders).where(eq(orders.id, payment.orderId));
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const simulated = form.get('resultat') === 'reussi' ? 'reussi' : 'echoue';
+  await db.update(payments).set({ raw: { simulated } }).where(eq(payments.id, payment.id));
+  return Astro.redirect(`/commande/paiement?n=${encodeURIComponent(order.number)}&t=${order.accessToken}&p=${payment.id}`, 303);
+}
+---
+
+<Layout title="Paiement (simulation)" noindex>
+  <div class="container-page max-w-md py-16">
+    <div class="card p-8 text-center">
+      <p class="badge badge-sur-commande">Simulation — développement uniquement</p>
+      <h1 class="mt-4 text-2xl">Commande {order.number}</h1>
+      <p class="mt-2 text-3xl font-extrabold text-brand-900">{formatPrice(payment.amount)}</p>
+      <form method="post" class="mt-8 grid gap-2">
+        <button name="resultat" value="reussi" class="btn btn-primary">Simuler un paiement réussi</button>
+        <button name="resultat" value="echoue" class="btn btn-secondary">Simuler un échec</button>
+      </form>
+    </div>
+  </div>
+</Layout>

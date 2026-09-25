@@ -1,0 +1,97 @@
+---
+// Affichage d'un contenu du CMS (article, vidéo, événement, page). Utilisé par les pages
+// publiques et par la prévisualisation du back-office.
+import Breadcrumbs from './ui/Breadcrumbs.astro';
+import type { Content } from '../lib/content';
+import { videoEmbedUrl } from '../lib/content';
+import { ARTICLE_TYPE_LABELS, formatDate } from '../lib/format';
+import { renderMarkdown } from '../lib/markdown';
+import { imageUrl } from '../lib/media';
+
+interface Props {
+  content: Content;
+  /** URL publique (partage). */
+  url: string;
+}
+const { content, url } = Astro.props;
+const isPage = content.type === 'page';
+const html = renderMarkdown(content.body);
+const video = videoEmbedUrl(content.videoUrl);
+const share = [
+  { label: 'WhatsApp', href: `https://wa.me/?text=${encodeURIComponent(`${content.title} ${url}`)}` },
+  { label: 'Facebook', href: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}` },
+  { label: 'LinkedIn', href: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}` },
+];
+const date = content.publishedAt ?? content.updatedAt;
+---
+
+<article class="container-page max-w-3xl py-10">
+  <Breadcrumbs items={isPage ? [{ label: content.title }] : [{ label: 'Média', href: '/media' }, { label: content.title }]} />
+  {
+    !isPage && (
+      <p class="mt-8 flex flex-wrap items-center gap-2 text-sm text-muted">
+        <span class="badge badge-populaire">{ARTICLE_TYPE_LABELS[content.type as keyof typeof ARTICLE_TYPE_LABELS]}</span>
+        <time datetime={date.toISOString()}>{formatDate(date)}</time> · {content.authorName}
+      </p>
+    )
+  }
+  <h1 class:list={['text-3xl sm:text-5xl', isPage ? 'mt-6' : 'mt-4']}>{content.title}</h1>
+  {content.excerpt && <p class="mt-4 text-xl text-muted">{content.excerpt}</p>}
+
+  {
+    content.type === 'evenement' && (content.eventDate || content.eventLocation) && (
+      <dl class="card mt-6 grid gap-3 p-5 text-sm sm:grid-cols-2">
+        {content.eventDate && (
+          <div>
+            <dt class="text-muted">Date</dt>
+            <dd class="font-bold">{content.eventDate.toLocaleString('fr-FR', { dateStyle: 'full', timeStyle: 'short', timeZone: 'Africa/Lome' })}</dd>
+          </div>
+        )}
+        {content.eventLocation && (
+          <div>
+            <dt class="text-muted">Lieu</dt>
+            <dd class="font-bold">{content.eventLocation}</dd>
+          </div>
+        )}
+      </dl>
+    )
+  }
+
+  {
+    video ? (
+      <div class="mt-8 aspect-video overflow-hidden rounded-2xl bg-black">
+        <iframe
+          src={video}
+          title={content.title}
+          class="size-full"
+          loading="lazy"
+          allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+          allowfullscreen
+          referrerpolicy="strict-origin-when-cross-origin"
+        />
+      </div>
+    ) : (
+      content.coverId && <img src={imageUrl(content.coverId)} alt="" class="mt-8 w-full rounded-2xl" fetchpriority="high" />
+    )
+  }
+
+  <div class="prose-afs mt-8" set:html={html} />
+
+  {
+    !isPage && (
+      <>
+        <aside class="mt-12 flex flex-wrap items-center gap-2 border-t border-line pt-6">
+          <span class="text-sm font-bold">Partager :</span>
+          {share.map((s) => (
+            <a href={s.href} target="_blank" rel="noopener" class="btn btn-secondary btn-sm">
+              {s.label}
+            </a>
+          ))}
+        </aside>
+        <a href="/media" class="mt-8 inline-flex items-center gap-1 font-bold text-brand-700 hover:underline">
+          ← Tous les articles
+        </a>
+      </>
+    )
+  }
+</article>

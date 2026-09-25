@@ -1,5 +1,11 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import { findRedirect } from '../lib/redirects';
+
+// Redirections 301 administrables (back-office › Redirections) : vérifiées seulement pour les adresses inconnues.
+const redirect = await findRedirect(Astro.url.pathname).catch(() => undefined);
+if (redirect) return Astro.redirect(redirect.to, redirect.status as 301);
+Astro.response.status = 404;
 ---
 
 <Layout title="Page introuvable" noindex>

@@ -1,15 +1,17 @@
 ---
 import AdminLayout from '../../../components/AdminLayout.astro';
 import OrderProgress from '../../../components/OrderProgress.astro';
-import { DELIVERY_ZONES, PAYMENT_METHODS } from '../../../data/site';
+import { desc, eq } from 'drizzle-orm';
+import { notifications } from '../../../db/schema';
 import { audit } from '../../../lib/audit';
-import { formatPrice, ORDER_STATUS_LABELS } from '../../../lib/format';
-import { notifyOrderStatus, sendOrderToErp } from '../../../lib/integrations';
-import { getOrderDetail, markOrderSynced, ORDER_TRANSITIONS, setOrderStatus, toOrder, type OrderStatus } from '../../../lib/orders';
+import { db } from '../../../lib/db';
+import { formatDateTime, formatPrice, ORDER_STATUS_LABELS, PAYMENT_STATUS_LABELS } from '../../../lib/format';
+import { erpConfigured } from '../../../lib/integrations';
+import { afterStatusChange, getOrderDetail, ORDER_TRANSITIONS, pushOrderToErp, setOrderStatus, type OrderStatus } from '../../../lib/orders';
+import { listPaymentsForOrder, refreshPayment } from '../../../lib/payments/service';
 import { can } from '../../../lib/roles';
+import { getSettings } from '../../../lib/settings';
 import { clean } from '../../../lib/validation';
-
-export const prerender = false;
 
 const me = Astro.locals.user!;
 if (!can(me.role, { order: ['read'] })) return new Response('Accès refusé.', { status: 403 });
@@ -35,38 +37,44 @@ if (Astro.request.method === 'POST') {
       error = 'La commande a été modifiée entre-temps. Vérifiez son statut actuel ci-dessous.';
     } else {
       await audit({ actorId: me.id, action: 'commande-statut', target: number, details: { from: detail.row.status, to: next }, ipAddress: Astro.clientAddress });
-      await notifyOrderStatus({ number, phone: detail.row.customer.phone, status: next }).catch(console.error);
+      await afterStatusChange(number);
       return Astro.redirect(`/admin/commandes/${number}?ok=statut`, 303);
     }
   }
 
   if (action === 'erp') {
-    try {
-      if (await sendOrderToErp(toOrder(detail.row, detail.lines))) {
-        await markOrderSynced(number);
-        await audit({ actorId: me.id, action: 'commande-renvoi-erp', target: number, ipAddress: Astro.clientAddress });
-        return Astro.redirect(`/admin/commandes/${number}?ok=erp`, 303);
-      }
-      error = "L'intégration ERP n'est pas configurée (ERP_API_URL) : rien n'a été envoyé.";
-    } catch (err) {
-      console.error(err);
-      error = "L'ERP n'a pas répondu. Réessayez plus tard.";
-    }
+    if (!erpConfigured()) error = "L'intégration ERP n'est pas configurée (ERP_API_URL) : rien n'a été envoyé.";
+    else if (await pushOrderToErp(detail.row)) {
+      await audit({ actorId: me.id, action: 'commande-renvoi-erp', target: number, ipAddress: Astro.clientAddress });
+      return Astro.redirect(`/admin/commandes/${number}?ok=erp`, 303);
+    } else error = "L'ERP n'a pas répondu, ou la commande n'est pas encore confirmée. Réessayez plus tard.";
+  }
+
+  if (action === 'verifier-paiement') {
+    for (const p of await listPaymentsForOrder(detail.row.id)) await refreshPayment(p);
+    return Astro.redirect(`/admin/commandes/${number}?ok=paiement`, 303);
   }
   detail = (await getOrderDetail(number))!;
 }
 
 const { row, lines, events } = detail;
 const nextStatuses = ORDER_TRANSITIONS[row.status];
-const zone = DELIVERY_ZONES.find((z) => z.id === row.deliveryZone);
-const payment = PAYMENT_METHODS.find((p) => p.id === row.paymentMethod);
+const settings = await getSettings();
+const zone = settings.delivery.zones.find((z) => z.id === row.deliveryZone);
+const payment = settings.payments.methods.find((p) => p.id === row.paymentMethod);
+const [paymentRows, notificationRows] = await Promise.all([
+  listPaymentsForOrder(row.id),
+  db.select().from(notifications).where(eq(notifications.target, row.number)).orderBy(desc(notifications.createdAt)).limit(20),
+]);
+const NOTIF_STATUS: Record<string, string> = { envoye: 'Envoyé', 'non-configure': 'Non envoyé (prestataire non configuré)', echec: 'Échec' };
 const ok = Astro.url.searchParams.get('ok');
-const SOURCE_LABELS: Record<string, string> = { site: 'Site', 'back-office': 'Back-office', erp: 'ERP' };
+const SOURCE_LABELS: Record<string, string> = { site: 'Site', 'back-office': 'Back-office', erp: 'ERP', paiement: 'Paiement en ligne', client: 'Client' };
 ---
 
 <AdminLayout title={`Commande ${row.number}`} back={{ label: 'Commandes', href: '/admin/commandes' }}>
   {ok === 'statut' && <p class="alert alert-success mb-6">Statut mis à jour.</p>}
   {ok === 'erp' && <p class="alert alert-success mb-6">Commande transmise à l'ERP.</p>}
+  {ok === 'paiement' && <p class="alert alert-success mb-6">Paiements vérifiés auprès du prestataire.</p>}
   {error && <p class="alert alert-error mb-6" role="alert">{error}</p>}
 
   <OrderProgress status={row.status} />
@@ -158,8 +166,49 @@ const SOURCE_LABELS: Record<string, string> = { site: 'Site', 'back-office': 'Ba
         <dl class="mt-3 space-y-2 text-sm">
           <div><dt class="text-muted">Mode</dt><dd class="font-semibold">{zone?.label ?? row.deliveryZone}</dd></div>
           {row.deliveryZone !== 'retrait' && <div><dt class="text-muted">Adresse</dt><dd>{row.customer.address}, {row.customer.city}</dd></div>}
-          <div><dt class="text-muted">Paiement</dt><dd class="font-semibold">{payment?.label ?? row.paymentMethod}</dd></div>
+          <div><dt class="text-muted">Paiement</dt><dd class="font-semibold">{payment?.label ?? row.paymentMethod}</dd>{row.paidAt && <dd class="text-brand-700">Payée le {formatDateTime(row.paidAt)}</dd>}</div>
         </dl>
+      </section>
+
+      {
+        paymentRows.length > 0 && (
+          <section class="card p-5" aria-labelledby="titre-paiements">
+            <h2 id="titre-paiements" class="text-lg">Paiements en ligne</h2>
+            <ul class="mt-3 space-y-2 text-sm">
+              {paymentRows.map((p) => (
+                <li class="border-l-2 border-brand-200 pl-3">
+                  <p class="font-semibold">{PAYMENT_STATUS_LABELS[p.status]} · {formatPrice(p.amount)}</p>
+                  <p class="text-muted">{formatDateTime(p.createdAt)} · {p.provider} {p.providerRef ?? ''}</p>
+                </li>
+              ))}
+            </ul>
+            {canUpdate && paymentRows.some((p) => p.status === 'en-attente') && (
+              <form method="post" class="mt-3">
+                <input type="hidden" name="action" value="verifier-paiement" />
+                <button class="btn btn-secondary btn-sm">Vérifier auprès du prestataire</button>
+              </form>
+            )}
+          </section>
+        )
+      }
+
+      <section class="card p-5" aria-labelledby="titre-notifs">
+        <h2 id="titre-notifs" class="text-lg">Notifications au client</h2>
+        {
+          notificationRows.length === 0 ? (
+            <p class="mt-2 text-sm text-muted">Aucune.</p>
+          ) : (
+            <ul class="mt-3 space-y-2 text-sm">
+              {notificationRows.map((n) => (
+                <li>
+                  <span class="font-semibold">{n.channel === 'email' ? 'E-mail' : n.channel.toUpperCase()}</span> · {n.template} ·{' '}
+                  <span class:list={[n.status === 'envoye' ? 'text-brand-700' : n.status === 'echec' ? 'text-danger' : 'text-warning']}>{NOTIF_STATUS[n.status] ?? n.status}</span>
+                  <span class="block text-muted">{formatDateTime(n.createdAt)} · {n.recipient}</span>
+                </li>
+              ))}
+            </ul>
+          )
+        }
       </section>
 
       <section class="card p-5" aria-labelledby="titre-erp">

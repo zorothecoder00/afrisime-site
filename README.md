@@ -1,6 +1,6 @@
 # AfriSime — site web officiel
 
-Vitrine institutionnelle, boutique en ligne et espace B2B d'AfriSime (Astro 7 + Tailwind 4, déployé sur Vercel).
+Vitrine institutionnelle, boutique en ligne, espace B2B et back-office (CMS) d'AfriSime (Astro 7 + Tailwind 4 + PostgreSQL, déployé sur Vercel).
 
 ## Démarrer
 
@@ -8,84 +8,63 @@ Vitrine institutionnelle, boutique en ligne et espace B2B d'AfriSime (Astro 7 + 
 npm install
 cp .env.example .env         # puis renseigner DATABASE_URL et BETTER_AUTH_SECRET
 npm run db:migrate           # crée les tables
+npm run content:import       # catalogue, articles, pages légales, FAQ de départ (base locale)
 npm run admin:create -- vous@afrisime.com "Votre Nom"   # premier super administrateur
-npx astro dev --background   # http://localhost:4321
-npm run build
+npx astro dev --background   # http://localhost:4321 — back-office : /admin
 ```
+
+Avec `PAYMENT_PROVIDER=simulation` (développement), le paiement en ligne passe par une page de simulation (succès / échec).
+
+## Documentation
+
+| Document | Contenu |
+| --- | --- |
+| [docs/guide-administrateur.md](docs/guide-administrateur.md) | Guide et support de formation de l'équipe (aussi dans le back-office : « Aide ») |
+| [docs/deploiement.md](docs/deploiement.md) | Environnements dev / staging / production, variables, paiement FedaPay, cron, mises à jour |
+| [docs/sauvegarde-restauration.md](docs/sauvegarde-restauration.md) | Plan de sauvegarde, restauration et test trimestriel |
+| [docs/openapi.yaml](docs/openapi.yaml) | API du site, webhooks ERP/paiement, contrats sortants ERP/CRM (OpenAPI 3.1) |
+| `/design-system` | UI kit : couleurs, typographies, composants, états (page non indexée) |
 
 ## Organisation
 
 | Dossier | Contenu |
 | --- | --- |
-| `src/data/` | Catalogue (produits, catégories, marques), FAQ, coordonnées, navigation, zones de livraison |
-| `src/content/media/` | Articles de la section Média (Markdown) |
-| `src/content.config.ts` | Schémas des collections. Pour brancher un CMS ou l'ERP, remplacer le loader d'une collection |
-| `src/pages/` | Pages du site ; `boutique/[slug]` génère une page par produit |
-| `src/pages/api/` | `orders` (commandes), `leads` (B2B, fournisseurs, contact, newsletter), `cart` (panier sauvegardé), `auth/*` (authentification) et `erp/order-status` (webhook ERP), exécutés côté serveur |
-| `src/pages/compte/` | Espace client : connexion, inscription, mot de passe, double authentification, commandes |
-| `src/pages/suivi.astro` | Suivi de commande sans compte (numéro + téléphone) |
-| `src/pages/admin/` | Back-office (équipe AfriSime, double authentification obligatoire) : tableau de bord, commandes, leads |
+| `src/pages/` | Pages publiques (rendues par le serveur, mises en cache 60 s par le CDN) |
+| `src/pages/admin/` | Back-office : tableau de bord, commandes, leads, clients & équipe, catalogue, promotions, contenus, FAQ, médias, SEO & menus, paramètres, rapports, journal |
+| `src/pages/compte/` | Espace client : connexion, inscription, double authentification, commandes (recommander), favoris, adresses, profil |
+| `src/pages/commande/` | Commande, paiement (prestataire ou simulation), page de confirmation / suivi par lien secret |
+| `src/pages/api/` | `orders`, `checkout/quote`, `leads` (avec documents), `cart`, `favorites`, `pro-prices`, `erp/*` (webhooks ERP), `payments/webhook/*`, `cron/sync` |
 | `src/db/` | Schéma PostgreSQL (Drizzle) ; migrations SQL dans `drizzle/` |
-| `src/lib/` | Logique partagée : authentification et rôles, prix et totaux, recherche, validation, intégrations ERP/CRM |
-| `src/middleware.ts` | Lecture de la session et protection de `/compte` et `/admin` |
-| `scripts/` | `create-admin.ts` : création d'un compte de l'équipe |
-| `src/scripts/` | Scripts navigateur : panier, formulaires, analytics |
-| `src/styles/global.css` | Design system (couleurs, boutons, cartes, formulaires, badges) |
+| `src/lib/` | Logique serveur : catalogue, devis et prix, promotions, contenus, médias, paiements, notifications, intégrations, rôles, rapports |
+| `src/data/site.ts` | Valeurs par défaut des paramètres (modifiables dans le back-office) |
+| `scripts/` | `create-admin.ts`, `import-content.ts` ; contenu de départ dans `scripts/seed/` |
+| `tests/` | Tests unitaires (Vitest) et de bout en bout (Playwright) |
 
 ## Règles importantes
 
-- **Les prix sont toujours recalculés côté serveur** (`src/pages/api/orders.ts`) : ceux envoyés par le navigateur sont ignorés.
-- **Double commande impossible** : chaque tentative porte une clé d'idempotence, unique en base.
-- **Commandes et leads sont enregistrés en base avant l'envoi à l'ERP/CRM** : une panne de l'ERP/CRM ne perd rien. Les enregistrements non transmis ont `erp_synced_at` / `crm_synced_at` vide.
-- **Rôles de l'équipe** (`src/lib/roles.ts`) : impossibles à obtenir depuis le site ; seul `npm run admin:create` (ou un super administrateur) les attribue. Double authentification obligatoire pour accéder à `/admin`.
-- **Aucun secret dans le front-end** : les jetons ERP/CRM sont lus depuis les variables d'environnement serveur.
+- **Les prix sont toujours recalculés côté serveur** (`src/lib/checkout.ts`) : prix du catalogue (ou prix pro d'un compte validé), code promo, frais de livraison. Ceux du navigateur sont ignorés.
+- **Double commande impossible** : clé d'idempotence unique par tentative ; un paiement réussi ne confirme la commande qu'une fois ; l'état d'un paiement est toujours relu chez le prestataire.
+- **Commandes et leads sont enregistrés en base avant l'envoi à l'ERP/CRM** : une panne ne perd rien, la tâche planifiée renvoie ce qui n'est pas parti.
+- **Rôles de l'équipe** (`src/lib/roles.ts`) : attribués seulement par `npm run admin:create` ou un super administrateur. Double authentification obligatoire pour `/admin`. Actions sensibles tracées dans le journal.
+- **Contenus sûrs** : le Markdown du CMS n'accepte pas de HTML ; les images envoyées sont réencodées en WebP.
+- **Aucun secret dans le front-end** : toutes les clés sont des variables d'environnement serveur (`astro.config.mjs` › `env.schema`).
 
-## Base de données
-
-PostgreSQL : local en développement, [Neon](https://neon.tech) en production. Seule `DATABASE_URL` change.
+## Commandes
 
 | Commande | Rôle |
 | --- | --- |
+| `npm run check` | Vérification des types (Astro + TypeScript) |
+| `npm test` | Tests unitaires |
+| `npm run test:e2e` | Parcours critiques dans un navigateur (serveur **local** uniquement ; `npx playwright install chromium` la première fois) |
 | `npm run db:generate` | Crée une migration SQL après modification de `src/db/schema.ts` |
 | `npm run db:migrate` | Applique les migrations sur la base de `DATABASE_URL` |
 | `npm run db:studio` | Explore les données dans le navigateur |
+| `npm run content:import` | Contenu de départ (refuse une base distante sans `--distant`) |
 
-Production (Neon) : les valeurs sont dans `.env.production.bak` (local, jamais commité) et dans les variables d'environnement Vercel.
-- `DATABASE_URL` : URL **pooled** (`…-pooler…`), utilisée par le site.
-- `DATABASE_URL_UNPOOLED` : URL directe, utilisée seulement pour les migrations.
-- `npm run db:migrate:prod` applique les migrations en production (avant chaque déploiement qui modifie le schéma).
-- `npm run admin:create:prod -- <email> "<Nom>"` crée un compte de l'équipe en production.
-- Une branche Neon séparée sert de base de staging.
-
-## Variables d'environnement
-
-Voir `.env.example`. À définir aussi dans Vercel (Production et Preview) :
-
-```
-DATABASE_URL=         BETTER_AUTH_SECRET=     BETTER_AUTH_URL=
-CRM_API_URL=          CRM_API_TOKEN=          (facultatif)
-ERP_API_URL=          ERP_API_TOKEN=          (facultatif)
-```
-
-Sans les variables CRM/ERP, commandes et leads sont enregistrés en base et l'envoi est seulement journalisé (`src/lib/integrations.ts`).
-
-### Webhook ERP → site (statuts de commande)
-
-L'ERP met à jour le statut d'une commande avec le secret `ERP_WEBHOOK_SECRET` (32 caractères minimum) :
-
-```http
-POST /api/erp/order-status
-Authorization: Bearer <ERP_WEBHOOK_SECRET>
-Content-Type: application/json
-
-{ "number": "AFS-20260924-ABC123", "status": "expediee", "note": "facultatif" }
-```
-
-Statuts : `en-attente-paiement`, `confirmee`, `en-preparation`, `expediee`, `livree`, `annulee`. Sans secret configuré, le webhook répond 503.
+Production (Neon) : les valeurs sont dans `.env.production.bak` (local, jamais commité) et dans les variables d'environnement Vercel. `npm run db:migrate:prod` applique les migrations en production, `npm run admin:create:prod -- <email> "<Nom>"` crée un compte d'équipe en production.
 
 ## Avant la mise en ligne
 
-- Remplacer `site` dans `astro.config.mjs` par le domaine définitif.
-- Remplacer les contenus d'exemple : coordonnées (`src/data/site.ts`), produits, logo (`src/components/ui/Logo.astro`), textes légaux (`src/pages/legal/`).
-- Brancher le prestataire de paiement (Mobile Money / carte) dans `src/pages/api/orders.ts`.
-- Brancher un prestataire d'e-mails pour les liens de réinitialisation de mot de passe (`sendPasswordResetLink` dans `src/lib/integrations.ts`) : en production, aucun lien n'est envoyé tant que ce n'est pas fait.
+- Définir `SITE_URL` (domaine définitif) et toutes les variables de `docs/deploiement.md` dans Vercel.
+- Remplacer les contenus d'exemple depuis le back-office : coordonnées (Paramètres), produits et photos (Catalogue), textes légaux (Contenus › Pages, à faire valider par un juriste).
+- Brancher le paiement (FedaPay) et un prestataire d'e-mails (Resend ou Brevo) : sans e-mails, les liens de réinitialisation de mot de passe et les confirmations ne partent pas (état visible dans Paramètres › Intégrations).

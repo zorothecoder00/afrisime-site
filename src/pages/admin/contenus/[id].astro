@@ -1,0 +1,222 @@
+---
+// Édition d'un contenu. Un éditeur enregistre des brouillons et les soumet à validation ;
+// l'administrateur web (permission « publier ») publie, programme, dépublie ou archive.
+import { eq } from 'drizzle-orm';
+import AdminLayout from '../../../components/AdminLayout.astro';
+import { contents } from '../../../db/schema';
+import { dateTime, deny, isSlug, optionalStr, safeHref, slugify, str, toInputDateTime } from '../../../lib/admin';
+import { audit } from '../../../lib/audit';
+import { ARTICLE_TYPES, CONTENT_STATUS_LABELS, invalidateContent, isPublished, videoEmbedUrl, type Content } from '../../../lib/content';
+import { db } from '../../../lib/db';
+import { ARTICLE_TYPE_LABELS, formatDateTime } from '../../../lib/format';
+import { imageUrl, storeUpload, UploadError } from '../../../lib/media';
+import { addRedirect } from '../../../lib/redirects';
+import { can } from '../../../lib/roles';
+
+const me = Astro.locals.user!;
+const denied = deny(me, { content: ['read'] });
+if (denied) return denied;
+const canEdit = can(me.role, { content: ['update'] });
+const canPublish = can(me.role, { content: ['publish'] });
+
+const isNew = Astro.params.id === 'nouveau';
+let row: Content | undefined = isNew ? undefined : (await db.select().from(contents).where(eq(contents.id, Astro.params.id!)).limit(1))[0];
+if (!isNew && !row) return new Response(null, { status: 404 });
+// Un contenu en ligne ne peut être modifié que par quelqu'un qui peut publier.
+const locked = !!row && (row.status === 'publie' || row.status === 'archive') && !canPublish;
+const editable = canEdit && !locked;
+
+const TYPES = [...ARTICLE_TYPES, 'page'] as const;
+const typeLabel = (t: string) => (t === 'page' ? 'Page (légale ou informative)' : ARTICLE_TYPE_LABELS[t as keyof typeof ARTICLE_TYPE_LABELS]);
+let errors: string[] = [];
+let draft: Partial<Content> = row ?? { type: Astro.url.searchParams.get('type') === 'page' ? 'page' : 'actualite', status: 'brouillon', authorName: 'Équipe AfriSime' };
+
+if (Astro.request.method === 'POST') {
+  if (!editable) return new Response('Accès refusé.', { status: 403 });
+  const form = await Astro.request.formData();
+  const action = str(form, 'action');
+
+  if (action === 'supprimer' && row) {
+    if (!canPublish) return new Response('Accès refusé.', { status: 403 });
+    await db.delete(contents).where(eq(contents.id, row.id));
+    await audit({ actorId: me.id, action: 'contenu-supprime', target: row.id, details: { titre: row.title }, ipAddress: Astro.clientAddress });
+    invalidateContent();
+    return Astro.redirect('/admin/contenus?ok=supprime', 303);
+  }
+
+  const title = str(form, 'title', 200);
+  const type = (TYPES as readonly string[]).includes(str(form, 'type')) ? str(form, 'type') : 'actualite';
+  const slug = str(form, 'slug', 80) || slugify(title);
+  const videoUrl = optionalStr(form, 'videoUrl', 300);
+  const values = {
+    type,
+    title,
+    slug,
+    excerpt: str(form, 'excerpt', 400),
+    body: str(form, 'body', 60_000),
+    videoUrl,
+    eventDate: dateTime(form, 'eventDate'),
+    eventLocation: optionalStr(form, 'eventLocation', 200),
+    authorName: str(form, 'authorName', 120) || 'Équipe AfriSime',
+    seoTitle: optionalStr(form, 'seoTitle', 70),
+    seoDescription: optionalStr(form, 'seoDescription', 170),
+    reviewNote: optionalStr(form, 'reviewNote', 500),
+    coverId: str(form, 'removeCover') === 'on' ? null : (row?.coverId ?? null),
+    updatedBy: me.id,
+  };
+  if (title.length < 3) errors.push('Titre obligatoire (3 caractères minimum).');
+  if (!isSlug(slug)) errors.push('Adresse invalide : minuscules, chiffres et tirets.');
+  if (videoUrl && (!safeHref(videoUrl) || !videoEmbedUrl(videoUrl))) errors.push('Vidéo : collez un lien YouTube ou Vimeo.');
+  if (type === 'video' && !videoUrl) errors.push('Une vidéo a besoin de son lien YouTube ou Vimeo.');
+
+  const cover = form.get('cover');
+  if (cover && typeof cover !== 'string' && cover.size > 0) {
+    try {
+      values.coverId = (await storeUpload(cover, { uploadedBy: me.id, alt: title })).id;
+    } catch (err) {
+      errors.push(err instanceof UploadError ? err.message : "L'image n'a pas pu être enregistrée.");
+    }
+  }
+
+  // Statut et date selon l'action demandée.
+  let status = row?.status ?? 'brouillon';
+  let publishedAt = row?.publishedAt ?? null;
+  if (action === 'soumettre') status = 'a-valider';
+  if (action === 'brouillon' && !canPublish) status = 'brouillon';
+  if (['publier', 'depublier', 'archiver'].includes(action) && !canPublish) return new Response('Accès refusé.', { status: 403 });
+  if (action === 'publier') {
+    status = 'publie';
+    publishedAt = dateTime(form, 'publishedAt') ?? new Date();
+  }
+  if (action === 'depublier') status = 'brouillon';
+  if (action === 'archiver') status = 'archive';
+
+  draft = { ...draft, ...values, status, publishedAt };
+  if (!errors.length) {
+    try {
+      if (row) {
+        await db.update(contents).set({ ...values, status, publishedAt }).where(eq(contents.id, row.id));
+        if (row.slug !== slug && isPublished(row)) {
+          const base = row.type === 'page' ? '/legal/' : '/media/';
+          await addRedirect(`${base}${row.slug}`, `${type === 'page' ? '/legal/' : '/media/'}${slug}`);
+        }
+      } else {
+        row = { id: crypto.randomUUID() } as Content;
+        await db.insert(contents).values({ ...values, id: row.id, status, publishedAt, createdBy: me.id });
+      }
+      await audit({ actorId: me.id, action: `contenu-${action || 'modifie'}`, target: row.id, details: { titre: title, statut: status }, ipAddress: Astro.clientAddress });
+      invalidateContent();
+      return Astro.redirect(`/admin/contenus/${row.id}?ok=${action || 'brouillon'}`, 303);
+    } catch (err) {
+      console.error(err);
+      errors.push(String(err).includes('contents_type_slug') ? 'Cette adresse est déjà utilisée par un autre contenu du même type.' : "L'enregistrement a échoué.");
+    }
+  }
+}
+
+const OK_MESSAGES: Record<string, string> = {
+  brouillon: 'Brouillon enregistré.',
+  enregistrer: 'Modifications enregistrées.',
+  soumettre: 'Contenu soumis à validation.',
+  publier: 'Contenu publié (ou programmé). Visible sur le site d’ici une minute.',
+  depublier: 'Contenu retiré du site.',
+  archiver: 'Contenu archivé.',
+};
+const ok = OK_MESSAGES[Astro.url.searchParams.get('ok') ?? ''];
+const publicUrl = draft.type === 'page' ? `/legal/${draft.slug}` : `/media/${draft.slug}`;
+const scheduled = draft.status === 'publie' && draft.publishedAt && draft.publishedAt > new Date();
+---
+
+<AdminLayout title={isNew ? 'Nouveau contenu' : (row?.title ?? 'Contenu')} back={{ label: 'Contenus', href: `/admin/contenus${draft.type === 'page' ? '?type=page' : ''}` }}>
+  {ok && <p class="alert alert-success mb-4">{ok}</p>}
+  {errors.length > 0 && <div class="alert alert-error mb-4" role="alert"><ul class="list-disc pl-5">{errors.map((e) => <li>{e}</li>)}</ul></div>}
+  {locked && <p class="alert alert-info mb-4">Ce contenu est en ligne : seul un administrateur web peut le modifier ou le retirer.</p>}
+
+  <form method="post" enctype="multipart/form-data" class="grid gap-6 lg:grid-cols-[1fr_320px]">
+    <fieldset disabled={!editable} class="contents">
+      <div class="space-y-6">
+        <section class="card grid gap-4 p-5 sm:grid-cols-2">
+          <label class="block">
+            <span class="label">Type</span>
+            <select name="type" class="input">{TYPES.map((t) => <option value={t} selected={t === draft.type}>{typeLabel(t)}</option>)}</select>
+          </label>
+          <label class="block"><span class="label">Auteur</span><input name="authorName" value={draft.authorName} class="input" /></label>
+          <label class="block sm:col-span-2"><span class="label">Titre</span><input name="title" required maxlength="200" value={draft.title} class="input" data-slug-source /></label>
+          <label class="block sm:col-span-2">
+            <span class="label">Adresse</span>
+            <span class="flex items-center gap-1 text-sm text-muted">/{draft.type === 'page' ? 'legal' : 'media'}/<input name="slug" maxlength="80" value={draft.slug} class="input !py-2" data-slug-target={isNew ? '' : undefined} /></span>
+          </label>
+          <label class="block sm:col-span-2"><span class="label">Chapeau / extrait</span><textarea name="excerpt" rows="2" maxlength="400" class="input">{draft.excerpt}</textarea></label>
+          <label class="block sm:col-span-2">
+            <span class="label">Texte</span>
+            <textarea name="body" rows="18" class="input font-mono text-[13px]">{draft.body}</textarea>
+            <span class="hint block">
+              Mise en forme Markdown : <code>## Intertitre</code>, <code>**gras**</code>, <code>- liste</code>, <code>[lien](https://…)</code>,
+              image : <code>![description](/img/…)</code> (code à copier depuis Médias).
+            </span>
+          </label>
+        </section>
+
+        <section class="card grid gap-4 p-5 sm:grid-cols-2">
+          <h2 class="text-lg sm:col-span-2">Médias et événement</h2>
+          <div class="sm:col-span-2">
+            <span class="label">Image de couverture</span>
+            {draft.coverId && (
+              <div class="mb-2 flex items-center gap-3">
+                <img src={imageUrl(draft.coverId, 'mini')} alt="" class="h-20 rounded-lg" />
+                <label class="flex items-center gap-2 text-sm text-danger"><input type="checkbox" name="removeCover" />Retirer</label>
+              </div>
+            )}
+            <input type="file" name="cover" accept="image/*" class="input" />
+          </div>
+          <label class="block sm:col-span-2"><span class="label">Vidéo (lien YouTube ou Vimeo)</span><input name="videoUrl" value={draft.videoUrl ?? ''} class="input" placeholder="https://www.youtube.com/watch?v=…" /></label>
+          <label class="block"><span class="label">Date de l'événement</span><input type="datetime-local" name="eventDate" value={toInputDateTime(draft.eventDate)} class="input" /></label>
+          <label class="block"><span class="label">Lieu de l'événement</span><input name="eventLocation" value={draft.eventLocation ?? ''} class="input" /></label>
+        </section>
+
+        <section class="card grid gap-4 p-5">
+          <h2 class="text-lg">Référencement (SEO)</h2>
+          <label class="block"><span class="label">Titre de la page <span class="font-normal text-muted">(70 max, sinon le titre)</span></span><input name="seoTitle" maxlength="70" value={draft.seoTitle ?? ''} class="input" /></label>
+          <label class="block"><span class="label">Méta-description <span class="font-normal text-muted">(170 max, sinon l'extrait)</span></span><textarea name="seoDescription" maxlength="170" rows="2" class="input">{draft.seoDescription ?? ''}</textarea></label>
+        </section>
+      </div>
+
+      <aside class="space-y-6">
+        <section class="card space-y-4 p-5">
+          <h2 class="text-lg">Publication</h2>
+          <p class="text-sm">
+            Statut : <strong>{scheduled ? `Programmé le ${formatDateTime(draft.publishedAt!)}` : CONTENT_STATUS_LABELS[draft.status ?? 'brouillon']}</strong>
+          </p>
+          {row && <a href={`/admin/apercu/${row.id}`} target="_blank" class="btn btn-secondary btn-sm w-full">Prévisualiser</a>}
+          {row && isPublished(row) && <a href={publicUrl} target="_blank" class="block text-center text-sm font-semibold text-brand-700 underline">Voir en ligne</a>}
+          <label class="block"><span class="label">Note pour la validation</span><textarea name="reviewNote" rows="2" maxlength="500" class="input">{draft.reviewNote ?? ''}</textarea></label>
+
+          <button name="action" value={row && canPublish ? 'enregistrer' : 'brouillon'} class="btn btn-secondary w-full">
+            {row && canPublish ? 'Enregistrer' : 'Enregistrer le brouillon'}
+          </button>
+          {!canPublish && <button name="action" value="soumettre" class="btn btn-primary w-full">Soumettre à validation</button>}
+          {
+            canPublish && (
+              <div class="space-y-2 border-t border-line pt-4">
+                <label class="block">
+                  <span class="label">Date de publication</span>
+                  <input type="datetime-local" name="publishedAt" value={toInputDateTime(draft.publishedAt)} class="input" />
+                  <span class="hint block">Vide : maintenant. Date future : publication programmée (heure de Lomé).</span>
+                </label>
+                <button name="action" value="publier" class="btn btn-primary w-full">{draft.status === 'publie' ? 'Mettre à jour la publication' : 'Publier'}</button>
+                {row && draft.status === 'publie' && <button name="action" value="depublier" class="btn btn-ghost w-full">Retirer du site</button>}
+                {row && draft.status !== 'archive' && <button name="action" value="archiver" class="btn btn-ghost w-full">Archiver</button>}
+                {row && <button name="action" value="supprimer" class="btn btn-ghost w-full text-danger" formnovalidate data-confirm="Supprimer définitivement ce contenu ?">Supprimer</button>}
+              </div>
+            )
+          }
+        </section>
+      </aside>
+    </fieldset>
+  </form>
+</AdminLayout>
+
+<script>
+  import { initAdminForms } from '../../../scripts/admin';
+  initAdminForms();
+</script>

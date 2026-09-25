@@ -1,17 +1,18 @@
 ---
 import Layout from '../../layouts/Layout.astro';
+import AccountNav from '../../components/AccountNav.astro';
 import PageHero from '../../components/PageHero.astro';
 import Icon from '../../components/ui/Icon.astro';
-import { SITE } from '../../data/site';
-import { formatDate, formatPrice, ORDER_STATUS_LABELS } from '../../lib/format';
+import { formatDate, formatPrice, ORDER_STATUS_LABELS, PRO_STATUS_LABELS } from '../../lib/format';
 import { listOrdersForUser } from '../../lib/orders';
 import { isStaff, ROLE_LABELS, type RoleName } from '../../lib/roles';
-
-export const prerender = false;
+import { contactLinks, getSettings } from '../../lib/settings';
 
 const user = Astro.locals.user!;
 const staff = isStaff(user.role);
 const orders = await listOrdersForUser(user.id);
+const { contact } = await getSettings();
+const links = contactLinks(contact);
 
 const STATUS_TONE: Record<string, string> = {
   'en-attente-paiement': 'badge-sur-commande',
@@ -21,18 +22,22 @@ const STATUS_TONE: Record<string, string> = {
   livree: 'badge-populaire',
   annulee: 'badge-rupture',
 };
+const orderUrl = (o: (typeof orders)[number]) => `/commande/confirmation?n=${encodeURIComponent(o.number)}&t=${o.accessToken}`;
 ---
 
 <Layout title="Mon compte" noindex>
   <PageHero title={`Bonjour ${user.name.split(' ')[0]}`} breadcrumbs={[{ label: 'Mon compte' }]}>
     <div class="mt-4 flex flex-wrap gap-2">
       {staff && <a href="/admin" class="btn btn-accent btn-sm">Back-office</a>}
-      <a href="/compte/securite" class="btn btn-secondary btn-sm">Sécurité du compte</a>
       <button type="button" class="btn btn-ghost btn-sm" data-logout>Se déconnecter</button>
     </div>
   </PageHero>
 
-  <div class="container-page grid gap-8 py-12 lg:grid-cols-[1fr_320px]">
+  <div class="container-page pt-6">
+    <AccountNav current="commandes" />
+  </div>
+
+  <div class="container-page grid gap-8 py-10 lg:grid-cols-[1fr_320px]">
     <section aria-labelledby="titre-commandes">
       {Astro.url.searchParams.has('securite') && <p class="alert alert-success mb-6">Double authentification activée.</p>}
       <h2 id="titre-commandes" class="text-2xl">Mes commandes</h2>
@@ -71,12 +76,25 @@ const STATUS_TONE: Record<string, string> = {
                       </li>
                     ))}
                   </ul>
+                  <div class="mt-4 flex flex-wrap gap-2">
+                    <a href={orderUrl(order)} class="btn btn-secondary btn-sm">
+                      {order.status === 'en-attente-paiement' ? 'Payer / voir la commande' : 'Voir le suivi'}
+                    </a>
+                    <button
+                      type="button"
+                      class="btn btn-primary btn-sm"
+                      data-reorder={JSON.stringify(order.lines.map((l) => ({ productId: l.productId, variantId: l.variantId, quantity: l.quantity })))}
+                    >
+                      <Icon name="refresh" size={16} />Commander à nouveau
+                    </button>
+                  </div>
                 </details>
               </li>
             ))}
           </ul>
         )
       }
+      <p class="mt-4 text-sm text-muted" data-reorder-status role="status"></p>
     </section>
 
     <aside class="space-y-4">
@@ -89,22 +107,34 @@ const STATUS_TONE: Record<string, string> = {
           <div>
             <dt class="text-muted">Type de compte</dt>
             <dd class="font-semibold">
-              {staff ? ROLE_LABELS[user.role as RoleName] : user.accountType === 'pro' ? `Professionnel${user.company ? ` · ${user.company}` : ''}` : 'Particulier'}
+              {staff
+                ? ROLE_LABELS[user.role as RoleName]
+                : user.accountType === 'pro'
+                  ? `${PRO_STATUS_LABELS[user.proStatus as keyof typeof PRO_STATUS_LABELS] ?? 'Professionnel'}${user.company ? ` · ${user.company}` : ''}`
+                  : 'Particulier'}
             </dd>
           </div>
         </dl>
+        <a href="/compte/profil" class="mt-4 inline-block text-sm font-semibold text-brand-700 underline">Modifier</a>
       </section>
       {
-        user.accountType === 'pro' && !staff && (
+        user.accountType === 'pro' && !staff && user.proStatus !== 'valide' && (
           <a href="/b2b#devis" class="card block p-5 hover:border-brand-600">
             <Icon name="building" class="text-brand-600" />
             <p class="mt-2 font-bold">Prix professionnels</p>
-            <p class="mt-1 text-sm text-muted">Un commercial valide votre compte pro et vous propose des tarifs volume.</p>
+            <p class="mt-1 text-sm text-muted">Un commercial valide votre compte pro : vous verrez alors vos prix volume sur le site.</p>
           </a>
         )
       }
+      {
+        user.proStatus === 'valide' && (
+          <p class="rounded-2xl bg-brand-900 p-5 text-sm text-white">
+            <strong class="block">Compte pro validé</strong>Vos prix professionnels s'affichent dans la boutique et au panier.
+          </p>
+        )
+      }
       <p class="text-sm text-muted">
-        Une question sur une commande ? <a href={SITE.contact.phoneHref} class="font-semibold underline">{SITE.contact.phone}</a>
+        Une question sur une commande ? <a href={links.phoneHref} class="font-semibold underline">{contact.phone}</a>
       </p>
     </aside>
   </div>
@@ -113,6 +143,7 @@ const STATUS_TONE: Record<string, string> = {
 <script>
   import { authClient } from '../../lib/auth-client';
   import { cart } from '../../scripts/cart';
+  import { fetchQuote } from '../../scripts/quote';
 
   document.querySelector('[data-logout]')?.addEventListener('click', async () => {
     await authClient.signOut();
@@ -120,4 +151,26 @@ const STATUS_TONE: Record<string, string> = {
     cart.forget();
     location.href = '/';
   });
+
+  // « Commander à nouveau » : ajoute au panier les articles encore disponibles, aux prix du jour.
+  const status = document.querySelector<HTMLElement>('[data-reorder-status]')!;
+  document.querySelectorAll<HTMLButtonElement>('[data-reorder]').forEach((button) =>
+    button.addEventListener('click', async () => {
+      button.disabled = true;
+      const wanted = JSON.parse(button.dataset.reorder!) as { productId: string; variantId: string; quantity: number }[];
+      const q = await fetchQuote(wanted.map((w) => ({ ...w, name: '', variantLabel: '', price: 0, slug: '', color: '' })));
+      button.disabled = false;
+      if (!q) {
+        status.textContent = 'Impossible de préparer la commande pour le moment. Réessayez.';
+        return;
+      }
+      for (const l of q.lines) {
+        cart.add({ productId: l.productId, variantId: l.variantId, name: l.productName, variantLabel: l.variantLabel, price: l.unitPrice, slug: l.slug, color: l.color, image: l.image }, l.quantity);
+      }
+      if (q.problems.length) {
+        status.textContent = q.problems.join(' ');
+        setTimeout(() => (location.href = '/panier'), 2500);
+      } else location.href = '/panier';
+    }),
+  );
 </script>

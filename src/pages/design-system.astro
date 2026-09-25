@@ -1,0 +1,128 @@
+---
+// Design system / UI kit (§20) : référence vivante des couleurs, typographies et composants
+// définis dans src/styles/global.css. Non indexée.
+import Layout from '../layouts/Layout.astro';
+import Icon from '../components/ui/Icon.astro';
+import Field from '../components/ui/Field.astro';
+import ProductVisual from '../components/ui/ProductVisual.astro';
+import { BADGE_LABELS } from '../lib/format';
+
+const colors = [
+  ['brand-950', '#0a2a20'], ['brand-900', '#0f3d2e'], ['brand-800', '#14503b'], ['brand-700', '#1b6247'], ['brand-600', '#2e7d5b'],
+  ['brand-500', '#3f9a70'], ['brand-200', '#c6e0d2'], ['brand-100', '#e3efe8'], ['brand-50', '#f2f8f4'],
+  ['accent-600', '#c9811a'], ['accent-500', '#e8a33d'], ['accent-100', '#fbeed6'],
+  ['ink', '#17221d'], ['muted', '#56665f'], ['line', '#dbe4df'], ['canvas', '#f7f9f8'],
+  ['danger', '#b42318'], ['warning', '#9a6200'], ['info', '#1f5f8b'],
+];
+const icons = ['search', 'cart', 'user', 'phone', 'whatsapp', 'truck', 'shield', 'check', 'store', 'building', 'handshake', 'box', 'heart', 'image', 'file', 'zoom'] as const;
+---
+
+<Layout title="Design system" noindex>
+  <div class="container-page space-y-14 py-12">
+    <header>
+      <p class="eyebrow">UI kit</p>
+      <h1 class="mt-2 text-4xl">Design system AfriSime</h1>
+      <p class="mt-3 max-w-2xl text-muted">Couleurs, typographies et composants du site. Source : <code>src/styles/global.css</code> (classes <code>btn</code>, <code>card</code>, <code>badge</code>, <code>input</code>, <code>alert</code>…) et <code>src/components/ui/</code>.</p>
+    </header>
+
+    <section>
+      <h2 class="text-2xl">Couleurs</h2>
+      <p class="mt-1 text-sm text-muted">Texte courant : <code>ink</code> sur <code>canvas</code> ou blanc (contraste AA). Actions principales : <code>brand-900</code>. Mise en avant : <code>accent-500</code> avec texte <code>brand-950</code>.</p>
+      <ul class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
+        {colors.map(([name, hex]) => (
+          <li class="card overflow-hidden text-xs">
+            <span class="block h-14" style={`background:${hex}`}></span>
+            <span class="block p-2"><strong>{name}</strong><br />{hex}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+
+    <section>
+      <h2 class="text-2xl">Typographie</h2>
+      <p class="mt-1 text-sm text-muted">Plus Jakarta Sans. Titres en extra-gras, couleur <code>brand-900</code>.</p>
+      <div class="card mt-4 space-y-3 p-6">
+        <p class="eyebrow">Surtitre (eyebrow)</p>
+        <p class="text-5xl font-extrabold text-brand-900">Titre H1</p>
+        <p class="text-3xl font-extrabold text-brand-900">Titre H2</p>
+        <p class="text-xl font-extrabold text-brand-900">Titre H3</p>
+        <p>Paragraphe courant : les produits du quotidien au juste prix, livrés chez vous ou dans votre commerce.</p>
+        <p class="text-sm text-muted">Texte secondaire (muted).</p>
+      </div>
+    </section>
+
+    <section>
+      <h2 class="text-2xl">Boutons</h2>
+      <div class="mt-4 flex flex-wrap items-center gap-3">
+        <button class="btn btn-primary">Principal</button>
+        <button class="btn btn-accent">Mise en avant</button>
+        <button class="btn btn-secondary">Secondaire</button>
+        <button class="btn btn-ghost">Discret</button>
+        <button class="btn btn-primary btn-sm">Petit</button>
+        <button class="btn btn-primary" disabled>Désactivé</button>
+        <button class="btn btn-primary"><Icon name="cart" size={18} />Avec icône</button>
+      </div>
+    </section>
+
+    <section>
+      <h2 class="text-2xl">Badges</h2>
+      <div class="mt-4 flex flex-wrap gap-2">
+        {Object.entries(BADGE_LABELS).map(([id, label]) => <span class={`badge badge-${id}`}>{label}</span>)}
+      </div>
+    </section>
+
+    <section>
+      <h2 class="text-2xl">Cartes et visuels</h2>
+      <div class="mt-4 grid gap-4 sm:grid-cols-3">
+        <div class="card p-6"><h3 class="text-lg">Carte</h3><p class="mt-1 text-sm text-muted">Bordure fine, coins arrondis 16 px.</p></div>
+        <div class="card overflow-hidden"><ProductVisual name="Exemple" color="#b7862b" icon="grain" class="aspect-[4/3]" /><p class="p-4 text-sm">Visuel produit par défaut (sans photo).</p></div>
+        <div class="rounded-2xl bg-brand-900 p-6 text-white"><p class="font-bold">Bloc foncé</p><p class="mt-1 text-sm text-brand-200">Appel à l'action B2B.</p></div>
+      </div>
+    </section>
+
+    <section>
+      <h2 class="text-2xl">Formulaires</h2>
+      <form class="card mt-4 grid gap-4 p-6 sm:grid-cols-2" onsubmit="return false" novalidate>
+        <Field name="demo-nom" label="Champ obligatoire" required placeholder="Texte d'exemple" />
+        <Field name="demo-tel" label="Champ facultatif" type="tel" hint="Texte d'aide sous le champ." />
+        <Field name="demo-choix" label="Liste" options={['Option A', 'Option B']} />
+        <div>
+          <label class="label" for="demo-erreur">Champ en erreur</label>
+          <input id="demo-erreur" class="input" aria-invalid="true" value="valeur invalide" aria-describedby="demo-erreur-msg" />
+          <p id="demo-erreur-msg" class="field-error">Message d'erreur explicite et actionnable.</p>
+        </div>
+        <label class="flex items-start gap-2 text-sm sm:col-span-2"><input type="checkbox" class="mt-1 size-4 accent-brand-700" />Case à cocher (consentement)</label>
+      </form>
+    </section>
+
+    <section>
+      <h2 class="text-2xl">Alertes et états</h2>
+      <div class="mt-4 grid gap-3 sm:grid-cols-2">
+        <p class="alert alert-success">Succès : votre demande a bien été envoyée.</p>
+        <p class="alert alert-error">Erreur : connexion impossible, réessayez.</p>
+        <p class="alert alert-info">Information : paiement en cours de vérification.</p>
+        <div class="space-y-2"><p class="text-sm font-semibold">Chargement (skeleton)</p><div class="skeleton h-12"></div><div class="skeleton h-12"></div></div>
+        <div class="card p-6 text-center"><Icon name="search" size={32} class="mx-auto text-muted" /><p class="mt-2 font-semibold">État vide</p><p class="text-sm text-muted">Aucun résultat : proposer une action.</p></div>
+        <div class="rounded-xl border border-danger/20 bg-danger-50 px-4 py-3 text-sm text-danger"><strong>Indisponible</strong> — réassort en cours.</div>
+      </div>
+    </section>
+
+    <section>
+      <h2 class="text-2xl">Icônes</h2>
+      <ul class="mt-4 flex flex-wrap gap-4">
+        {icons.map((name) => <li class="card grid w-24 place-items-center gap-1 p-3 text-xs"><Icon name={name} size={24} />{name}</li>)}
+      </ul>
+    </section>
+
+    <section>
+      <h2 class="text-2xl">Règles d'accessibilité</h2>
+      <ul class="mt-3 list-disc space-y-1 pl-6 text-sm">
+        <li>Chaque champ a un label ; les erreurs sont annoncées (aria-invalid, aria-live) et expliquent comment corriger.</li>
+        <li>Focus visible (contour accent) sur tous les éléments interactifs ; navigation complète au clavier.</li>
+        <li>Images : texte alternatif renseigné dans la médiathèque ; icônes décoratives masquées aux lecteurs d'écran.</li>
+        <li>Animations réduites si le système le demande (prefers-reduced-motion).</li>
+        <li>Mobile d'abord : cibles tactiles de 44 px, formulaires en une colonne sur smartphone.</li>
+      </ul>
+    </section>
+  </div>
+</Layout>

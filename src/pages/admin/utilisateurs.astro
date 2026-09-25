@@ -1,0 +1,208 @@
+---
+// Clients & équipe : validation des comptes professionnels (commercial B2B), rôles, blocage
+// et création des comptes de l'équipe (super administrateur).
+import { hashPassword } from 'better-auth/crypto';
+import { and, count, desc, eq, ilike, ne, or, type SQL } from 'drizzle-orm';
+import AdminLayout from '../../components/AdminLayout.astro';
+import Pagination from '../../components/admin/Pagination.astro';
+import { account, session, user as users } from '../../db/schema';
+import { str } from '../../lib/admin';
+import { audit } from '../../lib/audit';
+import { db } from '../../lib/db';
+import { formatDate, PRO_STATUS_LABELS } from '../../lib/format';
+import { can, isStaff, ROLE_LABELS, roles, type RoleName } from '../../lib/roles';
+import { isValidEmail } from '../../lib/validation';
+
+const me = Astro.locals.user!;
+const canPro = can(me.role, { pro: ['validate'] });
+const canManage = can(me.role, { user: ['set-role'] });
+const canBan = can(me.role, { user: ['ban'] });
+if (!canPro && !can(me.role, { user: ['list'] })) return new Response('Accès refusé.', { status: 403 });
+
+const PAGE_SIZE = 30;
+const errors: string[] = [];
+let tempPassword = '';
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const action = str(form, 'action');
+  const id = str(form, 'id', 80);
+  const [target] = id ? await db.select().from(users).where(eq(users.id, id)).limit(1) : [];
+
+  if (action === 'pro' && target) {
+    if (!canPro) return new Response('Accès refusé.', { status: 403 });
+    const status = ['valide', 'refuse', 'en-attente'].includes(str(form, 'status')) ? str(form, 'status') : 'en-attente';
+    await db.update(users).set({ proStatus: status, accountType: 'pro' }).where(eq(users.id, target.id));
+    await audit({ actorId: me.id, action: 'compte-pro', target: target.id, details: { statut: status }, ipAddress: Astro.clientAddress });
+  }
+
+  if (action === 'role' && target) {
+    if (!canManage) return new Response('Accès refusé.', { status: 403 });
+    const role = str(form, 'role');
+    if (!(role in roles)) errors.push('Rôle inconnu.');
+    else if (target.id === me.id) errors.push('Vous ne pouvez pas modifier votre propre rôle.');
+    else {
+      await db.update(users).set({ role }).where(eq(users.id, target.id));
+      // Nouvelles permissions dès la prochaine connexion : les sessions en cours sont fermées.
+      await db.delete(session).where(eq(session.userId, target.id));
+      await audit({ actorId: me.id, action: 'role-modifie', target: target.id, details: { de: target.role, vers: role }, ipAddress: Astro.clientAddress });
+    }
+  }
+
+  if ((action === 'ban' || action === 'unban') && target) {
+    if (!canBan) return new Response('Accès refusé.', { status: 403 });
+    if (target.id === me.id) errors.push('Vous ne pouvez pas bloquer votre propre compte.');
+    else {
+      await db.update(users).set({ banned: action === 'ban', banReason: action === 'ban' ? str(form, 'reason', 200) || 'Bloqué par un administrateur' : null }).where(eq(users.id, target.id));
+      if (action === 'ban') await db.delete(session).where(eq(session.userId, target.id));
+      await audit({ actorId: me.id, action: action === 'ban' ? 'compte-bloque' : 'compte-debloque', target: target.id, ipAddress: Astro.clientAddress });
+    }
+  }
+
+  if (action === 'create-staff') {
+    if (!canManage) return new Response('Accès refusé.', { status: 403 });
+    const email = str(form, 'email', 160).toLowerCase();
+    const name = str(form, 'name', 120);
+    const role = str(form, 'role');
+    if (!isValidEmail(email) || name.length < 2 || !isStaff(role)) errors.push('E-mail, nom et rôle d’équipe sont obligatoires.');
+    else {
+      const [exists] = await db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1);
+      if (exists) errors.push('Un compte existe déjà avec cet e-mail : modifiez plutôt son rôle dans la liste.');
+      else {
+        tempPassword = Buffer.from(crypto.getRandomValues(new Uint8Array(12))).toString('base64url');
+        const newId = crypto.randomUUID();
+        await db.transaction(async (tx) => {
+          await tx.insert(users).values({ id: newId, name, email, emailVerified: true, role });
+          await tx.insert(account).values({ id: crypto.randomUUID(), accountId: newId, providerId: 'credential', userId: newId, password: await hashPassword(tempPassword) });
+        });
+        await audit({ actorId: me.id, action: 'compte-equipe-cree', target: newId, details: { role }, ipAddress: Astro.clientAddress });
+      }
+    }
+  }
+
+  if (!errors.length && !tempPassword) return Astro.redirect(`${Astro.url.pathname}${Astro.url.search || ''}${Astro.url.search ? '&' : '?'}ok=1`, 303);
+}
+
+const filtre = Astro.url.searchParams.get('filtre') ?? (canManage ? '' : 'pro');
+const q = Astro.url.searchParams.get('q') ?? '';
+const page = Math.max(1, Number(Astro.url.searchParams.get('page')) || 1);
+const where: SQL[] = [];
+if (filtre === 'pro') where.push(eq(users.accountType, 'pro'));
+if (filtre === 'a-valider') where.push(eq(users.proStatus, 'en-attente'));
+if (filtre === 'equipe') where.push(ne(users.role, 'client'));
+if (filtre === 'bloques') where.push(eq(users.banned, true));
+// Sans droit de gestion, un commercial ne voit que les comptes professionnels.
+if (!can(me.role, { user: ['list'] })) where.push(eq(users.accountType, 'pro'));
+if (q) {
+  const term = `%${q.replace(/[%_\\]/g, '\\$&')}%`;
+  where.push(or(ilike(users.name, term), ilike(users.email, term), ilike(users.company, term), ilike(users.phone, term))!);
+}
+const condition = where.length ? and(...where) : undefined;
+const [list, [{ total }], [{ pending }]] = await Promise.all([
+  db.select().from(users).where(condition).orderBy(desc(users.createdAt)).limit(PAGE_SIZE).offset((page - 1) * PAGE_SIZE),
+  db.select({ total: count() }).from(users).where(condition),
+  db.select({ pending: count() }).from(users).where(eq(users.proStatus, 'en-attente')),
+]);
+const staffRoles = Object.keys(roles).filter((r) => r !== 'client') as RoleName[];
+const filters = [
+  { id: '', label: 'Tous', show: can(me.role, { user: ['list'] }) },
+  { id: 'a-valider', label: `Pros à valider (${pending})`, show: true },
+  { id: 'pro', label: 'Professionnels', show: true },
+  { id: 'equipe', label: 'Équipe', show: can(me.role, { user: ['list'] }) },
+  { id: 'bloques', label: 'Bloqués', show: can(me.role, { user: ['list'] }) },
+].filter((f) => f.show);
+---
+
+<AdminLayout title="Clients & équipe">
+  {Astro.url.searchParams.has('ok') && <p class="alert alert-success mb-4">Enregistré.</p>}
+  {errors.length > 0 && <div class="alert alert-error mb-4" role="alert"><ul class="list-disc pl-5">{errors.map((e) => <li>{e}</li>)}</ul></div>}
+  {
+    tempPassword && (
+      <div class="alert alert-success mb-4" role="status">
+        Compte créé. Mot de passe provisoire (affiché une seule fois, à transmettre de vive voix) : <code class="text-base font-bold">{tempPassword}</code>
+        <br />À la première connexion, la personne active la double authentification, puis change son mot de passe dans « Sécurité du compte ».
+      </div>
+    )
+  }
+
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <nav class="flex flex-wrap gap-2" aria-label="Filtres">
+      {filters.map((f) => <a href={`?filtre=${f.id}`} class:list={['btn btn-sm', f.id === filtre ? 'btn-primary' : 'btn-secondary']}>{f.label}</a>)}
+    </nav>
+    <form method="get" class="flex gap-2">
+      <input type="hidden" name="filtre" value={filtre} />
+      <input name="q" value={q} class="input !py-2" placeholder="Nom, e-mail, entreprise, téléphone" aria-label="Rechercher" />
+      <button class="btn btn-secondary btn-sm">Rechercher</button>
+    </form>
+  </div>
+
+  <ul class="mt-4 space-y-2">
+    {
+      list.map((u) => (
+        <li class="card p-4">
+          <div class="flex flex-wrap items-center gap-3">
+            <div class="min-w-0 flex-1">
+              <p class="font-semibold">
+                {u.name} {u.banned && <span class="badge badge-rupture ml-1">Bloqué</span>}
+                {u.twoFactorEnabled && <span class="badge badge-populaire ml-1">2FA</span>}
+              </p>
+              <p class="text-sm text-muted">
+                {u.email} {u.phone && `· ${u.phone}`} {u.company && `· ${u.company}`} · inscrit le {formatDate(u.createdAt)}
+              </p>
+            </div>
+            <span class="badge badge-nouveau">{isStaff(u.role) ? ROLE_LABELS[u.role as RoleName] : PRO_STATUS_LABELS[(u.accountType === 'pro' ? u.proStatus : 'aucun') as keyof typeof PRO_STATUS_LABELS]}</span>
+          </div>
+          <div class="mt-3 flex flex-wrap gap-2">
+            {canPro && u.accountType === 'pro' && !isStaff(u.role) && (
+              <form method="post" class="flex gap-2">
+                <input type="hidden" name="action" value="pro" />
+                <input type="hidden" name="id" value={u.id} />
+                {u.proStatus !== 'valide' && <button name="status" value="valide" class="btn btn-primary btn-sm">Valider le compte pro</button>}
+                {u.proStatus !== 'refuse' && <button name="status" value="refuse" class="btn btn-ghost btn-sm">Refuser</button>}
+              </form>
+            )}
+            {canManage && u.id !== me.id && (
+              <form method="post" class="flex gap-2">
+                <input type="hidden" name="action" value="role" />
+                <input type="hidden" name="id" value={u.id} />
+                <select name="role" class="input !w-auto !py-1.5 text-xs" aria-label={`Rôle de ${u.name}`}>
+                  {Object.keys(roles).map((r) => <option value={r} selected={r === u.role}>{ROLE_LABELS[r as RoleName]}</option>)}
+                </select>
+                <button class="btn btn-secondary btn-sm" data-confirm="Changer le rôle de ce compte ?">Changer le rôle</button>
+              </form>
+            )}
+            {canBan && u.id !== me.id && (
+              <form method="post">
+                <input type="hidden" name="action" value={u.banned ? 'unban' : 'ban'} />
+                <input type="hidden" name="id" value={u.id} />
+                <button class="btn btn-ghost btn-sm text-danger" data-confirm={u.banned ? 'Débloquer ce compte ?' : 'Bloquer ce compte et fermer ses sessions ?'}>{u.banned ? 'Débloquer' : 'Bloquer'}</button>
+              </form>
+            )}
+          </div>
+        </li>
+      ))
+    }
+  </ul>
+  <Pagination total={total} page={page} pageSize={PAGE_SIZE} />
+
+  {
+    canManage && (
+      <form method="post" class="card mt-8 grid gap-3 p-5 sm:grid-cols-4 sm:items-end">
+        <h2 class="text-lg sm:col-span-4">Créer un compte d'équipe</h2>
+        <input type="hidden" name="action" value="create-staff" />
+        <label class="block"><span class="label">Nom</span><input name="name" required class="input !py-2" /></label>
+        <label class="block"><span class="label">E-mail</span><input name="email" type="email" required class="input !py-2" /></label>
+        <label class="block">
+          <span class="label">Rôle</span>
+          <select name="role" class="input !py-2">{staffRoles.map((r) => <option value={r}>{ROLE_LABELS[r]}</option>)}</select>
+        </label>
+        <button class="btn btn-primary btn-sm">Créer</button>
+      </form>
+    )
+  }
+</AdminLayout>
+
+<script>
+  import { initAdminForms } from '../../scripts/admin';
+  initAdminForms();
+</script>

@@ -254,6 +254,7 @@ const countBy = (fn: (p: (typeof products)[number]) => boolean) => products.filt
   }
 
   let lastTrackedQuery = '';
+  let logTimer: number | undefined;
 
   function render() {
     const state = readState();
@@ -325,6 +326,9 @@ const countBy = (fn: (p: (typeof products)[number]) => boolean) => products.filt
     if (state.q && state.q !== lastTrackedQuery) {
       lastTrackedQuery = state.q;
       track('search', { search_term: state.q, results: n });
+      // Statistiques internes (recherches sans résultat) : envoyé après une courte pause de saisie.
+      clearTimeout(logTimer);
+      logTimer = window.setTimeout(() => navigator.sendBeacon?.('/api/search-log', JSON.stringify({ q: state.q, results: n })), 1500);
     }
   }
 

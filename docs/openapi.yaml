@@ -1,0 +1,408 @@
+openapi: 3.1.0
+info:
+  title: API du site AfriSime
+  version: 1.0.0
+  description: |
+    API du site public AfriSime et contrats d'intégration avec l'ERP AfriGes et le CRM (§12 du cahier des charges).
+
+    - **Endpoints du site** (`/api/...`) : appelés par le navigateur. Protégés par la vérification d'origine
+      (CSRF), la limitation de débit et, pour les données de compte, la session (cookie Better Auth).
+    - **Webhooks entrants** (`/api/erp/...`, `/api/payments/webhook/...`) : appelés par l'ERP et le prestataire de paiement.
+    - **Webhooks sortants** (section `webhooks`) : appels faits par le site vers l'ERP, le CRM et la passerelle SMS/WhatsApp.
+
+    Tous les montants sont des entiers en francs CFA (XOF). Toutes les dates sont en ISO 8601 (UTC).
+    Visualisation : coller ce fichier dans https://editor.swagger.io ou tout outil OpenAPI.
+servers:
+  - url: https://votre-domaine.com
+    description: Production
+  - url: http://localhost:4321
+    description: Développement
+
+tags:
+  - name: Boutique
+  - name: Commandes
+  - name: Leads
+  - name: Compte client
+  - name: ERP
+  - name: Paiement
+  - name: Exploitation
+
+components:
+  securitySchemes:
+    session:
+      type: apiKey
+      in: cookie
+      name: better-auth.session_token
+      description: Session d'un client connecté (définie par /api/auth/*).
+    erpSecret:
+      type: http
+      scheme: bearer
+      description: "`ERP_WEBHOOK_SECRET` partagé avec l'ERP."
+    cronSecret:
+      type: http
+      scheme: bearer
+      description: "`CRON_SECRET` (envoyé automatiquement par Vercel Cron)."
+  schemas:
+    CartItem:
+      type: object
+      required: [productId, variantId, quantity]
+      properties:
+        productId: { type: string, example: riz-parfume-savana }
+        variantId: { type: string, example: 25kg }
+        quantity: { type: integer, minimum: 1, maximum: 999, example: 2 }
+    Totals:
+      type: object
+      properties:
+        subtotal: { type: integer, example: 45000 }
+        discount: { type: integer, example: 2250 }
+        delivery: { type: integer, example: 0 }
+        total: { type: integer, example: 42750 }
+    QuotedLine:
+      type: object
+      properties:
+        sku: { type: string, example: AFS-CER-001-25kg }
+        productId: { type: string }
+        variantId: { type: string }
+        name: { type: string, example: Riz parfumé long grain – Sac 25 kg }
+        productName: { type: string }
+        variantLabel: { type: string }
+        slug: { type: string }
+        image: { type: [string, 'null'] }
+        unitPrice: { type: integer, description: Prix appliqué (prix pro pour un compte pro validé). }
+        publicPrice: { type: integer }
+        quantity: { type: integer }
+    Quote:
+      type: object
+      properties:
+        lines: { type: array, items: { $ref: '#/components/schemas/QuotedLine' } }
+        problems: { type: array, items: { type: string }, description: Articles retirés (plus en vente). }
+        totals: { $ref: '#/components/schemas/Totals' }
+        promo:
+          type: [object, 'null']
+          properties:
+            code: { type: [string, 'null'] }
+            applied: { type: boolean }
+            message: { type: string }
+        pro: { type: boolean }
+        freeThreshold: { type: integer }
+    Customer:
+      type: object
+      required: [name, phone, email]
+      properties:
+        name: { type: string, maxLength: 120 }
+        phone: { type: string, description: 'Togo (8 chiffres, +228 facultatif) ou E.164.', example: '+228 90 11 22 33' }
+        email: { type: string, format: email }
+        city: { type: string }
+        address: { type: string, description: Obligatoire sauf retrait au dépôt. }
+    OrderStatus:
+      type: string
+      enum: [en-attente-paiement, confirmee, en-preparation, expediee, livree, annulee]
+    Order:
+      type: object
+      properties:
+        number: { type: string, example: AFS-20260925-K3J9QZ }
+        status: { $ref: '#/components/schemas/OrderStatus' }
+        customer: { $ref: '#/components/schemas/Customer' }
+        lines:
+          type: array
+          items:
+            type: object
+            properties:
+              sku: { type: string }
+              productId: { type: string }
+              variantId: { type: string }
+              name: { type: string }
+              unitPrice: { type: integer }
+              quantity: { type: integer }
+        deliveryZone: { type: string, example: lome-centre }
+        paymentMethod: { type: string, enum: [mobile-money, carte, livraison] }
+        totals: { $ref: '#/components/schemas/Totals' }
+        createdAt: { type: string, format: date-time }
+        paidAt: { type: [string, 'null'], format: date-time }
+    Lead:
+      type: object
+      properties:
+        id: { type: string, example: LEAD-20260925-8ZK2PQ }
+        type: { type: string, enum: [b2b, fournisseur, partenaire, contact, newsletter, investisseur, candidature, reclamation] }
+        source: { type: string, example: page-b2b }
+        name: { type: string }
+        phone: { type: string }
+        email: { type: string }
+        company: { type: string }
+        need: { type: string }
+        details: { type: object, additionalProperties: { type: string }, description: 'Champs propres au formulaire (secteur, fréquence, RCCM…).' }
+        consent: { type: boolean }
+        createdAt: { type: string, format: date-time }
+    Error:
+      type: object
+      properties:
+        error: { type: string }
+        errors: { type: object, additionalProperties: { type: string }, description: Message par champ. }
+  responses:
+    Invalid:
+      description: Données invalides
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    TooMany:
+      description: Limitation de débit atteinte
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    Unauthorized:
+      description: Non connecté ou secret invalide
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+
+paths:
+  /api/checkout/quote:
+    post:
+      tags: [Boutique]
+      summary: Devis d'un panier (prix, promo, livraison) calculé par le serveur
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                items: { type: array, items: { $ref: '#/components/schemas/CartItem' } }
+                promoCode: { type: string }
+                zoneId: { type: string }
+      responses:
+        '200': { description: Devis, content: { application/json: { schema: { $ref: '#/components/schemas/Quote' } } } }
+        '429': { $ref: '#/components/responses/TooMany' }
+
+  /api/orders:
+    post:
+      tags: [Commandes]
+      summary: Créer une commande
+      description: |
+        Prix, remise et frais de livraison sont recalculés par le serveur. La même `idempotencyKey`
+        renvoie toujours la même commande (double clic, rechargement). Pour un paiement en ligne,
+        `paymentUrl` est l'adresse de la page du prestataire.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [idempotencyKey, customer, deliveryZone, paymentMethod, items]
+              properties:
+                idempotencyKey: { type: string, maxLength: 80 }
+                customer: { $ref: '#/components/schemas/Customer' }
+                deliveryZone: { type: string }
+                paymentMethod: { type: string, enum: [mobile-money, carte, livraison] }
+                promoCode: { type: string }
+                items: { type: array, items: { $ref: '#/components/schemas/CartItem' }, maxItems: 100 }
+      responses:
+        '201':
+          description: Commande créée
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  order: { $ref: '#/components/schemas/Order' }
+                  confirmationUrl: { type: string, description: Page de suivi (lien secret). }
+                  paymentUrl: { type: string, description: Page du prestataire de paiement. }
+        '200': { description: Commande déjà créée avec cette clé }
+        '409': { description: Code promo épuisé entre-temps, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '422': { $ref: '#/components/responses/Invalid' }
+        '429': { $ref: '#/components/responses/TooMany' }
+
+  /api/leads:
+    post:
+      tags: [Leads]
+      summary: Envoyer une demande (devis B2B, fournisseur, contact, réclamation…)
+      description: JSON, ou multipart/form-data avec jusqu'à 3 fichiers `documents` (PDF, JPG, PNG ; 5 Mo). Champ piège `website` à laisser vide.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type, consent]
+              properties:
+                type: { type: string }
+                source: { type: string }
+                name: { type: string }
+                phone: { type: string }
+                email: { type: string }
+                company: { type: string }
+                need: { type: string }
+                consent: { type: boolean }
+              additionalProperties: { type: string }
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                documents: { type: array, items: { type: string, format: binary } }
+      responses:
+        '201': { description: Demande enregistrée, content: { application/json: { schema: { type: object, properties: { ok: { type: boolean }, id: { type: string } } } } } }
+        '422': { $ref: '#/components/responses/Invalid' }
+        '429': { $ref: '#/components/responses/TooMany' }
+
+  /api/cart:
+    get:
+      tags: [Compte client]
+      summary: Panier sauvegardé du client connecté
+      security: [{ session: [] }]
+      responses:
+        '200': { description: Lignes du panier aux prix du catalogue }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    put:
+      tags: [Compte client]
+      summary: Enregistrer le panier du client connecté
+      security: [{ session: [] }]
+      requestBody:
+        content: { application/json: { schema: { type: object, properties: { items: { type: array, items: { $ref: '#/components/schemas/CartItem' } } } } } }
+      responses:
+        '200': { description: Panier enregistré (lignes invalides retirées) }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/favorites:
+    get:
+      tags: [Compte client]
+      summary: Identifiants des produits favoris
+      security: [{ session: [] }]
+      responses:
+        '200': { description: 'OK', content: { application/json: { schema: { type: object, properties: { ids: { type: array, items: { type: string } } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [Compte client]
+      summary: Ajouter un favori
+      security: [{ session: [] }]
+      requestBody: { content: { application/json: { schema: { type: object, properties: { productId: { type: string } } } } } }
+      responses: { '200': { description: OK }, '401': { $ref: '#/components/responses/Unauthorized' } }
+    delete:
+      tags: [Compte client]
+      summary: Retirer un favori
+      security: [{ session: [] }]
+      requestBody: { content: { application/json: { schema: { type: object, properties: { productId: { type: string } } } } } }
+      responses: { '200': { description: OK }, '401': { $ref: '#/components/responses/Unauthorized' } }
+
+  /api/account/addresses:
+    get:
+      tags: [Compte client]
+      summary: Coordonnées et adresses enregistrées (pré-remplissage de la commande)
+      security: [{ session: [] }]
+      responses: { '200': { description: OK }, '401': { $ref: '#/components/responses/Unauthorized' } }
+
+  /api/pro-prices:
+    get:
+      tags: [Boutique]
+      summary: Prix professionnels (compte pro validé)
+      security: [{ session: [] }]
+      parameters:
+        - { name: ids, in: query, schema: { type: string }, description: Identifiants produits séparés par des virgules (50 max). }
+      responses:
+        '200': { description: '`{ pro: boolean, prices: { [productId]: { [variantId]: prix } } }`' }
+
+  /api/search-log:
+    post:
+      tags: [Boutique]
+      summary: Journal des recherches (statistiques internes)
+      requestBody: { content: { text/plain: { schema: { type: string, example: '{"q":"riz","results":4}' } } } }
+      responses: { '204': { description: Enregistré ou ignoré } }
+
+  /api/erp/order-status:
+    post:
+      tags: [ERP]
+      summary: L'ERP met à jour le statut d'une commande
+      security: [{ erpSecret: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [number, status]
+              properties:
+                number: { type: string, example: AFS-20260925-K3J9QZ }
+                status: { $ref: '#/components/schemas/OrderStatus' }
+                note: { type: string, maxLength: 500 }
+      responses:
+        '200': { description: Statut enregistré ; le client est notifié }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { description: Commande introuvable }
+        '422': { $ref: '#/components/responses/Invalid' }
+        '503': { description: Webhook non configuré (ERP_WEBHOOK_SECRET) }
+
+  /api/erp/catalog:
+    post:
+      tags: [ERP]
+      summary: L'ERP met à jour prix, statuts et stocks
+      description: |
+        `sku` = référence produit (statut, stock) ou référence d'un format `SKU-idFormat` (prix).
+        Stock à 0 sans statut : un produit disponible passe « indisponible » ; stock > 0 le remet « disponible ».
+        `null` sur `compareAtPrice` ou `proPrice` supprime ce prix.
+      security: [{ erpSecret: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [items]
+              properties:
+                items:
+                  type: array
+                  maxItems: 500
+                  items:
+                    type: object
+                    required: [sku]
+                    properties:
+                      sku: { type: string, example: AFS-CER-001-25kg }
+                      price: { type: integer }
+                      compareAtPrice: { type: [integer, 'null'] }
+                      proPrice: { type: [integer, 'null'] }
+                      stock: { type: integer, minimum: 0 }
+                      status: { type: string, enum: [disponible, sur-commande, indisponible, devis] }
+      responses:
+        '200': { description: '`{ ok, updated, unknown: [sku inconnus] }`' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/payments/webhook/{provider}:
+    post:
+      tags: [Paiement]
+      summary: Notification du prestataire de paiement (FedaPay)
+      description: Le corps sert uniquement à retrouver la transaction ; son état est relu auprès du prestataire avec la clé secrète.
+      parameters:
+        - { name: provider, in: path, required: true, schema: { type: string, enum: [fedapay] } }
+      responses:
+        '200': { description: Traité ou ignoré }
+
+  /api/cron/sync:
+    get:
+      tags: [Exploitation]
+      summary: Tâche planifiée (paiements en attente, renvois ERP/CRM, commandes impayées, purges)
+      security: [{ cronSecret: [] }]
+      responses:
+        '200': { description: Compte rendu des opérations }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+webhooks:
+  erpOrder:
+    post:
+      summary: 'Site → ERP : POST {ERP_API_URL}/orders'
+      description: Commande confirmée (payée ou payable à la livraison). En-tête `Authorization: Bearer {ERP_API_TOKEN}`. Réponse 2xx attendue ; sinon renvoi automatique.
+      requestBody: { content: { application/json: { schema: { $ref: '#/components/schemas/Order' } } } }
+      responses: { '200': { description: Reçue } }
+  crmLead:
+    post:
+      summary: 'Site → CRM : POST {CRM_API_URL}/leads'
+      description: Nouvelle demande, avec source, besoin et consentement. En-tête `Authorization: Bearer {CRM_API_TOKEN}`.
+      requestBody: { content: { application/json: { schema: { $ref: '#/components/schemas/Lead' } } } }
+      responses: { '200': { description: Reçu } }
+  notification:
+    post:
+      summary: 'Site → passerelle SMS/WhatsApp : POST {NOTIFY_WEBHOOK_URL}'
+      description: 'En-tête `X-AfriSime-Signature` = HMAC-SHA256 hexadécimal du corps avec `NOTIFY_WEBHOOK_SECRET`.'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                channel: { type: string, enum: [sms, whatsapp] }
+                to: { type: string }
+                message: { type: string }
+                template: { type: string, example: commande-expediee }
+      responses: { '200': { description: Transmis } }

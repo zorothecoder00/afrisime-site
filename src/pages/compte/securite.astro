@@ -1,6 +1,7 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import PageHero from '../../components/PageHero.astro';
+import AccountNav from '../../components/AccountNav.astro';
 import Field from '../../components/ui/Field.astro';
 import { isStaff } from '../../lib/roles';
 
@@ -13,6 +14,7 @@ const mandatory = staff && !user.twoFactorEnabled;
 
 <Layout title="Sécurité du compte" noindex>
   <PageHero title="Sécurité du compte" breadcrumbs={[{ label: 'Mon compte', href: '/compte' }, { label: 'Sécurité' }]} />
+  <div class="container-page pt-6"><AccountNav current="securite" /></div>
 
   <div class="container-page grid max-w-3xl gap-6 py-12">
     {
@@ -99,11 +101,11 @@ const mandatory = staff && !user.twoFactorEnabled;
   if (enableForm && setup) {
     bindForm(enableForm, async (data) => {
       const { data: result, error } = await authClient.twoFactor.enable({ password: String(data.get('password') ?? '') });
-      if (error || !result) return errorMessage(error);
+      if (error || !result || !('totpURI' in result)) return errorMessage(error);
       setup.querySelector('[data-qr]')!.innerHTML = renderSVG(result.totpURI);
       setup.querySelector('[data-secret]')!.textContent = new URL(result.totpURI).searchParams.get('secret');
       setup.querySelector('[data-backup-codes]')!.replaceChildren(
-        ...result.backupCodes.map((code) => Object.assign(document.createElement('li'), { textContent: code })),
+        ...result.backupCodes.map((code: string) => Object.assign(document.createElement('li'), { textContent: code })),
       );
       enableForm.hidden = true;
       setup.hidden = false;

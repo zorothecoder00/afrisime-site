@@ -1,0 +1,179 @@
+---
+// Promotions : codes promo (pourcentage ou montant, dates, limite d'utilisation) et campagnes
+// affichées sur le site (bloc « Offres du moment » de l'accueil, bandeau en haut des pages).
+// Les prix barrés se règlent sur chaque produit (Catalogue › format › prix barré).
+import { asc, desc, eq } from 'drizzle-orm';
+import AdminLayout from '../../components/AdminLayout.astro';
+import CampaignFields from '../../components/admin/CampaignFields.astro';
+import Fields from '../../components/admin/PromoFields.astro';
+import { campaigns, promoCodes } from '../../db/schema';
+import { bool, dateTime, deny, int, optionalStr, safeHref, slugify, str } from '../../lib/admin';
+import { audit } from '../../lib/audit';
+import { invalidate } from '../../lib/cache';
+import { db } from '../../lib/db';
+import { formatDateTime, formatPrice } from '../../lib/format';
+import { storeUpload, UploadError } from '../../lib/media';
+import { normalizeCode, PLACEMENTS } from '../../lib/promotions';
+
+const me = Astro.locals.user!;
+const denied = deny(me, { catalog: ['update'] });
+if (denied) return denied;
+const errors: string[] = [];
+
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const action = str(form, 'action');
+
+  if (action === 'code-save' || action === 'code-create') {
+    const code = normalizeCode(str(form, 'code'));
+    const kind = str(form, 'kind') === 'montant' ? 'montant' : 'pourcentage';
+    const value = int(form, 'value');
+    const values = {
+      description: str(form, 'description', 200),
+      kind,
+      value: value ?? 0,
+      maxDiscount: int(form, 'maxDiscount'),
+      minSubtotal: int(form, 'minSubtotal') ?? 0,
+      startsAt: dateTime(form, 'startsAt'),
+      endsAt: dateTime(form, 'endsAt'),
+      usageLimit: int(form, 'usageLimit'),
+      active: bool(form, 'active'),
+    };
+    if (!/^[A-Z0-9_-]{3,40}$/.test(code)) errors.push('Code invalide : 3 à 40 lettres, chiffres, tirets.');
+    if (!value || (kind === 'pourcentage' && value > 90)) errors.push('Valeur invalide (pourcentage entre 1 et 90, ou montant en FCFA).');
+    if (values.startsAt && values.endsAt && values.endsAt <= values.startsAt) errors.push('La date de fin doit suivre la date de début.');
+    if (!errors.length) {
+      if (action === 'code-create') {
+        const inserted = await db.insert(promoCodes).values({ code, ...values }).onConflictDoNothing().returning({ code: promoCodes.code });
+        if (!inserted.length) errors.push('Ce code existe déjà.');
+      } else await db.update(promoCodes).set(values).where(eq(promoCodes.code, code));
+    }
+  }
+  if (action === 'code-delete') await db.delete(promoCodes).where(eq(promoCodes.code, normalizeCode(str(form, 'code'))));
+
+  if (action === 'campaign-save' || action === 'campaign-create') {
+    const title = str(form, 'title', 120);
+    const ctaHref = str(form, 'ctaHref', 300);
+    const values: Record<string, unknown> = {
+      title,
+      text: str(form, 'text', 400),
+      ctaLabel: optionalStr(form, 'ctaLabel', 60),
+      ctaHref: ctaHref ? safeHref(ctaHref) : null,
+      placement: str(form, 'placement') in PLACEMENTS ? str(form, 'placement') : 'accueil-offres',
+      startsAt: dateTime(form, 'startsAt'),
+      endsAt: dateTime(form, 'endsAt'),
+      active: bool(form, 'active'),
+      position: int(form, 'position') ?? 0,
+    };
+    if (title.length < 3) errors.push('Titre de campagne obligatoire.');
+    if (ctaHref && !values.ctaHref) errors.push('Lien invalide : adresse du site (/boutique…) ou https://…');
+    const image = form.get('image');
+    if (image && typeof image !== 'string' && image.size > 0) {
+      try {
+        values.imageId = (await storeUpload(image, { uploadedBy: me.id, alt: title })).id;
+      } catch (err) {
+        errors.push(err instanceof UploadError ? err.message : "L'image n'a pas pu être enregistrée.");
+      }
+    }
+    if (!errors.length) {
+      if (action === 'campaign-create') await db.insert(campaigns).values({ id: `${slugify(title)}-${Date.now().toString(36)}`, ...(values as { title: string }) });
+      else await db.update(campaigns).set(values).where(eq(campaigns.id, str(form, 'id', 120)));
+    }
+  }
+  if (action === 'campaign-delete') await db.delete(campaigns).where(eq(campaigns.id, str(form, 'id', 120)));
+
+  if (!errors.length) {
+    await audit({ actorId: me.id, action: `promotion-${action}`, target: str(form, 'code') || str(form, 'id') || undefined, ipAddress: Astro.clientAddress });
+    invalidate('campaigns:');
+    return Astro.redirect('/admin/promotions?ok=1', 303);
+  }
+}
+
+const [codes, campaignList] = await Promise.all([
+  db.select().from(promoCodes).orderBy(desc(promoCodes.active), asc(promoCodes.code)),
+  db.select().from(campaigns).orderBy(asc(campaigns.placement), asc(campaigns.position)),
+]);
+const describe = (c: (typeof codes)[number]) =>
+  `${c.kind === 'pourcentage' ? `−${c.value} %` : `−${formatPrice(c.value)}`}${c.maxDiscount ? ` (max ${formatPrice(c.maxDiscount)})` : ''}${c.minSubtotal ? ` dès ${formatPrice(c.minSubtotal)}` : ''}`;
+---
+
+<AdminLayout title="Promotions">
+  {Astro.url.searchParams.has('ok') && <p class="alert alert-success mb-4">Enregistré.</p>}
+  {errors.length > 0 && <div class="alert alert-error mb-4" role="alert"><ul class="list-disc pl-5">{errors.map((e) => <li>{e}</li>)}</ul></div>}
+  <p class="mb-6 text-sm text-muted">Les prix barrés (promotions produit) se règlent sur chaque produit, dans Catalogue › formats et prix. Le badge « Promotion » les fait apparaître dans le filtre « En promotion ».</p>
+
+  <section aria-labelledby="titre-codes">
+    <h2 id="titre-codes" class="text-xl">Codes promo</h2>
+    <div class="mt-3 space-y-2">
+      {
+        codes.map((c) => (
+          <details class="card p-4">
+            <summary class="flex cursor-pointer list-none flex-wrap items-center gap-3">
+              <strong class="font-mono text-brand-900">{c.code}</strong>
+              <span class="text-sm">{describe(c)}</span>
+              <span class="text-sm text-muted">· {c.usedCount}{c.usageLimit !== null ? ` / ${c.usageLimit}` : ''} utilisation(s)</span>
+              {!c.active && <span class="badge badge-rupture">Inactif</span>}
+              {c.endsAt && <span class="text-xs text-muted">jusqu'au {formatDateTime(c.endsAt)}</span>}
+            </summary>
+            <form method="post" class="mt-3 grid gap-3 sm:grid-cols-4">
+              <input type="hidden" name="code" value={c.code} />
+              <Fields c={c} />
+              <div class="flex gap-2 sm:col-span-4">
+                <button name="action" value="code-save" class="btn btn-primary btn-sm">Enregistrer</button>
+                <button name="action" value="code-delete" class="btn btn-ghost btn-sm text-danger" data-confirm="Supprimer ce code ?" formnovalidate>Supprimer</button>
+              </div>
+            </form>
+          </details>
+        ))
+      }
+    </div>
+    <details class="card mt-3 p-4">
+      <summary class="cursor-pointer font-semibold text-brand-700">+ Nouveau code promo</summary>
+      <form method="post" class="mt-3 grid gap-3 sm:grid-cols-4">
+        <label class="block"><span class="label">Code</span><input name="code" required class="input !py-2 uppercase" /></label>
+        <Fields />
+        <div class="sm:col-span-4"><button name="action" value="code-create" class="btn btn-primary btn-sm">Créer</button></div>
+      </form>
+    </details>
+  </section>
+
+  <section class="mt-12" aria-labelledby="titre-campagnes">
+    <h2 id="titre-campagnes" class="text-xl">Campagnes</h2>
+    <p class="text-sm text-muted">Seule la première campagne active de chaque emplacement est affichée (ordre croissant).</p>
+    <div class="mt-3 space-y-2">
+      {
+        campaignList.map((k) => (
+          <details class="card p-4">
+            <summary class="flex cursor-pointer list-none flex-wrap items-center gap-3">
+              <strong>{k.title}</strong>
+              <span class="text-sm text-muted">{PLACEMENTS[k.placement as keyof typeof PLACEMENTS] ?? k.placement}</span>
+              {!k.active && <span class="badge badge-rupture">Inactive</span>}
+            </summary>
+            <form method="post" enctype="multipart/form-data" class="mt-3 grid gap-3 sm:grid-cols-4">
+              <input type="hidden" name="id" value={k.id} />
+              <CampaignFields k={k} />
+              <div class="flex gap-2 sm:col-span-4">
+                <button name="action" value="campaign-save" class="btn btn-primary btn-sm">Enregistrer</button>
+                <button name="action" value="campaign-delete" class="btn btn-ghost btn-sm text-danger" data-confirm="Supprimer cette campagne ?" formnovalidate>Supprimer</button>
+              </div>
+            </form>
+          </details>
+        ))
+      }
+    </div>
+    <details class="card mt-3 p-4">
+      <summary class="cursor-pointer font-semibold text-brand-700">+ Nouvelle campagne</summary>
+      <form method="post" enctype="multipart/form-data" class="mt-3 grid gap-3 sm:grid-cols-4">
+        <CampaignFields />
+        <div class="sm:col-span-4"><button name="action" value="campaign-create" class="btn btn-primary btn-sm">Créer</button></div>
+      </form>
+    </details>
+  </section>
+</AdminLayout>
+
+<script>
+  import { initAdminForms } from '../../scripts/admin';
+  initAdminForms();
+</script>
+

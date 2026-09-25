@@ -1,7 +1,8 @@
 ---
 import Icon from './ui/Icon.astro';
-import ProductVisual from './ui/ProductVisual.astro';
-import { canBuyOnline, cartPayload, lowestVariant, type Brand, type Category, type Product } from '../lib/catalog';
+import FavoriteButton from './FavoriteButton.astro';
+import ProductImage from './ui/ProductImage.astro';
+import { canBuyOnline, cartPayload, lowestVariant, productUrl, type Brand, type Category, type Product } from '../lib/catalog';
 import { BADGE_LABELS, STATUS_LABELS, formatPrice } from '../lib/format';
 
 interface Props {
@@ -12,7 +13,7 @@ interface Props {
 const { product, category, brand } = Astro.props;
 const p = product.data;
 const variant = lowestVariant(product);
-const href = `/boutique/${product.id}`;
+const href = productUrl(product);
 const statusColor = {
   disponible: 'text-brand-600',
   'sur-commande': 'text-warning',
@@ -21,9 +22,10 @@ const statusColor = {
 }[p.status];
 ---
 
-<article class="card group flex flex-col overflow-hidden transition hover:-translate-y-0.5 hover:shadow-lg">
+<article class="card group relative flex flex-col overflow-hidden transition hover:-translate-y-0.5 hover:shadow-lg">
+  <FavoriteButton productId={product.id} name={p.name} class="absolute right-2 top-2 z-10" />
   <a href={href} class="relative block" tabindex="-1" aria-hidden="true">
-    <ProductVisual name={p.name} color={category.data.color} icon={category.data.icon} class="aspect-[4/3]" />
+    <ProductImage name={p.name} color={category.data.color} icon={category.data.icon} image={p.images[0]} class="aspect-[4/3] w-full" />
     {
       p.badges.length > 0 && (
         <div class="absolute left-3 top-3 flex flex-wrap gap-1">

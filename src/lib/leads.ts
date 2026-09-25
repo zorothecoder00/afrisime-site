@@ -1,5 +1,5 @@
 // Suivi commercial des leads (cahier des charges §9) : liste, détail, statut, attribution, notes.
-import { and, count, desc, eq, ilike, inArray, or, type SQL } from 'drizzle-orm';
+import { and, asc, count, desc, eq, ilike, inArray, isNull, or, sql, type SQL } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { leadEvents, leads, user } from '../db/schema';
 import { db } from './db';
@@ -56,6 +56,40 @@ export async function getLeadDetail(id: string) {
 export async function assignableStaff() {
   const eligible = Object.keys(roles).filter((role) => role !== 'client' && can(role, { lead: ['update'] }));
   return db.select({ id: user.id, name: user.name, role: user.role }).from(user).where(inArray(user.role, eligible)).orderBy(user.name);
+}
+
+/** Rôle chargé de chaque type de demande pour l'attribution automatique. */
+const OWNER_ROLE: Record<string, string> = {
+  b2b: 'commercial',
+  fournisseur: 'commercial',
+  partenaire: 'commercial',
+  investisseur: 'commercial',
+  contact: 'service-client',
+  reclamation: 'service-client',
+};
+
+/**
+ * Attribution automatique (§9) : la demande va au membre du rôle concerné qui a le moins de
+ * demandes en cours. Sans personne dans ce rôle, elle reste à attribuer.
+ */
+export async function autoAssign(leadId: string, type: string) {
+  const role = OWNER_ROLE[type];
+  if (!role) return null;
+  const candidates = await db
+    .select({ id: user.id, open: sql<number>`count(${leads.id}) filter (where ${leads.status} <> 'cloture')`.mapWith(Number) })
+    .from(user)
+    .leftJoin(leads, eq(leads.assignedTo, user.id))
+    .where(and(eq(user.role, role), or(isNull(user.banned), eq(user.banned, false))))
+    .groupBy(user.id)
+    .orderBy(asc(sql`2`), asc(user.createdAt))
+    .limit(1);
+  const owner = candidates[0];
+  if (!owner) return null;
+  await db.transaction(async (tx) => {
+    await tx.update(leads).set({ assignedTo: owner.id }).where(eq(leads.id, leadId));
+    await tx.insert(leadEvents).values({ leadId, assignedTo: owner.id, note: 'Attribution automatique' });
+  });
+  return owner.id;
 }
 
 /** Enregistre les changements (statut, responsable) et une note dans l'historique. */

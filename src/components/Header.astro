@@ -1,23 +1,46 @@
 ---
 import Icon from './ui/Icon.astro';
 import Logo from './ui/Logo.astro';
-import { NAV, SITE } from '../data/site';
+import { activeCampaigns } from '../lib/promotions';
+import { contactLinks, getSettings } from '../lib/settings';
 
+const { navigation: NAV, contact, identity } = await getSettings();
+const links = contactLinks(contact);
+const [banner] = await activeCampaigns('bandeau');
 const path = Astro.url.pathname;
-const isActive = (href: string) => (href === '/' ? path === '/' : path.startsWith(href));
+const isActive = (href: string) => {
+  const base = href.split(/[?#]/)[0];
+  return base === '/' ? path === '/' : !!base && path.startsWith(base);
+};
 ---
+
+{
+  banner && (
+    <div class="bg-accent-500 text-brand-950">
+      <p class="container-page py-2 text-center text-sm font-semibold">
+        {banner.title}
+        {banner.text && <span class="font-normal"> — {banner.text}</span>}
+        {banner.ctaHref && (
+          <a href={banner.ctaHref} class="ml-2 font-extrabold underline">
+            {banner.ctaLabel || 'En profiter'}
+          </a>
+        )}
+      </p>
+    </div>
+  )
+}
 
 <div class="bg-brand-950 text-brand-100">
   <div class="container-page flex items-center justify-between gap-4 py-2 text-xs">
     <p class="flex items-center gap-2">
       <Icon name="truck" size={14} />
-      <span>Livraison offerte à Lomé dès 50 000 FCFA</span>
+      <span>{identity.topBar}</span>
     </p>
     <div class="hidden items-center gap-5 sm:flex">
-      <a href={SITE.contact.phoneHref} class="flex items-center gap-1.5 hover:text-white">
-        <Icon name="phone" size={14} />{SITE.contact.phone}
+      <a href={links.phoneHref} class="flex items-center gap-1.5 hover:text-white">
+        <Icon name="phone" size={14} />{contact.phone}
       </a>
-      <a href={SITE.contact.whatsapp} class="flex items-center gap-1.5 hover:text-white" rel="noopener" target="_blank">
+      <a href={links.whatsappHref} class="flex items-center gap-1.5 hover:text-white" rel="noopener" target="_blank">
         <Icon name="whatsapp" size={14} />WhatsApp
       </a>
       <a href="/faq" class="hover:text-white">Aide & FAQ</a>
@@ -141,7 +164,7 @@ const isActive = (href: string) => (href === '/' ? path === '/' : path.startsWit
       <li class="py-1"><a href="/faq" class="block py-2.5 font-bold text-brand-900">FAQ</a></li>
       <li class="flex flex-col gap-2 py-4">
         <a href="/b2b" class="btn btn-accent">Espace pro · Demander un devis</a>
-        <a href={SITE.contact.whatsapp} class="btn btn-secondary" target="_blank" rel="noopener">
+        <a href={links.whatsappHref} class="btn btn-secondary" target="_blank" rel="noopener">
           <Icon name="whatsapp" size={18} />Commander sur WhatsApp
         </a>
       </li>

@@ -1,0 +1,28 @@
+---
+// Bouton « favori » (cœur). L'état est chargé et enregistré par src/scripts/favorites.ts :
+// les pages restent identiques pour tous les visiteurs (cache CDN).
+import Icon from './ui/Icon.astro';
+
+interface Props {
+  productId: string;
+  name: string;
+  class?: string;
+  withLabel?: boolean;
+}
+const { productId, name, class: className, withLabel = false } = Astro.props;
+---
+
+<button
+  type="button"
+  class:list={[
+    'group/fav inline-flex items-center gap-2 rounded-full bg-white/90 p-2 text-muted shadow-sm transition hover:text-danger aria-pressed:text-danger',
+    withLabel && 'border border-line !px-4 text-sm font-semibold',
+    className,
+  ]}
+  data-favorite={productId}
+  aria-pressed="false"
+  aria-label={withLabel ? undefined : `Ajouter ${name} à mes favoris`}
+>
+  <Icon name="heart" size={18} class="group-aria-pressed/fav:fill-current" />
+  {withLabel && <span data-favorite-label>Ajouter aux favoris</span>}
+</button>

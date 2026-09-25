@@ -4,33 +4,41 @@ import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import ConsentBanner from '../components/ConsentBanner.astro';
 import { SITE } from '../data/site';
+import { imageUrl } from '../lib/media';
+import { getSettings } from '../lib/settings';
 
 interface Props {
   title?: string;
   description?: string;
   image?: string;
+  /** Image de la médiathèque utilisée pour le partage (prioritaire sur `image`). */
+  imageId?: string | null;
   /** Données structurées Schema.org propres à la page. */
   jsonLd?: Record<string, unknown> | Record<string, unknown>[];
   noindex?: boolean;
 }
 
-const { title, description = SITE.description, image = '/og-default.svg', jsonLd, noindex = false } = Astro.props;
-const fullTitle = title ? `${title} | ${SITE.name}` : `${SITE.name} — ${SITE.tagline}`;
+const { identity, contact, social, seo } = await getSettings();
+const { title, description = identity.description, imageId, jsonLd, noindex = false } = Astro.props;
+const image = imageId ? imageUrl(imageId) : (Astro.props.image ?? '/og-default.svg');
+const fullTitle = title ? `${title} | ${identity.name}` : `${identity.name} — ${identity.tagline}`;
 const canonical = new URL(Astro.url.pathname, Astro.site);
 const ogImage = new URL(image, Astro.site);
 
 const organization = {
   '@context': 'https://schema.org',
   '@type': 'Organization',
-  name: SITE.name,
+  name: identity.name,
   url: Astro.site?.href,
   logo: new URL('/favicon.svg', Astro.site).href,
-  telephone: SITE.contact.phone,
-  email: SITE.contact.email,
-  address: { '@type': 'PostalAddress', streetAddress: SITE.contact.address, addressCountry: 'TG' },
-  sameAs: SITE.social.map((s) => s.href),
+  telephone: contact.phone,
+  email: contact.email,
+  address: { '@type': 'PostalAddress', streetAddress: contact.address, addressCountry: 'TG' },
+  sameAs: social.map((s) => s.href),
 };
 const structured = [organization, ...(Array.isArray(jsonLd) ? jsonLd : jsonLd ? [jsonLd] : [])];
+// Empêche une valeur saisie dans le back-office de fermer la balise <script>.
+const structuredJson = JSON.stringify(structured).replace(/</g, '\\u003c');
 ---
 
 <!doctype html>
@@ -42,13 +50,14 @@ const structured = [organization, ...(Array.isArray(jsonLd) ? jsonLd : jsonLd ? 
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
     {noindex && <meta name="robots" content="noindex, nofollow" />}
+    {seo.googleVerification && <meta name="google-site-verification" content={seo.googleVerification} />}
     <meta name="theme-color" content="#0f3d2e" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" href="/favicon.ico" sizes="32x32" />
-    <link rel="sitemap" href="/sitemap-index.xml" />
+    <link rel="sitemap" href="/sitemap.xml" />
 
     <meta property="og:type" content="website" />
-    <meta property="og:site_name" content={SITE.name} />
+    <meta property="og:site_name" content={identity.name} />
     <meta property="og:locale" content={SITE.locale} />
     <meta property="og:title" content={fullTitle} />
     <meta property="og:description" content={description} />
@@ -63,9 +72,9 @@ const structured = [organization, ...(Array.isArray(jsonLd) ? jsonLd : jsonLd ? 
       href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
     />
 
-    <script type="application/ld+json" set:html={JSON.stringify(structured)} />
+    <script type="application/ld+json" set:html={structuredJson} />
   </head>
-  <body class="flex min-h-screen flex-col">
+  <body class="flex min-h-screen flex-col" data-gtm={seo.gtmId || undefined}>
     <a href="#contenu" class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] btn btn-primary">
       Aller au contenu
     </a>
@@ -78,6 +87,9 @@ const structured = [organization, ...(Array.isArray(jsonLd) ? jsonLd : jsonLd ? 
     <script>
       import '../scripts/cart';
       import '../scripts/forms';
+      import '../scripts/favorites';
+      import { loadTagManager } from '../scripts/analytics';
+      loadTagManager();
     </script>
   </body>
 </html>

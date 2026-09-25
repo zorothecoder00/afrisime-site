@@ -1,0 +1,130 @@
+---
+// Médiathèque : envoi d'images (compressées en WebP), texte alternatif, suppression.
+// Les documents privés joints aux demandes n'apparaissent pas ici (fiche du lead).
+import { and, count, desc, eq, sql } from 'drizzle-orm';
+import AdminLayout from '../../components/AdminLayout.astro';
+import Pagination from '../../components/admin/Pagination.astro';
+import { brands, campaigns, categories, contents, media, products } from '../../db/schema';
+import { str } from '../../lib/admin';
+import { audit } from '../../lib/audit';
+import { invalidateCatalog } from '../../lib/catalog';
+import { invalidateContent } from '../../lib/content';
+import { db } from '../../lib/db';
+import { formatDateTime } from '../../lib/format';
+import { imageUrl, storeUpload, UploadError } from '../../lib/media';
+import { can } from '../../lib/roles';
+
+const me = Astro.locals.user!;
+if (!can(me.role, { content: ['update'] }) && !can(me.role, { catalog: ['update'] })) return new Response('Accès refusé.', { status: 403 });
+const PAGE_SIZE = 48;
+const errors: string[] = [];
+let uploaded = 0;
+
+/** Un média encore utilisé ne peut pas être supprimé (photo produit, couverture, logo…). */
+async function usage(id: string) {
+  const [p, c, b, k, cp] = await Promise.all([
+    db.select({ n: count() }).from(products).where(sql`${products.imageIds} ? ${id}`),
+    db.select({ n: count() }).from(contents).where(sql`${contents.coverId} = ${id} or ${contents.body} like ${`%/img/${id}%`}`),
+    db.select({ n: count() }).from(brands).where(eq(brands.logoId, id)),
+    db.select({ n: count() }).from(categories).where(eq(categories.imageId, id)),
+    db.select({ n: count() }).from(campaigns).where(eq(campaigns.imageId, id)),
+  ]);
+  return p[0].n + c[0].n + b[0].n + k[0].n + cp[0].n;
+}
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const action = str(form, 'action');
+  const id = str(form, 'id', 40);
+
+  if (action === 'upload') {
+    for (const file of form.getAll('files')) {
+      if (typeof file === 'string' || file.size === 0) continue;
+      try {
+        await storeUpload(file, { uploadedBy: me.id, alt: str(form, 'alt', 300) });
+        uploaded++;
+      } catch (err) {
+        errors.push(err instanceof UploadError ? err.message : `« ${file.name} » n'a pas pu être enregistré.`);
+      }
+    }
+    if (uploaded) await audit({ actorId: me.id, action: 'medias-envoyes', details: { nombre: uploaded }, ipAddress: Astro.clientAddress });
+  }
+  if (action === 'alt') {
+    await db.update(media).set({ alt: str(form, 'alt', 300) }).where(and(eq(media.id, id), eq(media.private, false)));
+    invalidateCatalog();
+    invalidateContent();
+  }
+  if (action === 'delete') {
+    const used = await usage(id);
+    if (used > 0) errors.push(`Ce média est encore utilisé (${used} fois) : retirez-le d'abord des produits ou contenus concernés.`);
+    else {
+      await db.delete(media).where(and(eq(media.id, id), eq(media.private, false)));
+      await audit({ actorId: me.id, action: 'media-supprime', target: id, ipAddress: Astro.clientAddress });
+    }
+  }
+  if (!errors.length) return Astro.redirect(`/admin/medias?ok=${action}${uploaded ? `&n=${uploaded}` : ''}`, 303);
+}
+
+const page = Math.max(1, Number(Astro.url.searchParams.get('page')) || 1);
+const where = and(eq(media.private, false), eq(media.kind, 'image'));
+const [items, [{ total }]] = await Promise.all([
+  db
+    .select({ id: media.id, filename: media.filename, alt: media.alt, width: media.width, height: media.height, size: media.size, createdAt: media.createdAt })
+    .from(media)
+    .where(where)
+    .orderBy(desc(media.createdAt))
+    .limit(PAGE_SIZE)
+    .offset((page - 1) * PAGE_SIZE),
+  db.select({ total: count() }).from(media).where(where),
+]);
+const ok = Astro.url.searchParams.get('ok');
+---
+
+<AdminLayout title="Médias">
+  {ok === 'upload' && <p class="alert alert-success mb-4">{Astro.url.searchParams.get('n')} image(s) ajoutée(s).</p>}
+  {ok === 'alt' && <p class="alert alert-success mb-4">Texte alternatif enregistré.</p>}
+  {ok === 'delete' && <p class="alert alert-success mb-4">Image supprimée.</p>}
+  {errors.length > 0 && <div class="alert alert-error mb-4" role="alert"><ul class="list-disc pl-5">{errors.map((e) => <li>{e}</li>)}</ul></div>}
+
+  <form method="post" enctype="multipart/form-data" class="card grid gap-3 p-5 sm:grid-cols-[2fr_2fr_auto] sm:items-end">
+    <input type="hidden" name="action" value="upload" />
+    <label class="block"><span class="label">Images</span><input type="file" name="files" multiple required accept="image/jpeg,image/png,image/webp,image/avif,image/gif" class="input" /></label>
+    <label class="block"><span class="label">Texte alternatif</span><input name="alt" maxlength="300" class="input" placeholder="Décrit l'image (accessibilité, SEO)" /></label>
+    <button class="btn btn-primary">Envoyer</button>
+    <p class="hint sm:col-span-3">JPG, PNG, WebP, AVIF ou GIF, 8 Mo max. Les images sont converties en WebP (1600 px max) avec une miniature.</p>
+  </form>
+
+  <ul class="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+    {
+      items.map((m) => (
+        <li class="card overflow-hidden text-xs">
+          <a href={imageUrl(m.id)} target="_blank"><img src={imageUrl(m.id, 'mini')} alt={m.alt} loading="lazy" class="aspect-square w-full bg-canvas object-contain" /></a>
+          <div class="space-y-2 p-3">
+            <p class="truncate font-semibold" title={m.filename}>{m.filename}</p>
+            <p class="text-muted">{m.width}×{m.height} · {Math.round(m.size / 1024)} Ko · {formatDateTime(m.createdAt)}</p>
+            <form method="post" class="flex gap-1">
+              <input type="hidden" name="action" value="alt" />
+              <input type="hidden" name="id" value={m.id} />
+              <input name="alt" value={m.alt} maxlength="300" class="input !px-2 !py-1 text-xs" aria-label="Texte alternatif" placeholder="Texte alternatif" />
+              <button class="btn btn-secondary btn-sm">OK</button>
+            </form>
+            <div class="flex flex-wrap gap-1">
+              <button type="button" class="btn btn-ghost btn-sm" data-copy={`![${m.alt}](${imageUrl(m.id)})`}>Code Markdown</button>
+              <form method="post">
+                <input type="hidden" name="action" value="delete" />
+                <input type="hidden" name="id" value={m.id} />
+                <button class="btn btn-ghost btn-sm text-danger" data-confirm="Supprimer cette image ?">Supprimer</button>
+              </form>
+            </div>
+          </div>
+        </li>
+      ))
+    }
+  </ul>
+  <Pagination total={total} page={page} pageSize={PAGE_SIZE} />
+</AdminLayout>
+
+<script>
+  import { initAdminForms } from '../../scripts/admin';
+  initAdminForms();
+</script>

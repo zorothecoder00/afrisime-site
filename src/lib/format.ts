@@ -51,6 +51,7 @@ export const LEAD_TYPE_LABELS = {
   newsletter: 'Newsletter',
   investisseur: 'Investisseur',
   candidature: 'Candidature',
+  reclamation: 'Réclamation',
 } as const;
 
 export const LEAD_STATUS_LABELS = {
@@ -61,3 +62,21 @@ export const LEAD_STATUS_LABELS = {
   commande: 'Commande',
   cloture: 'Clôturé',
 } as const;
+
+export const PAYMENT_STATUS_LABELS = {
+  'en-attente': 'En attente',
+  reussi: 'Réussi',
+  echoue: 'Échoué',
+  annule: 'Annulé',
+} as const;
+
+export const PRO_STATUS_LABELS = {
+  aucun: 'Particulier',
+  'en-attente': 'Pro à valider',
+  valide: 'Pro validé',
+  refuse: 'Pro refusé',
+} as const;
+
+export function formatDateTime(date: Date): string {
+  return date.toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Africa/Lome' });
+}

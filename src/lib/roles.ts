@@ -7,9 +7,17 @@ const statements = {
   ...defaultStatements, // user, session : gestion des comptes
   order: ['read', 'update'],
   lead: ['read', 'update'],
+  /** Produits, catégories, marques, prix, promotions, livraison et moyens de paiement. */
   catalog: ['read', 'update'],
+  /** Contenus, FAQ, médias. « publish » : publier sans validation. */
   content: ['read', 'update', 'publish'],
+  /** Menus, redirections, SEO et mesure d'audience. */
+  seo: ['update'],
+  /** Validation des comptes professionnels. */
+  pro: ['validate'],
   report: ['read'],
+  audit: ['read'],
+  /** Configuration globale : identité, coordonnées, réseaux. */
   settings: ['update'],
 } as const;
 
@@ -26,13 +34,16 @@ export const roles = {
     lead: ['read', 'update'],
     catalog: ['read', 'update'],
     content: ['read', 'update', 'publish'],
+    seo: ['update'],
+    pro: ['validate'],
     report: ['read'],
+    audit: ['read'],
     settings: ['update'],
   }),
-  'admin-web': ac.newRole({ content: ['read', 'update', 'publish'], catalog: ['read'], report: ['read'] }),
-  ecommerce: ac.newRole({ order: ['read', 'update'], catalog: ['read', 'update'], lead: ['read'], report: ['read'] }),
-  commercial: ac.newRole({ lead: ['read', 'update'], order: ['read'], catalog: ['read'], report: ['read'] }),
-  'service-client': ac.newRole({ order: ['read', 'update'], lead: ['read', 'update'], content: ['read'] }),
+  'admin-web': ac.newRole({ content: ['read', 'update', 'publish'], seo: ['update'], catalog: ['read'], report: ['read'] }),
+  ecommerce: ac.newRole({ order: ['read', 'update'], catalog: ['read', 'update'], content: ['read'], lead: ['read'], report: ['read'] }),
+  commercial: ac.newRole({ lead: ['read', 'update'], pro: ['validate'], order: ['read'], catalog: ['read'], report: ['read'] }),
+  'service-client': ac.newRole({ order: ['read', 'update'], lead: ['read', 'update'], content: ['read', 'update'] }),
   editeur: ac.newRole({ content: ['read', 'update'], catalog: ['read'] }),
   analyste: ac.newRole({ ...readAll }),
 };
@@ -55,7 +66,7 @@ export function isStaff(role: string | null | undefined): boolean {
   return !!role && role !== 'client' && role in roles;
 }
 
-type Permissions = { [K in keyof typeof statements]?: (typeof statements)[K][number][] };
+export type Permissions = { [K in keyof typeof statements]?: (typeof statements)[K][number][] };
 
 export function can(role: string | null | undefined, permissions: Permissions): boolean {
   if (!role || !(role in roles)) return false;

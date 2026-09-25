@@ -1,0 +1,162 @@
+---
+// SEO & menus (§10, §13) : menu principal, redirections 301, Google Tag Manager et Search Console.
+import { asc, eq } from 'drizzle-orm';
+import AdminLayout from '../../components/AdminLayout.astro';
+import { redirects } from '../../db/schema';
+import { deny, rows, safeHref, str } from '../../lib/admin';
+import { audit } from '../../lib/audit';
+import { db } from '../../lib/db';
+import { addRedirect, invalidateRedirects, normalizePath } from '../../lib/redirects';
+import { getSettings, saveSettings } from '../../lib/settings';
+import type { NavItem } from '../../data/site';
+
+const me = Astro.locals.user!;
+const denied = deny(me, { seo: ['update'] });
+if (denied) return denied;
+const errors: string[] = [];
+
+/** « Libellé | /lien » par ligne → sous-menus. */
+function parseChildren(text: string) {
+  return text
+    .split('\n')
+    .map((line) => line.split('|').map((s) => s.trim()))
+    .filter(([label, href]) => label && href)
+    .map(([label, href]) => ({ label: label.slice(0, 60), href: safeHref(href) ?? '' }));
+}
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const action = str(form, 'action');
+
+  if (action === 'redirect-add') {
+    const from = normalizePath(str(form, 'from', 300));
+    const to = str(form, 'to', 300);
+    if (from === '/' || !from.startsWith('/')) errors.push('Ancienne adresse invalide (ex. /ancienne-page).');
+    else if (!safeHref(to)) errors.push('Nouvelle adresse invalide : /page ou https://…');
+    else await addRedirect(from, to, str(form, 'status') === '302' ? 302 : 301);
+  }
+  if (action === 'redirect-delete') {
+    await db.delete(redirects).where(eq(redirects.from, str(form, 'from', 300)));
+    invalidateRedirects();
+  }
+
+  if (action === 'menu') {
+    const navigation: NavItem[] = rows(form, 'menu')
+      .filter((r) => r.label && r.href)
+      .map((r) => {
+        const children = parseChildren(r.children ?? '');
+        return { label: r.label.slice(0, 40), href: safeHref(r.href) ?? '/', ...(children.length ? { children } : {}) };
+      });
+    if (!navigation.length) errors.push('Le menu doit contenir au moins un lien.');
+    if (navigation.some((n) => n.children?.some((c) => !c.href))) errors.push('Un lien de sous-menu est invalide (format : Libellé | /lien).');
+    if (!errors.length) await saveSettings('navigation', navigation, me.id);
+  }
+
+  if (action === 'mesure') {
+    const gtmId = str(form, 'gtmId', 20).toUpperCase();
+    const googleVerification = str(form, 'googleVerification', 100);
+    if (gtmId && !/^GTM-[A-Z0-9]+$/.test(gtmId)) errors.push('Identifiant GTM invalide (format GTM-XXXXXXX).');
+    if (googleVerification && !/^[\w-]+$/.test(googleVerification)) errors.push('Code Search Console invalide : collez uniquement la valeur « content ».');
+    if (!errors.length) await saveSettings('seo', { gtmId, googleVerification }, me.id);
+  }
+
+  if (!errors.length) {
+    await audit({ actorId: me.id, action: `seo-${action}`, ipAddress: Astro.clientAddress });
+    return Astro.redirect(`/admin/seo?ok=${action}`, 303);
+  }
+}
+
+const settings = await getSettings();
+const redirectList = await db.select().from(redirects).orderBy(asc(redirects.from));
+const menu = [...settings.navigation, { label: '', href: '' }];
+const ok = Astro.url.searchParams.get('ok');
+---
+
+<AdminLayout title="SEO & menus">
+  {ok && <p class="alert alert-success mb-4">Enregistré. Visible sur le site d'ici une minute.</p>}
+  {errors.length > 0 && <div class="alert alert-error mb-4" role="alert"><ul class="list-disc pl-5">{errors.map((e) => <li>{e}</li>)}</ul></div>}
+
+  <section class="card p-5" aria-labelledby="titre-menu">
+    <h2 id="titre-menu" class="text-xl">Menu principal</h2>
+    <p class="hint">Sous-menus : un lien par ligne, au format <code>Libellé | /lien</code>. Laissez une ligne vide pour la retirer.</p>
+    <form method="post" class="mt-4">
+      <input type="hidden" name="action" value="menu" />
+      <div class="space-y-3" data-rows="menu">
+        {
+          menu.map((item, i) => (
+            <div class="grid gap-2 rounded-xl border border-line p-3 sm:grid-cols-[1fr_1fr_2fr_auto]" data-row>
+              <label class="block"><span class="label">Libellé</span><input name={`menu[${i}][label]`} value={item.label} class="input !py-2" /></label>
+              <label class="block"><span class="label">Lien</span><input name={`menu[${i}][href]`} value={item.href} class="input !py-2" /></label>
+              <label class="block"><span class="label">Sous-menus</span><textarea name={`menu[${i}][children]`} rows="2" class="input !py-2 text-xs">{(item as NavItem).children?.map((c) => `${c.label} | ${c.href}`).join('\n') ?? ''}</textarea></label>
+              <button type="button" class="btn btn-ghost btn-sm self-end text-danger" data-remove-row>Retirer</button>
+            </div>
+          ))
+        }
+      </div>
+      <div class="mt-3 flex gap-2">
+        <button type="button" class="btn btn-secondary btn-sm" data-add-row="menu">+ Ajouter un lien</button>
+        <button class="btn btn-primary btn-sm">Enregistrer le menu</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="card mt-6 p-5" aria-labelledby="titre-redir">
+    <h2 id="titre-redir" class="text-xl">Redirections</h2>
+    <p class="hint">Quand une page change d'adresse ou disparaît, redirigez l'ancienne adresse pour garder le référencement. Les changements d'adresse d'un produit ou d'un article publié sont redirigés automatiquement.</p>
+    <form method="post" class="mt-4 grid gap-2 sm:grid-cols-[2fr_2fr_auto_auto] sm:items-end">
+      <input type="hidden" name="action" value="redirect-add" />
+      <label class="block"><span class="label">Ancienne adresse</span><input name="from" required class="input !py-2" placeholder="/ancienne-page" /></label>
+      <label class="block"><span class="label">Nouvelle adresse</span><input name="to" required class="input !py-2" placeholder="/boutique ou https://…" /></label>
+      <label class="block"><span class="label">Type</span><select name="status" class="input !py-2"><option value="301">301 (définitive)</option><option value="302">302 (temporaire)</option></select></label>
+      <button class="btn btn-primary btn-sm">Ajouter</button>
+    </form>
+    <div class="mt-4 overflow-x-auto">
+      <table class="w-full min-w-[560px] text-left text-sm">
+        <thead class="text-muted"><tr><th class="py-2">De</th><th>Vers</th><th>Type</th><th>Visites</th><th></th></tr></thead>
+        <tbody class="divide-y divide-line">
+          {redirectList.length === 0 && <tr><td colspan="5" class="py-3 text-muted">Aucune redirection.</td></tr>}
+          {
+            redirectList.map((r) => (
+              <tr>
+                <td class="py-2 font-mono text-xs">{r.from}</td>
+                <td class="font-mono text-xs">{r.to}</td>
+                <td>{r.status}</td>
+                <td>{r.hits}</td>
+                <td class="text-right">
+                  <form method="post">
+                    <input type="hidden" name="action" value="redirect-delete" />
+                    <input type="hidden" name="from" value={r.from} />
+                    <button class="btn btn-ghost btn-sm text-danger">Supprimer</button>
+                  </form>
+                </td>
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card mt-6 p-5" aria-labelledby="titre-mesure">
+    <h2 id="titre-mesure" class="text-xl">Mesure d'audience et Search Console</h2>
+    <form method="post" class="mt-4 grid gap-3 sm:grid-cols-2">
+      <input type="hidden" name="action" value="mesure" />
+      <label class="block">
+        <span class="label">Google Tag Manager</span>
+        <input name="gtmId" value={settings.seo.gtmId} class="input !py-2" placeholder="GTM-XXXXXXX" />
+        <span class="hint block">Chargé uniquement après accord du visiteur (bandeau cookies). Configurez GA4 dans GTM ; les événements du site (recherche, vue produit, panier, commande, lead) sont envoyés dans le dataLayer.</span>
+      </label>
+      <label class="block">
+        <span class="label">Vérification Google Search Console</span>
+        <input name="googleVerification" value={settings.seo.googleVerification} class="input !py-2" placeholder="valeur de la balise meta" />
+        <span class="hint block">Méthode « balise HTML » : collez la valeur de l'attribut content. Déclarez ensuite le sitemap : /sitemap.xml.</span>
+      </label>
+      <div class="sm:col-span-2"><button class="btn btn-primary btn-sm">Enregistrer</button></div>
+    </form>
+  </section>
+</AdminLayout>
+
+<script>
+  import { initAdminForms } from '../../scripts/admin';
+  initAdminForms();
+</script>

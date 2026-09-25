@@ -48,7 +48,7 @@ const describedBy = [hint && `${id}-hint`, `${id}-err`].filter(Boolean).join(' '
       <input
         id={id}
         name={name}
-        type={type}
+        type={type as 'text'}
         required={required}
         placeholder={placeholder}
         autocomplete={autocomplete}

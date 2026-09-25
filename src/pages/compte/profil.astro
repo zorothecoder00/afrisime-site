@@ -1,0 +1,78 @@
+---
+import { eq } from 'drizzle-orm';
+import Layout from '../../layouts/Layout.astro';
+import AccountNav from '../../components/AccountNav.astro';
+import PageHero from '../../components/PageHero.astro';
+import { user as users } from '../../db/schema';
+import { audit } from '../../lib/audit';
+import { db } from '../../lib/db';
+import { PRO_STATUS_LABELS } from '../../lib/format';
+import { clean, isValidPhone } from '../../lib/validation';
+
+const me = Astro.locals.user!;
+const errors: Record<string, string> = {};
+let values = { name: me.name, phone: me.phone ?? '', company: me.company ?? '', accountType: me.accountType ?? 'particulier' };
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  values = {
+    name: clean(form.get('name'), 120),
+    phone: clean(form.get('phone'), 30),
+    company: clean(form.get('company'), 160),
+    accountType: form.get('accountType') === 'pro' ? 'pro' : 'particulier',
+  };
+  if (values.name.length < 2) errors.name = 'Indiquez votre nom.';
+  if (values.phone && !isValidPhone(values.phone)) errors.phone = 'Numéro de téléphone invalide.';
+  if (values.accountType === 'pro' && values.company.length < 2) errors.company = 'Indiquez le nom de votre entreprise.';
+  if (!Object.keys(errors).length) {
+    // Passer en compte pro déclenche une validation par un commercial ; revenir en particulier la retire.
+    const proStatus = values.accountType === 'pro' ? (me.accountType === 'pro' ? (me.proStatus ?? 'en-attente') : 'en-attente') : 'aucun';
+    await db
+      .update(users)
+      .set({ name: values.name, phone: values.phone || null, company: values.company || null, accountType: values.accountType, proStatus })
+      .where(eq(users.id, me.id));
+    await audit({ actorId: me.id, action: 'profil-modifie', target: me.id, ipAddress: Astro.clientAddress });
+    return Astro.redirect('/compte/profil?ok=1', 303);
+  }
+}
+const saved = Astro.url.searchParams.has('ok');
+---
+
+<Layout title="Mon profil" noindex>
+  <PageHero title="Mon profil" breadcrumbs={[{ label: 'Mon compte', href: '/compte' }, { label: 'Profil' }]} />
+  <div class="container-page pt-6"><AccountNav current="profil" /></div>
+  <div class="container-page max-w-2xl py-10">
+    {saved && <p class="alert alert-success mb-6">Profil enregistré.</p>}
+    <form method="post" class="card grid gap-4 p-6 sm:grid-cols-2" novalidate>
+      <label class="block sm:col-span-2">
+        <span class="label">Nom complet</span>
+        <input name="name" required class="input" value={values.name} autocomplete="name" aria-invalid={errors.name ? 'true' : undefined} />
+        {errors.name && <span class="field-error block">{errors.name}</span>}
+      </label>
+      <label class="block">
+        <span class="label">E-mail</span>
+        <input class="input bg-canvas" value={me.email} disabled />
+        <span class="hint block">Pour changer d'adresse e-mail, contactez le service client.</span>
+      </label>
+      <label class="block">
+        <span class="label">Téléphone</span>
+        <input name="phone" type="tel" class="input" value={values.phone} autocomplete="tel" inputmode="tel" aria-invalid={errors.phone ? 'true' : undefined} />
+        {errors.phone && <span class="field-error block">{errors.phone}</span>}
+      </label>
+      <fieldset class="sm:col-span-2">
+        <legend class="label">Type de compte</legend>
+        <div class="flex flex-wrap gap-4 text-sm">
+          <label class="flex items-center gap-2"><input type="radio" name="accountType" value="particulier" checked={values.accountType !== 'pro'} class="accent-brand-700" />Particulier</label>
+          <label class="flex items-center gap-2"><input type="radio" name="accountType" value="pro" checked={values.accountType === 'pro'} class="accent-brand-700" />Professionnel</label>
+        </div>
+        {me.accountType === 'pro' && <p class="hint">Statut : {PRO_STATUS_LABELS[me.proStatus as keyof typeof PRO_STATUS_LABELS] ?? me.proStatus}</p>}
+      </fieldset>
+      <label class="block sm:col-span-2">
+        <span class="label">Entreprise <span class="font-normal text-muted">(comptes professionnels)</span></span>
+        <input name="company" class="input" value={values.company} autocomplete="organization" aria-invalid={errors.company ? 'true' : undefined} />
+        {errors.company && <span class="field-error block">{errors.company}</span>}
+      </label>
+      <div class="sm:col-span-2"><button class="btn btn-primary">Enregistrer</button></div>
+    </form>
+  </div>
+</Layout>

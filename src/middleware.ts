@@ -1,5 +1,7 @@
-// Récupère la session sur chaque requête rendue côté serveur et protège
-// les espaces privés : /compte (clients connectés) et /admin (équipe AfriSime).
+// 1. Lit la session là où elle sert (/compte, /admin, /api) et protège les espaces privés :
+//    /compte (clients connectés) et /admin (équipe AfriSime, double authentification obligatoire).
+// 2. Met en cache CDN les pages publiques : elles ne dépendent pas du visiteur. Une modification
+//    faite dans le back-office est visible au plus tard après PUBLIC_CACHE_SECONDS.
 import { defineMiddleware } from 'astro:middleware';
 import { auth } from './lib/auth';
 import { isStaff } from './lib/roles';
@@ -13,17 +15,26 @@ const PUBLIC_ACCOUNT_PAGES = [
   '/compte/verification',
 ];
 
+const SESSION_PREFIXES = ['/compte', '/admin', '/api'];
+// Pages propres à un visiteur ou à une commande : jamais en cache partagé.
+const UNCACHED_PREFIXES = [...SESSION_PREFIXES, '/panier', '/commande', '/suivi', '/img'];
+
+export const PUBLIC_CACHE_SECONDS = 60;
+
+const startsWithAny = (path: string, prefixes: string[]) => prefixes.some((p) => path === p || path.startsWith(`${p}/`));
+
 export const onRequest = defineMiddleware(async (context, next) => {
   context.locals.user = null;
   context.locals.session = null;
-  // Les pages statiques sont générées au build : pas de session à lire.
   if (context.isPrerendered) return next();
 
-  const result = await auth.api.getSession({ headers: context.request.headers });
-  context.locals.user = result?.user ?? null;
-  context.locals.session = result?.session ?? null;
-
   const path = context.url.pathname.replace(/\/$/, '') || '/';
+
+  if (startsWithAny(path, SESSION_PREFIXES)) {
+    const result = await auth.api.getSession({ headers: context.request.headers });
+    context.locals.user = result?.user ?? null;
+    context.locals.session = result?.session ?? null;
+  }
   const user = context.locals.user;
   const loginUrl = `/compte/connexion?retour=${encodeURIComponent(context.url.pathname + context.url.search)}`;
 
@@ -39,6 +50,20 @@ export const onRequest = defineMiddleware(async (context, next) => {
   }
 
   const response = await next();
-  if (path.startsWith('/compte') || path.startsWith('/admin')) response.headers.set('Cache-Control', 'no-store');
+
+  if (path.startsWith('/compte') || path.startsWith('/admin')) {
+    response.headers.set('Cache-Control', 'no-store');
+  } else if (
+    context.request.method === 'GET' &&
+    response.status === 200 &&
+    !startsWithAny(path, UNCACHED_PREFIXES) &&
+    !response.headers.has('Cache-Control') &&
+    !response.headers.has('Set-Cookie') &&
+    (response.headers.get('Content-Type') ?? '').includes('text/html')
+  ) {
+    response.headers.set('Cache-Control', `public, max-age=0, s-maxage=${PUBLIC_CACHE_SECONDS}, stale-while-revalidate=600`);
+  } else if (startsWithAny(path, ['/panier', '/commande', '/suivi']) && !response.headers.has('Cache-Control')) {
+    response.headers.set('Cache-Control', 'no-store');
+  }
   return response;
 });

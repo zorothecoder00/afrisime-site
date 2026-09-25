@@ -1,0 +1,36 @@
+---
+// Photo produit (WebP servie depuis la médiathèque), ou visuel de la catégorie si le
+// produit n'a pas encore de photo.
+import ProductVisual from './ProductVisual.astro';
+import type { ImageRef } from '../../lib/catalog';
+import { imageUrl } from '../../lib/media';
+
+interface Props {
+  name: string;
+  color: string;
+  icon: string;
+  image?: ImageRef | null;
+  size?: 'sm' | 'md' | 'lg';
+  /** Image visible dès l'affichage (au-dessus de la ligne de flottaison) : pas de chargement différé. */
+  eager?: boolean;
+  class?: string;
+}
+const { name, color, icon, image, size = 'md', eager = false, class: className } = Astro.props;
+---
+
+{
+  image ? (
+    <img
+      src={imageUrl(image.id, size === 'lg' ? 'full' : 'mini')}
+      alt={image.alt || name}
+      width={image.width ?? undefined}
+      height={image.height ?? undefined}
+      loading={eager ? 'eager' : 'lazy'}
+      fetchpriority={eager ? 'high' : undefined}
+      decoding="async"
+      class:list={['bg-white object-contain', className]}
+    />
+  ) : (
+    <ProductVisual name={name} color={color} icon={icon} size={size} class={className} />
+  )
+}

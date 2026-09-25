@@ -1,0 +1,40 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import ArticleView from '../../components/ArticleView.astro';
+import { getPublishedArticle } from '../../lib/content';
+import { plainText } from '../../lib/markdown';
+import { findRedirect } from '../../lib/redirects';
+
+const article = await getPublishedArticle(Astro.params.slug!);
+if (!article) {
+  const redirect = await findRedirect(Astro.url.pathname);
+  if (redirect) return Astro.redirect(redirect.to, redirect.status as 301);
+  return new Response(null, { status: 404, statusText: 'Not Found' });
+}
+
+const url = new URL(`/media/${article.slug}`, Astro.site).href;
+const description = article.seoDescription || article.excerpt || plainText(article.body, 160);
+const jsonLd =
+  article.type === 'evenement' && article.eventDate
+    ? {
+        '@context': 'https://schema.org',
+        '@type': 'Event',
+        name: article.title,
+        description,
+        startDate: article.eventDate.toISOString(),
+        location: article.eventLocation ? { '@type': 'Place', name: article.eventLocation, address: article.eventLocation } : undefined,
+        organizer: { '@type': 'Organization', name: 'AfriSime' },
+      }
+    : {
+        '@context': 'https://schema.org',
+        '@type': article.type === 'video' ? 'VideoObject' : 'Article',
+        ...(article.type === 'video'
+          ? { name: article.title, description, uploadDate: article.publishedAt!.toISOString(), embedUrl: article.videoUrl ?? undefined }
+          : { headline: article.title, description, datePublished: article.publishedAt!.toISOString(), dateModified: article.updatedAt.toISOString() }),
+        author: { '@type': 'Organization', name: article.authorName },
+      };
+---
+
+<Layout title={article.seoTitle || article.title} description={description} imageId={article.coverId} jsonLd={jsonLd}>
+  <ArticleView content={article} url={url} />
+</Layout>

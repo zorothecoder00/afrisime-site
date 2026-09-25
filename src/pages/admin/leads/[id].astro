@@ -1,5 +1,8 @@
 ---
+import { inArray } from 'drizzle-orm';
 import AdminLayout from '../../../components/AdminLayout.astro';
+import { media } from '../../../db/schema';
+import { db } from '../../../lib/db';
 import { audit } from '../../../lib/audit';
 import { formatDate, LEAD_STATUS_LABELS, LEAD_TYPE_LABELS } from '../../../lib/format';
 import { assignableStaff, getLeadDetail, updateLead, type LeadStatus } from '../../../lib/leads';
@@ -34,6 +37,9 @@ if (Astro.request.method === 'POST') {
 }
 
 const { lead, events } = initial;
+const documents = lead.attachments.length
+  ? await db.select({ id: media.id, filename: media.filename, size: media.size }).from(media).where(inArray(media.id, lead.attachments))
+  : [];
 const PIPELINE = Object.keys(LEAD_STATUS_LABELS) as LeadStatus[];
 const current = PIPELINE.indexOf(lead.status);
 ---
@@ -73,6 +79,21 @@ const current = PIPELINE.indexOf(lead.status);
                 </div>
               ))}
             </dl>
+          )
+        }
+        {
+          documents.length > 0 && (
+            <div class="mt-4 border-t border-line pt-4">
+              <h3 class="text-sm font-bold">Documents joints</h3>
+              <ul class="mt-2 space-y-1 text-sm">
+                {documents.map((d) => (
+                  <li>
+                    <a href={`/admin/documents/${d.id}`} class="font-semibold text-brand-700 underline">{d.filename}</a>
+                    <span class="text-muted"> · {Math.round(d.size / 1024)} Ko</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )
         }
       </section>

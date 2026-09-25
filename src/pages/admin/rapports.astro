@@ -1,0 +1,178 @@
+---
+// Rapports (§16) : ventes, paniers abandonnés, leads et temps de réponse, recherches.
+// Trafic, sources et conversion globale : dans l'outil d'analytics branché via Tag Manager.
+import AdminLayout from '../../components/AdminLayout.astro';
+import { deny } from '../../lib/admin';
+import { getCatalog } from '../../lib/catalog';
+import { formatDate, formatDateTime, formatPrice, LEAD_STATUS_LABELS, LEAD_TYPE_LABELS } from '../../lib/format';
+import { abandonedCarts, commerceStats, leadStats, searchStats, unsyncedCounts, ABANDONED_AFTER_HOURS } from '../../lib/reports';
+import { can } from '../../lib/roles';
+import { getSettings } from '../../lib/settings';
+
+const me = Astro.locals.user!;
+const denied = deny(me, { report: ['read'] });
+if (denied) return denied;
+
+const periods = { '7': '7 jours', '30': '30 jours', '90': '90 jours', '365': '12 mois' } as const;
+const period = (Astro.url.searchParams.get('periode') ?? '30') as keyof typeof periods;
+const days = Number(period in periods ? period : '30');
+const since = new Date(Date.now() - days * 86_400_000);
+const showOrders = can(me.role, { order: ['read'] });
+const showLeads = can(me.role, { lead: ['read'] });
+
+const [commerce, carts, leadsData, search, unsynced, catalog, settings] = await Promise.all([
+  showOrders ? commerceStats(since) : null,
+  showOrders ? abandonedCarts() : [],
+  showLeads ? leadStats(since) : null,
+  searchStats(since),
+  unsyncedCounts(),
+  getCatalog({ includeUnpublished: true }),
+  getSettings(),
+]);
+const zoneLabel = (id: string) => settings.delivery.zones.find((z) => z.id === id)?.label ?? id;
+const catalogStats = {
+  total: catalog.products.length,
+  hidden: catalog.products.filter((p) => !p.data.published).length,
+  unavailable: catalog.products.filter((p) => p.data.status === 'indisponible').length,
+  noPhoto: catalog.products.filter((p) => p.data.images.length === 0).length,
+};
+---
+
+<AdminLayout title="Rapports">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <nav class="flex gap-2" aria-label="Période">
+      {Object.entries(periods).map(([id, label]) => <a href={`?periode=${id}`} class:list={['btn btn-sm', id === String(days) ? 'btn-primary' : 'btn-secondary']}>{label}</a>)}
+    </nav>
+    {showOrders && <a href={`/admin/export/commandes.csv?periode=${days}`} class="btn btn-secondary btn-sm">Exporter les commandes (CSV)</a>}
+  </div>
+  <p class="mt-2 text-sm text-muted">Depuis le {formatDate(since)}. Trafic, sources et taux de conversion : voir l'outil d'analytics (Google Tag Manager).</p>
+
+  {
+    commerce && (
+      <section class="mt-8" aria-labelledby="t-commerce">
+        <h2 id="t-commerce" class="text-xl">Commerce</h2>
+        <ul class="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
+          {[
+            ['Commandes', String(commerce.orders)],
+            ["Chiffre d'affaires", formatPrice(commerce.revenue)],
+            ['Panier moyen', formatPrice(commerce.averageBasket)],
+            ['Clients distincts', String(commerce.customers)],
+            ['Payées en ligne', String(commerce.paidOnline)],
+            ['En attente de paiement', String(commerce.awaitingPayment)],
+            ['Annulées', `${commerce.cancelled} (${commerce.orders ? Math.round((commerce.cancelled / commerce.orders) * 100) : 0} %)`],
+            ['Avec code promo', String(commerce.withPromo)],
+          ].map(([label, value]) => (
+            <li class="card p-4"><p class="text-sm text-muted">{label}</p><p class="mt-1 text-xl font-extrabold text-brand-900">{value}</p></li>
+          ))}
+        </ul>
+        <div class="mt-4 grid gap-4 lg:grid-cols-2">
+          <div class="card overflow-x-auto p-4">
+            <h3 class="text-base">Meilleures ventes</h3>
+            <table class="mt-2 w-full text-sm">
+              <thead class="text-left text-muted"><tr><th class="py-1">Article</th><th class="text-right">Qté</th><th class="text-right">CA</th></tr></thead>
+              <tbody class="divide-y divide-line">
+                {commerce.topProducts.length === 0 && <tr><td colspan="3" class="py-2 text-muted">Aucune vente sur la période.</td></tr>}
+                {commerce.topProducts.map((p) => <tr><td class="py-1.5">{p.name}</td><td class="text-right">{p.quantity}</td><td class="text-right">{formatPrice(p.revenue)}</td></tr>)}
+              </tbody>
+            </table>
+          </div>
+          <div class="card overflow-x-auto p-4">
+            <h3 class="text-base">Par jour</h3>
+            <table class="mt-2 w-full text-sm">
+              <thead class="text-left text-muted"><tr><th class="py-1">Jour</th><th class="text-right">Commandes</th><th class="text-right">CA</th></tr></thead>
+              <tbody class="divide-y divide-line">
+                {commerce.byDay.slice(0, 31).map((d) => <tr><td class="py-1.5">{formatDate(new Date(d.day))}</td><td class="text-right">{d.orders}</td><td class="text-right">{formatPrice(d.revenue)}</td></tr>)}
+              </tbody>
+            </table>
+          </div>
+          <div class="card p-4">
+            <h3 class="text-base">Par mode de livraison</h3>
+            <ul class="mt-2 divide-y divide-line text-sm">{commerce.byZone.map((z) => <li class="flex justify-between py-1.5"><span>{zoneLabel(z.zone)}</span><strong>{z.orders}</strong></li>)}</ul>
+          </div>
+          <div class="card p-4">
+            <h3 class="text-base">Synchronisation</h3>
+            <ul class="mt-2 space-y-1 text-sm">
+              <li>Commandes confirmées non transmises à l'ERP : <strong>{unsynced.orders}</strong></li>
+              <li>Leads non transmis au CRM : <strong>{unsynced.leads}</strong></li>
+            </ul>
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  {
+    showOrders && (
+      <section class="mt-10" aria-labelledby="t-paniers">
+        <h2 id="t-paniers" class="text-xl">Paniers abandonnés ({carts.length})</h2>
+        <p class="text-sm text-muted">Clients connectés dont le panier n'a pas bougé depuis {ABANDONED_AFTER_HOURS} h, sans commande depuis. À relancer par le service client.</p>
+        <div class="card mt-3 overflow-x-auto">
+          <table class="w-full min-w-[600px] text-left text-sm">
+            <thead class="border-b border-line bg-canvas text-muted"><tr><th class="px-4 py-2">Client</th><th class="px-4 py-2">Articles</th><th class="px-4 py-2">Valeur</th><th class="px-4 py-2">Dernière activité</th></tr></thead>
+            <tbody class="divide-y divide-line">
+              {carts.length === 0 && <tr><td colspan="4" class="px-4 py-3 text-muted">Aucun panier abandonné.</td></tr>}
+              {carts.map((c) => (
+                <tr>
+                  <td class="px-4 py-2">{c.name}<span class="block text-muted">{c.phone ?? c.email}</span></td>
+                  <td class="px-4 py-2">{c.count}</td>
+                  <td class="px-4 py-2 font-semibold">{formatPrice(c.value)}</td>
+                  <td class="px-4 py-2">{formatDateTime(c.updatedAt)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    )
+  }
+
+  {
+    leadsData && (
+      <section class="mt-10" aria-labelledby="t-leads">
+        <h2 id="t-leads" class="text-xl">Leads et service</h2>
+        <div class="mt-3 grid gap-4 md:grid-cols-3">
+          <div class="card p-4">
+            <h3 class="text-base">Par type</h3>
+            <ul class="mt-2 divide-y divide-line text-sm">{leadsData.byType.map((t) => <li class="flex justify-between py-1.5"><span>{LEAD_TYPE_LABELS[t.type as keyof typeof LEAD_TYPE_LABELS] ?? t.type}</span><strong>{t.total}</strong></li>)}</ul>
+          </div>
+          <div class="card p-4">
+            <h3 class="text-base">Suivi commercial</h3>
+            <ul class="mt-2 divide-y divide-line text-sm">{leadsData.byStatus.map((t) => <li class="flex justify-between py-1.5"><span>{LEAD_STATUS_LABELS[t.status]}</span><strong>{t.total}</strong></li>)}</ul>
+          </div>
+          <div class="card p-4">
+            <h3 class="text-base">Temps de première réponse</h3>
+            <p class="mt-2 text-2xl font-extrabold text-brand-900">{leadsData.responseHours === null ? '—' : leadsData.responseHours < 48 ? `${leadsData.responseHours.toFixed(1)} h` : `${(leadsData.responseHours / 24).toFixed(1)} j`}</p>
+            <p class="text-sm text-muted">Moyenne sur {leadsData.answered} demande(s) traitée(s) : délai avant la première action de l'équipe.</p>
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  <section class="mt-10" aria-labelledby="t-recherche">
+    <h2 id="t-recherche" class="text-xl">Recherches ({search.total})</h2>
+    <div class="mt-3 grid gap-4 md:grid-cols-2">
+      <div class="card p-4">
+        <h3 class="text-base">Les plus fréquentes</h3>
+        <ul class="mt-2 divide-y divide-line text-sm">{search.top.map((s) => <li class="flex justify-between py-1.5"><span>{s.query}</span><strong>{s.total}</strong></li>)}</ul>
+      </div>
+      <div class="card p-4">
+        <h3 class="text-base">Sans résultat</h3>
+        <p class="hint">Produits demandés que le catalogue n'a pas : pistes de référencement.</p>
+        <ul class="mt-2 divide-y divide-line text-sm">{search.zero.length === 0 ? <li class="py-1.5 text-muted">Aucune.</li> : search.zero.map((s) => <li class="flex justify-between py-1.5"><span>{s.query}</span><strong>{s.total}</strong></li>)}</ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10" aria-labelledby="t-catalogue">
+    <h2 id="t-catalogue" class="text-xl">Catalogue</h2>
+    <ul class="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
+      {[
+        ['Produits', catalogStats.total],
+        ['Masqués', catalogStats.hidden],
+        ['Indisponibles', catalogStats.unavailable],
+        ['Sans photo', catalogStats.noPhoto],
+      ].map(([label, value]) => <li class="card p-4"><p class="text-sm text-muted">{label}</p><p class="mt-1 text-xl font-extrabold text-brand-900">{value}</p></li>)}
+    </ul>
+  </section>
+</AdminLayout>

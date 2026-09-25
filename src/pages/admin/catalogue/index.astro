@@ -1,0 +1,106 @@
+---
+// Catalogue › Produits : liste, recherche et filtres.
+import AdminLayout from '../../../components/AdminLayout.astro';
+import Tabs from '../../../components/admin/Tabs.astro';
+import { deny } from '../../../lib/admin';
+import { getCatalog, lowestVariant } from '../../../lib/catalog';
+import { formatPrice, STATUS_LABELS } from '../../../lib/format';
+import { imageUrl } from '../../../lib/media';
+import { can } from '../../../lib/roles';
+import { searchScore } from '../../../lib/search';
+
+const me = Astro.locals.user!;
+const denied = deny(me, { catalog: ['read'] });
+if (denied) return denied;
+const canEdit = can(me.role, { catalog: ['update'] });
+
+const q = Astro.url.searchParams.get('q') ?? '';
+const categorie = Astro.url.searchParams.get('categorie') ?? '';
+const statut = Astro.url.searchParams.get('statut') ?? '';
+const visibilite = Astro.url.searchParams.get('visibilite') ?? '';
+
+const { products, categories, categoryOf, brandOf } = await getCatalog({ includeUnpublished: true });
+const list = products
+  .map((p) => ({ p, score: q ? searchScore(q, `${p.data.name} ${p.data.sku} ${brandOf(p).data.name}`) : 1 }))
+  .filter(({ p, score }) => score > 0 && (!categorie || p.data.category.id === categorie) && (!statut || p.data.status === statut))
+  .filter(({ p }) => !visibilite || (visibilite === 'publie') === p.data.published)
+  .sort((a, b) => b.score - a.score || a.p.data.name.localeCompare(b.p.data.name))
+  .map(({ p }) => p);
+const ok = Astro.url.searchParams.get('ok');
+---
+
+<AdminLayout title="Catalogue">
+  <Tabs items={[{ label: 'Produits', href: '/admin/catalogue' }, { label: 'Catégories', href: '/admin/catalogue/categories' }, { label: 'Marques', href: '/admin/catalogue/marques' }]} />
+  {ok === 'supprime' && <p class="alert alert-success mb-4">Produit supprimé.</p>}
+
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <form method="get" class="flex flex-wrap items-end gap-2">
+      <label class="block"><span class="label">Recherche</span><input name="q" value={q} class="input !py-2" placeholder="Nom, SKU, marque" /></label>
+      <label class="block">
+        <span class="label">Catégorie</span>
+        <select name="categorie" class="input !py-2">
+          <option value="">Toutes</option>
+          {categories.map((c) => <option value={c.id} selected={c.id === categorie}>{c.data.name}</option>)}
+        </select>
+      </label>
+      <label class="block">
+        <span class="label">Statut</span>
+        <select name="statut" class="input !py-2">
+          <option value="">Tous</option>
+          {Object.entries(STATUS_LABELS).map(([id, label]) => <option value={id} selected={id === statut}>{label}</option>)}
+        </select>
+      </label>
+      <label class="block">
+        <span class="label">Visibilité</span>
+        <select name="visibilite" class="input !py-2">
+          <option value="">Tous</option>
+          <option value="publie" selected={visibilite === 'publie'}>En ligne</option>
+          <option value="masque" selected={visibilite === 'masque'}>Masqués</option>
+        </select>
+      </label>
+      <button class="btn btn-secondary btn-sm">Filtrer</button>
+    </form>
+    {canEdit && <a href="/admin/catalogue/produits/nouveau" class="btn btn-primary btn-sm">+ Nouveau produit</a>}
+  </div>
+
+  <p class="mt-4 text-sm text-muted">{list.length} produit{list.length > 1 ? 's' : ''}</p>
+  <div class="card mt-2 overflow-x-auto">
+    <table class="w-full min-w-[760px] text-left text-sm">
+      <thead class="border-b border-line bg-canvas text-muted">
+        <tr>
+          <th class="px-4 py-3 font-semibold">Produit</th>
+          <th class="px-4 py-3 font-semibold">Catégorie</th>
+          <th class="px-4 py-3 font-semibold">Statut</th>
+          <th class="px-4 py-3 font-semibold">Stock</th>
+          <th class="px-4 py-3 text-right font-semibold">Prix dès</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-line">
+        {
+          list.map((p) => (
+            <tr class="hover:bg-brand-50">
+              <td class="px-4 py-3">
+                <div class="flex items-center gap-3">
+                  {p.data.images[0] ? (
+                    <img src={imageUrl(p.data.images[0].id, 'mini')} alt="" class="size-10 rounded-lg border border-line bg-white object-contain" loading="lazy" />
+                  ) : (
+                    <span class="grid size-10 place-items-center rounded-lg text-xs font-bold" style={`background:${categoryOf(p).data.color}20;color:${categoryOf(p).data.color}`}>—</span>
+                  )}
+                  <span>
+                    <a href={`/admin/catalogue/produits/${p.id}`} class="font-semibold text-brand-800 underline">{p.data.name}</a>
+                    <span class="block text-muted">{p.data.sku} · {brandOf(p).data.name}</span>
+                  </span>
+                  {!p.data.published && <span class="badge badge-rupture">Masqué</span>}
+                </div>
+              </td>
+              <td class="px-4 py-3">{categoryOf(p).data.name}</td>
+              <td class="px-4 py-3">{STATUS_LABELS[p.data.status]}</td>
+              <td class="px-4 py-3">{p.data.stock ?? '—'}</td>
+              <td class="px-4 py-3 text-right font-semibold">{formatPrice(lowestVariant(p).price)}</td>
+            </tr>
+          ))
+        }
+      </tbody>
+    </table>
+  </div>
+</AdminLayout>
