@@ -20,7 +20,7 @@ interface Props {
 
 const { identity, contact, social, seo } = await getSettings();
 const { title, description = identity.description, imageId, jsonLd, noindex = false } = Astro.props;
-const image = imageId ? imageUrl(imageId) : (Astro.props.image ?? '/og-default.svg');
+const image = imageId ? imageUrl(imageId) : (Astro.props.image ?? '/og-default.png');
 const fullTitle = title ? `${title} | ${identity.name}` : `${identity.name} — ${identity.tagline}`;
 const canonical = new URL(Astro.url.pathname, Astro.site);
 const ogImage = new URL(image, Astro.site);
@@ -30,7 +30,7 @@ const organization = {
   '@type': 'Organization',
   name: identity.name,
   url: Astro.site?.href,
-  logo: new URL('/favicon.svg', Astro.site).href,
+  logo: new URL('/logo.png', Astro.site).href,
   telephone: contact.phone,
   email: contact.email,
   address: { '@type': 'PostalAddress', streetAddress: contact.address, addressCountry: 'TG' },
@@ -52,8 +52,8 @@ const structuredJson = JSON.stringify(structured).replace(/</g, '\\u003c');
     {noindex && <meta name="robots" content="noindex, nofollow" />}
     {seo.googleVerification && <meta name="google-site-verification" content={seo.googleVerification} />}
     <meta name="theme-color" content="#0f3d2e" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="icon" href="/favicon.ico" sizes="32x32" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="sitemap" href="/sitemap.xml" />
 
     <meta property="og:type" content="website" />
