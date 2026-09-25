@@ -309,7 +309,7 @@ const devisHref = `/b2b?produit=${encodeURIComponent(p.name)}#devis`;
       <section class="section !pt-12">
         <div class="container-page">
           <h2 class="text-2xl">Vous aimerez aussi</h2>
-          <div class="mt-6 grid grid-cols-1 gap-4 min-[420px]:grid-cols-2 lg:grid-cols-4">
+          <div class="mt-6 grid grid-cols-2 gap-2.5 sm:gap-4 lg:grid-cols-4">
             {related.map((r) => <ProductCard product={r} category={categoryOf(r)} brand={brandOf(r)} />)}
           </div>
         </div>

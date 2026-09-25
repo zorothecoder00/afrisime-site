@@ -152,7 +152,7 @@ const b2bSegments: { icon: IconName; title: string; text: string }[] = [
         </div>
         <a href="/boutique?tri=popularite" class="font-bold text-brand-700 hover:underline">Voir tout →</a>
       </div>
-      <div class="mt-8 grid grid-cols-1 gap-4 min-[420px]:grid-cols-2 lg:grid-cols-4">
+      <div class="mt-8 grid grid-cols-2 gap-2.5 sm:gap-4 lg:grid-cols-4">
         {popular.map((p) => <ProductCard product={p} category={categoryOf(p)} brand={brandOf(p)} />)}
       </div>
     </div>
@@ -168,7 +168,7 @@ const b2bSegments: { icon: IconName; title: string; text: string }[] = [
         <a href={offer?.ctaHref || '/boutique?badge=promotion'} class="btn btn-primary mt-6">{offer?.ctaLabel || 'Voir toutes les promotions'}</a>
         {offer?.imageId && <img src={imageUrl(offer.imageId)} alt="" loading="lazy" class="mt-6 w-full rounded-2xl" />}
       </div>
-      <div class="grid gap-4 sm:grid-cols-3">
+      <div class="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-4">
         {promos.map((p) => <ProductCard product={p} category={categoryOf(p)} brand={brandOf(p)} />)}
       </div>
     </div>

@@ -1,6 +1,8 @@
 ---
+// Carte produit, sur le modèle des fiches Alibaba : photo carrée (zoom au survol), badges,
+// titre sur deux lignes, ligne promotion, fourchette de prix, format et ventes, marque et origine.
+// Toute la carte mène à la fiche ; favori et ajout rapide au panier restent sur la photo.
 import Icon from './ui/Icon.astro';
-import FavoriteButton from './FavoriteButton.astro';
 import ProductImage from './ui/ProductImage.astro';
 import { canBuyOnline, cartPayload, lowestVariant, productUrl, type Brand, type Category, type Product } from '../lib/catalog';
 import { BADGE_LABELS, STATUS_LABELS, formatPrice } from '../lib/format';
@@ -12,68 +14,115 @@ interface Props {
 }
 const { product, category, brand } = Astro.props;
 const p = product.data;
-const variant = lowestVariant(product);
 const href = productUrl(product);
+const variant = lowestVariant(product);
+const prices = p.variants.map((v) => v.price);
+const min = Math.min(...prices);
+const max = Math.max(...prices);
+const amount = (n: number) => formatPrice(n).replace(/\s*FCFA$/, '');
+const priceText = min === max ? formatPrice(min) : `${amount(min)}-${amount(max)} FCFA`;
+
+// Meilleure remise parmi les formats en promotion (prix barré).
+const promo = p.variants
+  .filter((v) => v.compareAtPrice && v.compareAtPrice > v.price)
+  .map((v) => ({ v, pct: Math.round((1 - v.price / v.compareAtPrice!) * 100) }))
+  .sort((a, b) => b.pct - a.pct)[0];
+
 const statusColor = {
-  disponible: 'text-brand-600',
-  'sur-commande': 'text-warning',
-  indisponible: 'text-danger',
-  devis: 'text-info',
+  disponible: 'bg-brand-600',
+  'sur-commande': 'bg-warning',
+  indisponible: 'bg-danger',
+  devis: 'bg-info',
 }[p.status];
+const buyable = canBuyOnline(product);
 ---
 
-<article class="card group relative flex flex-col overflow-hidden transition hover:-translate-y-0.5 hover:shadow-lg">
-  <FavoriteButton productId={product.id} name={p.name} class="absolute right-2 top-2 z-10" />
-  <a href={href} class="relative block" tabindex="-1" aria-hidden="true">
-    <ProductImage name={p.name} color={category.data.color} icon={category.data.icon} image={p.images[0]} class="aspect-[4/3] w-full" />
+<article class="group relative flex h-full flex-col rounded-2xl bg-white p-2.5 ring-1 sm:p-3 ring-line/70 transition hover:shadow-lg hover:ring-brand-200">
+  <!-- Photo -->
+  <div class="relative overflow-hidden rounded-xl bg-canvas">
+    <ProductImage
+      name={p.name}
+      color={category.data.color}
+      icon={category.data.icon}
+      image={p.images[0]}
+      class="aspect-square w-full transition duration-300 ease-out group-hover:scale-105"
+    />
+    <button
+      type="button"
+      class="absolute bottom-2.5 left-2.5 z-10 grid size-9 place-items-center rounded-full bg-white/95 text-ink shadow-sm transition hover:text-danger aria-pressed:text-danger"
+      data-favorite={product.id}
+      aria-pressed="false"
+      aria-label={`Ajouter ${p.name} à mes favoris`}
+    >
+      <Icon name="heart" size={18} class="[button[aria-pressed=true]_&]:fill-current" />
+    </button>
+  </div>
+
+  <!-- Informations -->
+  <div class="flex flex-1 flex-col pt-3">
     {
       p.badges.length > 0 && (
-        <div class="absolute left-3 top-3 flex flex-wrap gap-1">
-          {p.badges.map((b) => (
-            <span class={`badge badge-${b}`}>{BADGE_LABELS[b]}</span>
+        <p class="mb-1 flex flex-wrap items-center gap-1">
+          {p.badges.map((b, i) => (
+            <span
+              class:list={[
+                'inline-flex items-center rounded-sm px-1.5 text-[11px] font-extrabold leading-5',
+                i === 0 ? 'bg-accent-500 text-brand-950 [clip-path:polygon(0_0,calc(100%-6px)_0,100%_50%,calc(100%-6px)_100%,0_100%)] pr-2.5' : `badge-${b}`,
+              ]}
+            >
+              {BADGE_LABELS[b]}
+            </span>
           ))}
-        </div>
+        </p>
       )
     }
-  </a>
-  <div class="flex flex-1 flex-col p-4">
-    <p class="text-xs font-semibold text-muted">{brand.data.name} · {category.data.name}</p>
-    <h3 class="mt-1 text-base !font-bold leading-snug">
-      <a href={href} class="hover:text-brand-600">{p.name}</a>
+
+    <h3 class="line-clamp-2 text-sm font-normal leading-snug text-ink sm:text-[15px]">
+      <!-- Lien étendu à toute la carte (les boutons de la photo restent au-dessus). -->
+      <a href={href} class="after:absolute after:inset-0 after:rounded-2xl focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:outline-accent-500">
+        {p.name}
+      </a>
     </h3>
-    <p class={`mt-1 flex items-center gap-1 text-xs font-semibold ${statusColor}`}>
-      <span class="inline-block size-1.5 rounded-full bg-current"></span>{STATUS_LABELS[p.status]}
+
+    {
+      promo && (
+        <p class="mt-0.5 flex items-center gap-1 text-[13px] text-danger">
+          <Icon name="tag" size={13} />
+          <span class="font-bold">−{promo.pct} %</span>
+          <s class="truncate text-muted">{formatPrice(promo.v.compareAtPrice!)}</s>
+        </p>
+      )
+    }
+
+    <p class="mt-2 text-base font-extrabold tracking-tight text-ink sm:text-xl">{p.status === 'devis' ? 'Prix sur devis' : priceText}</p>
+
+    <p class="mt-0.5 text-[13px] text-ink">
+      Format : {variant.label}
+      {p.variants.length > 1 && <span class="text-muted"> +{p.variants.length - 1}</span>}
+      {p.sold > 0 && <span class="text-muted"> · {p.sold.toLocaleString('fr-FR')} vendu{p.sold > 1 ? 's' : ''}</span>}
     </p>
-    <div class="mt-auto flex items-end justify-between gap-2 pt-4">
+
+    <p class="mt-1 flex flex-wrap items-center gap-x-1 text-[13px] text-muted">
+      <Icon name="check" size={14} class="text-brand-600" />
+      <span class="font-extrabold text-brand-700">{brand.data.name}</span>
+      <span>· {p.origin === 'local' ? 'Local' : 'Importé'}</span>
+      <span class="inline-flex items-center gap-1">· <span class:list={['inline-block size-1.5 rounded-full', statusColor]} />{STATUS_LABELS[p.status]}</span>
+    </p>
+
+    <div class="relative z-10 mt-auto pt-3">
       {
-        p.status === 'devis' ? (
-          <p class="text-sm font-bold text-info">Prix sur devis</p>
-        ) : (
-          <p class="leading-tight">
-            {p.variants.length > 1 && <span class="block text-[11px] text-muted">à partir de</span>}
-            <span class="text-lg font-extrabold text-brand-900">{formatPrice(variant.price)}</span>
-            {variant.compareAtPrice && (
-              <s class="ml-1 text-xs text-muted">{formatPrice(variant.compareAtPrice)}</s>
-            )}
-            <span class="block text-[11px] text-muted">{variant.label}</span>
-          </p>
-        )
-      }
-      {
-        canBuyOnline(product) ? (
+        buyable ? (
           <button
             type="button"
-            class="btn btn-primary btn-sm shrink-0"
+            class="btn btn-primary btn-sm w-full"
             data-add-to-cart={cartPayload(product, category.data.color)}
             aria-label={`Ajouter ${p.name} (${variant.label}) au panier`}
           >
             <Icon name="plus" size={16} />Ajouter
           </button>
         ) : p.status === 'devis' ? (
-          <a href={`/b2b?produit=${encodeURIComponent(p.name)}#devis`} class="btn btn-secondary btn-sm shrink-0">Devis</a>
-        ) : (
-          <a href={href} class="btn btn-secondary btn-sm shrink-0">Détails</a>
-        )
+          <a href={`/b2b?produit=${encodeURIComponent(p.name)}#devis`} class="btn btn-secondary btn-sm w-full">Demander un devis</a>
+        ) : null
       }
     </div>
   </div>

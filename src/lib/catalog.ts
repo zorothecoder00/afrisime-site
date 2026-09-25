@@ -1,7 +1,7 @@
 // Lecture du catalogue (produits, catégories, marques) administré dans le back-office.
 // Les objets gardent la forme { id, data } utilisée par les pages et composants.
-import { and, asc, eq, inArray } from 'drizzle-orm';
-import { brands, categories, media, products, type ProductFeature, type ProductVariant } from '../db/schema';
+import { and, asc, eq, inArray, ne, sql } from 'drizzle-orm';
+import { brands, categories, media, orderLines, orders, products, type ProductFeature, type ProductVariant } from '../db/schema';
 import { cached, invalidate } from './cache';
 import { db } from './db';
 
@@ -37,6 +37,8 @@ export type Product = {
     related: string[];
     images: ImageRef[];
     leadTime: string | null;
+    /** Quantité vendue (commandes non annulées), affichée « N vendus » sur les cartes. */
+    sold: number;
     published: boolean;
     seoTitle: string | null;
     seoDescription: string | null;
@@ -67,7 +69,16 @@ async function loadCatalog(includeUnpublished: boolean) {
     ...categoryRows.flatMap((c) => (c.imageId ? [c.imageId] : [])),
     ...brandRows.flatMap((b) => (b.logoId ? [b.logoId] : [])),
   ];
-  const images = await loadImages([...new Set(imageIds)]);
+  const [images, soldRows] = await Promise.all([
+    loadImages([...new Set(imageIds)]),
+    db
+      .select({ productId: orderLines.productId, sold: sql<number>`sum(${orderLines.quantity})`.mapWith(Number) })
+      .from(orderLines)
+      .innerJoin(orders, eq(orders.id, orderLines.orderId))
+      .where(ne(orders.status, 'annulee'))
+      .groupBy(orderLines.productId),
+  ]);
+  const soldById = new Map(soldRows.map((r) => [r.productId, r.sold]));
 
   const categoryList: Category[] = categoryRows.map((c) => ({
     id: c.id,
@@ -98,6 +109,7 @@ async function loadCatalog(includeUnpublished: boolean) {
       related: p.related,
       images: p.imageIds.map((id) => images.get(id)).filter((i): i is ImageRef => !!i),
       leadTime: p.leadTime,
+      sold: soldById.get(p.id) ?? 0,
       published: p.published,
       seoTitle: p.seoTitle,
       seoDescription: p.seoDescription,
