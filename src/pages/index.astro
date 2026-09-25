@@ -114,51 +114,59 @@ const b2bSegments: { icon: IconName; title: string; text: string }[] = [
   <!-- Carrousel des rayons -->
   <section class="border-b border-line bg-white py-10 sm:py-12" aria-roledescription="carrousel" aria-label="Nos rayons en vedette" data-carousel>
     <div class="container-page">
-      <div class="flex items-end justify-between gap-4">
-        <h2 class="text-2xl sm:text-3xl">Faites le tour de nos rayons</h2>
-        <div class="flex shrink-0 gap-2">
-          <button type="button" class="grid size-10 place-items-center rounded-full border border-line text-ink hover:bg-brand-50" data-prev aria-label="Rayon précédent">
-            <Icon name="chevron" size={18} class="rotate-180" />
-          </button>
-          <button type="button" class="grid size-10 place-items-center rounded-full border border-line text-ink hover:bg-brand-50" data-next aria-label="Rayon suivant">
-            <Icon name="chevron" size={18} />
-          </button>
-        </div>
-      </div>
-      <ul class="mt-6 flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" data-track>
-        {
-          categories.map((c, i) => (
-            <li
-              class="w-[85%] shrink-0 snap-start sm:w-[calc(50%-0.5rem)] lg:w-[calc(33.333%-0.667rem)]"
-              aria-roledescription="diapositive"
-              aria-label={`${i + 1} sur ${categories.length} : ${c.data.name}`}
-              data-slide
-            >
-              <a
-                href={`/boutique?categorie=${c.id}`}
-                class="group relative flex h-56 flex-col justify-end overflow-hidden rounded-3xl p-6 text-white transition hover:-translate-y-0.5 sm:h-64"
-                style={`background: linear-gradient(135deg, ${c.data.color}, ${c.data.color}cc 55%, #0a2a20)`}
+      <h2 class="text-2xl sm:text-3xl">Faites le tour de nos rayons</h2>
+      <div class="relative mt-6">
+        <button
+          type="button"
+          class="absolute top-1/2 z-10 hidden size-11 -translate-y-1/2 place-items-center rounded-full bg-white sm:grid text-ink shadow-lg ring-1 ring-line transition hover:scale-105 hover:bg-brand-50 left-2 lg:-left-5"
+          data-prev
+          aria-label="Rayon précédent"
+        >
+          <Icon name="chevron" size={20} class="rotate-180" />
+        </button>
+        <ul class="flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" data-track>
+          {
+            categories.map((c, i) => (
+              <li
+                class="w-[85%] shrink-0 snap-start sm:w-[calc(50%-0.5rem)] lg:w-[calc(33.333%-0.667rem)]"
+                aria-roledescription="diapositive"
+                aria-label={`${i + 1} sur ${categories.length} : ${c.data.name}`}
+                data-slide
               >
-                {c.data.image ? (
-                  <img src={imageUrl(c.data.image.id)} alt="" loading={i < 3 ? 'eager' : 'lazy'} class="absolute inset-0 size-full object-cover opacity-40 transition duration-500 group-hover:scale-105" />
-                ) : (
-                  <Icon name={c.data.icon as IconName} size={120} class="absolute -right-4 -top-4 opacity-20 transition duration-500 group-hover:scale-110" />
-                )}
-                <span class="relative">
-                  <span class="grid size-12 place-items-center rounded-2xl bg-white/20 backdrop-blur">
-                    <Icon name={c.data.icon as IconName} size={26} />
+                <a
+                  href={`/boutique?categorie=${c.id}`}
+                  class="group relative flex h-56 flex-col justify-end overflow-hidden rounded-3xl p-6 text-white transition hover:-translate-y-0.5 sm:h-64"
+                  style={`background: linear-gradient(135deg, ${c.data.color}, ${c.data.color}cc 55%, #0a2a20)`}
+                >
+                  {c.data.image ? (
+                    <img src={imageUrl(c.data.image.id)} alt="" loading={i < 3 ? 'eager' : 'lazy'} class="absolute inset-0 size-full object-cover opacity-40 transition duration-500 group-hover:scale-105" />
+                  ) : (
+                    <Icon name={c.data.icon as IconName} size={120} class="absolute -right-4 -top-4 opacity-20 transition duration-500 group-hover:scale-110" />
+                  )}
+                  <span class="relative">
+                    <span class="grid size-12 place-items-center rounded-2xl bg-white/20 backdrop-blur">
+                      <Icon name={c.data.icon as IconName} size={26} />
+                    </span>
+                    <span class="mt-4 block text-2xl font-extrabold">{c.data.name}</span>
+                    <span class="mt-1 line-clamp-2 block text-sm text-white/85">{c.data.description}</span>
+                    <span class="mt-3 inline-flex items-center gap-1 text-sm font-bold">
+                      {countByCategory(c.id)} produits <Icon name="arrow" size={16} class="transition group-hover:translate-x-1" />
+                    </span>
                   </span>
-                  <span class="mt-4 block text-2xl font-extrabold">{c.data.name}</span>
-                  <span class="mt-1 line-clamp-2 block text-sm text-white/85">{c.data.description}</span>
-                  <span class="mt-3 inline-flex items-center gap-1 text-sm font-bold">
-                    {countByCategory(c.id)} produits <Icon name="arrow" size={16} class="transition group-hover:translate-x-1" />
-                  </span>
-                </span>
-              </a>
-            </li>
-          ))
-        }
-      </ul>
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+        <button
+          type="button"
+          class="absolute top-1/2 z-10 hidden size-11 -translate-y-1/2 place-items-center rounded-full bg-white sm:grid text-ink shadow-lg ring-1 ring-line transition hover:scale-105 hover:bg-brand-50 right-2 lg:-right-5"
+          data-next
+          aria-label="Rayon suivant"
+        >
+          <Icon name="chevron" size={20} />
+        </button>
+      </div>
       <div class="mt-4 flex justify-center gap-2" data-dots>
         {categories.map((c, i) => <button type="button" class="h-2 w-2 rounded-full bg-brand-200 transition-all aria-[current=true]:w-6 aria-[current=true]:bg-accent-500" aria-label={`Aller au rayon ${c.data.name}`} data-dot={i} />)}
       </div>

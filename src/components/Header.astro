@@ -47,11 +47,11 @@ const isActive = (href: string) => {
     </a>
 
     <!-- Navigation desktop (dans la barre d'en-tête) -->
-    <nav aria-label="Navigation principale" class="hidden min-w-0 flex-1 lg:ml-4 lg:block xl:ml-10">
+    <nav aria-label="Navigation principale" class="hidden min-w-0 flex-1 lg:ml-4 lg:block xl:ml-8">
       <ul class="flex items-center justify-center gap-0.5 xl:gap-1">
         {
-          [...NAV, { label: 'FAQ', href: '/faq' }].map((item) => (
-            <li class:list={['group relative', item.href === '/faq' && 'hidden 2xl:block']}>
+          NAV.map((item) => (
+            <li class="group relative">
               <a
                 href={item.href}
                 class:list={[
