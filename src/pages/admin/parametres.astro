@@ -11,7 +11,11 @@ import { getPaymentProvider } from '../../lib/payments/providers';
 import { can } from '../../lib/roles';
 import { getSettings, saveSettings } from '../../lib/settings';
 import { isValidEmail } from '../../lib/validation';
-import { imageUrl, storeUpload, UploadError } from '../../lib/media';
+import { imageUrl, storeUpload, storeVideo, UploadError, videoUrl } from '../../lib/media';
+import { showcaseSource } from '../../lib/content';
+import { media } from '../../db/schema';
+import { db } from '../../lib/db';
+import { and, eq, inArray } from 'drizzle-orm';
 import type { DeliveryZone, PaymentMethod } from '../../data/site';
 import { CRON_SECRET, NOTIFY_WEBHOOK_URL, STAFF_NOTIFY_EMAIL } from 'astro:env/server';
 
@@ -62,6 +66,36 @@ if (Astro.request.method === 'POST') {
         { enabled: bool(form, 'enabled'), title: str(form, 'title', 120), name: str(form, 'name', 120), role: str(form, 'role', 120), photoId, message },
         me.id,
       );
+    }
+  }
+
+  if (action === 'vitrine') {
+    if (!canWelcome) return new Response('Accès refusé.', { status: 403 });
+    const current = (await getSettings()).showcase;
+    const kept = rows(form, 'videos')
+      .filter((r) => r.remove !== 'on')
+      .map((r, i) => ({ title: (r.title ?? '').slice(0, 120), mediaId: r.mediaId ?? '', url: (r.url ?? '').slice(0, 500), position: Number(r.position) || i + 1 }))
+      .sort((a, b) => a.position - b.position)
+      .map(({ position: _, ...v }) => v);
+    const newUrl = str(form, 'newUrl', 500);
+    const newFile = form.get('newFile');
+    const newTitle = str(form, 'newTitle', 120);
+    if (newFile && typeof newFile !== 'string' && newFile.size > 0) {
+      try {
+        kept.push({ title: newTitle, mediaId: await storeVideo(newFile, me.id), url: '' });
+      } catch (err) {
+        errors.push(err instanceof UploadError ? err.message : "La vidéo n'a pas pu être enregistrée.");
+      }
+    } else if (newUrl) {
+      if (!showcaseSource({ mediaId: '', url: newUrl })) errors.push('Lien non reconnu : collez un lien YouTube, Vimeo, ou l’adresse https d’un fichier MP4 / WebM.');
+      else kept.push({ title: newTitle, mediaId: '', url: newUrl });
+    }
+    if (kept.some((v) => !v.mediaId && v.url && !showcaseSource(v))) errors.push('Un des liens n’est pas une vidéo YouTube, Vimeo ou MP4.');
+    if (!errors.length) {
+      await saveSettings('showcase', { enabled: bool(form, 'enabled'), videos: kept.slice(0, 8) }, me.id);
+      // Les vidéos envoyées puis retirées sont supprimées de la base.
+      const removed = current.videos.map((v) => v.mediaId).filter((id) => id && !kept.some((k) => k.mediaId === id));
+      if (removed.length) await db.delete(media).where(and(inArray(media.id, removed), eq(media.kind, 'video')));
     }
   }
 
@@ -216,6 +250,55 @@ const ok = Astro.url.searchParams.get('ok');
           <span class="hint block">Portrait vertical de préférence. Sans photo, les initiales du nom s'affichent.</span>
         </div>
         <div class="sm:col-span-2"><button class="btn btn-primary btn-sm">Enregistrer</button></div>
+      </form>
+    )
+  }
+
+  {
+    canWelcome && (
+      <form method="post" enctype="multipart/form-data" class="card mt-6 space-y-4 p-5" id="videos-vitrines">
+        <input type="hidden" name="action" value="vitrine" />
+        <div>
+          <h2 class="text-xl">Vidéos vitrines de l'accueil</h2>
+          <p class="hint">
+            Affichées à droite de « La distribution alimentaire, autrement. », l'une après l'autre, sans le son et sans que les visiteurs puissent cliquer.
+            Envoyez une courte vidéo (MP4, 4 Mo max) ou collez un lien YouTube / Vimeo pour une vidéo plus longue.
+          </p>
+        </div>
+        <label class="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" name="enabled" checked={s.showcase.enabled} class="size-4 accent-brand-700" />Afficher les vidéos</label>
+
+        {
+          s.showcase.videos.length > 0 && (
+            <ul class="space-y-2">
+              {s.showcase.videos.map((v, i) => (
+                <li class="grid gap-2 rounded-xl border border-line p-3 sm:grid-cols-[160px_1fr_80px_auto] sm:items-center">
+                  <input type="hidden" name={`videos[${i}][mediaId]`} value={v.mediaId} />
+                  {v.mediaId ? (
+                    <video src={videoUrl(v.mediaId)} muted playsinline preload="metadata" class="aspect-video w-40 rounded-lg bg-black object-cover" />
+                  ) : (
+                    <span class="grid aspect-video w-40 place-items-center rounded-lg bg-canvas px-2 text-center text-xs text-muted">Lien vidéo</span>
+                  )}
+                  <div class="space-y-2">
+                    <input name={`videos[${i}][title]`} value={v.title} maxlength="120" class="input !py-2" placeholder="Titre affiché (facultatif)" />
+                    {v.mediaId ? <input type="hidden" name={`videos[${i}][url]`} value="" /> : <input name={`videos[${i}][url]`} value={v.url} class="input !py-2 text-xs" />}
+                  </div>
+                  <label class="block text-xs"><span class="label">Ordre</span><input name={`videos[${i}][position]`} value={i + 1} inputmode="numeric" class="input !py-2" /></label>
+                  <label class="flex items-center gap-2 text-sm text-danger"><input type="checkbox" name={`videos[${i}][remove]`} />Retirer</label>
+                </li>
+              ))}
+            </ul>
+          )
+        }
+
+        <fieldset class="rounded-xl border border-dashed border-line p-4">
+          <legend class="px-1 text-sm font-bold">Ajouter une vidéo</legend>
+          <div class="grid gap-3 sm:grid-cols-2">
+            <label class="block sm:col-span-2"><span class="label">Titre affiché <span class="font-normal text-muted">(facultatif)</span></span><input name="newTitle" maxlength="120" class="input !py-2" placeholder="Ex. : Notre dépôt de Lomé" /></label>
+            <label class="block"><span class="label">Fichier vidéo</span><input type="file" name="newFile" accept="video/mp4,video/webm" class="input !py-1.5" /><span class="hint block">MP4 ou WebM, 4 Mo maximum (≈ 15 à 30 s en 720p).</span></label>
+            <label class="block"><span class="label">… ou lien</span><input name="newUrl" class="input !py-2" placeholder="https://www.youtube.com/watch?v=…" /><span class="hint block">YouTube, Vimeo ou fichier MP4 hébergé (https).</span></label>
+          </div>
+        </fieldset>
+        <button class="btn btn-primary btn-sm">Enregistrer</button>
       </form>
     )
   }

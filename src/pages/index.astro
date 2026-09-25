@@ -4,9 +4,19 @@ import ProductCard from '../components/ProductCard.astro';
 import Icon, { type IconName } from '../components/ui/Icon.astro';
 import { getCatalog } from '../lib/catalog';
 import { ARTICLE_TYPE_LABELS, formatDate } from '../lib/format';
-import { listArticles } from '../lib/content';
+import { listArticles, showcaseSource } from '../lib/content';
 import { activeCampaigns } from '../lib/promotions';
 import { imageUrl } from '../lib/media';
+import { getSettings } from '../lib/settings';
+
+// Vidéos vitrines (back-office › Paramètres › Vidéos vitrines) : lecture automatique, muette, non cliquable.
+const { showcase: showcaseSettings } = await getSettings();
+const showcase = showcaseSettings.enabled
+  ? showcaseSettings.videos.flatMap((v) => {
+      const source = showcaseSource(v);
+      return source ? [{ ...source, title: v.title }] : [];
+    })
+  : [];
 
 const { products, categories, brands, categoryOf, brandOf } = await getCatalog();
 const popular = [...products].sort((a, b) => b.data.popularity - a.data.popularity).slice(0, 8);
@@ -36,7 +46,7 @@ const b2bSegments: { icon: IconName; title: string; text: string }[] = [
   <!-- Hero : promesse et appels à l'action -->
   <section class="relative overflow-hidden bg-brand-900 text-white">
     <div class="absolute inset-0 opacity-[0.07]" style="background-image: radial-gradient(circle at 1px 1px, white 1px, transparent 0); background-size: 22px 22px;"></div>
-    <div class="container-page relative py-14 sm:py-20">
+    <div class:list={['container-page relative grid items-center gap-10 py-14 sm:py-20', showcase.length > 0 && 'xl:grid-cols-[1.1fr_1fr]']}>
       <div class="max-w-3xl">
         <p class="eyebrow !text-accent-500">Local · Importé · Gros · Demi-gros · Détail · B2B</p>
         <h1 class="mt-4 text-4xl !text-white sm:text-6xl">La distribution alimentaire, autrement.</h1>
@@ -53,19 +63,64 @@ const b2bSegments: { icon: IconName; title: string; text: string }[] = [
           <li class="flex items-center gap-2"><Icon name="check" size={16} class="text-accent-500" />Prix de gros pour les pros</li>
         </ul>
       </div>
+
+      {
+        showcase.length > 0 && (
+          <div class="relative w-full max-w-2xl xl:max-w-none" data-showcase aria-hidden="true">
+            <div class="absolute -inset-3 rotate-2 rounded-[2rem] bg-accent-500/25" />
+            <div class="pointer-events-none relative aspect-video select-none overflow-hidden rounded-3xl bg-brand-950 shadow-2xl ring-1 ring-white/15">
+              {showcase.map((v, i) =>
+                v.kind === 'file' ? (
+                  <video
+                    class:list={['absolute inset-0 size-full object-cover transition-opacity duration-700', i === 0 ? 'opacity-100' : 'opacity-0']}
+                    src={v.src}
+                    muted
+                    playsinline
+                    loop={showcase.length === 1}
+                    preload={i === 0 ? 'auto' : 'metadata'}
+                    tabindex="-1"
+                    data-slide
+                    data-title={v.title}
+                  />
+                ) : (
+                  <iframe
+                    class:list={['absolute inset-0 size-full scale-[1.35] transition-opacity duration-700', i === 0 ? 'opacity-100' : 'opacity-0']}
+                    data-src={v.src}
+                    title={v.title || 'Vidéo AfriSime'}
+                    allow="autoplay; encrypted-media"
+                    tabindex="-1"
+                    loading="lazy"
+                    data-slide
+                    data-title={v.title}
+                    data-embed
+                  />
+                ),
+              )}
+              <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent px-4 pb-3 pt-10">
+                <p class="text-sm font-semibold text-white" data-showcase-title>{showcase[0].title}</p>
+                {showcase.length > 1 && (
+                  <div class="mt-2 flex gap-1.5">
+                    {showcase.map((_, i) => <span class:list={['h-1 flex-1 rounded-full transition-colors', i === 0 ? 'bg-accent-500' : 'bg-white/30']} data-showcase-dot />)}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )
+      }
     </div>
   </section>
 
   <!-- Carrousel des rayons -->
-  <section class="bg-brand-950 py-10 sm:py-12" aria-roledescription="carrousel" aria-label="Nos rayons en vedette" data-carousel>
+  <section class="border-b border-line bg-white py-10 sm:py-12" aria-roledescription="carrousel" aria-label="Nos rayons en vedette" data-carousel>
     <div class="container-page">
       <div class="flex items-end justify-between gap-4">
-        <h2 class="text-2xl !text-white sm:text-3xl">Faites le tour de nos rayons</h2>
+        <h2 class="text-2xl sm:text-3xl">Faites le tour de nos rayons</h2>
         <div class="flex shrink-0 gap-2">
-          <button type="button" class="grid size-10 place-items-center rounded-full border border-white/30 text-white hover:bg-white/10" data-prev aria-label="Rayon précédent">
+          <button type="button" class="grid size-10 place-items-center rounded-full border border-line text-ink hover:bg-brand-50" data-prev aria-label="Rayon précédent">
             <Icon name="chevron" size={18} class="rotate-180" />
           </button>
-          <button type="button" class="grid size-10 place-items-center rounded-full border border-white/30 text-white hover:bg-white/10" data-next aria-label="Rayon suivant">
+          <button type="button" class="grid size-10 place-items-center rounded-full border border-line text-ink hover:bg-brand-50" data-next aria-label="Rayon suivant">
             <Icon name="chevron" size={18} />
           </button>
         </div>
@@ -105,20 +160,20 @@ const b2bSegments: { icon: IconName; title: string; text: string }[] = [
         }
       </ul>
       <div class="mt-4 flex justify-center gap-2" data-dots>
-        {categories.map((c, i) => <button type="button" class="h-2 w-2 rounded-full bg-white/30 transition-all aria-[current=true]:w-6 aria-[current=true]:bg-accent-500" aria-label={`Aller au rayon ${c.data.name}`} data-dot={i} />)}
+        {categories.map((c, i) => <button type="button" class="h-2 w-2 rounded-full bg-brand-200 transition-all aria-[current=true]:w-6 aria-[current=true]:bg-accent-500" aria-label={`Aller au rayon ${c.data.name}`} data-dot={i} />)}
       </div>
     </div>
   </section>
 
   <!-- Catégories -->
-  <section class="section !pb-0">
+  <section class="section bg-brand-950">
     <div class="container-page">
       <div class="flex items-end justify-between gap-4">
         <div>
-          <p class="eyebrow">Nos rayons</p>
-          <h2 class="mt-2 text-3xl">Parcourir par catégorie</h2>
+          <p class="eyebrow !text-accent-500">Nos rayons</p>
+          <h2 class="mt-2 text-3xl !text-white">Parcourir par catégorie</h2>
         </div>
-        <a href="/boutique" class="hidden font-bold text-brand-700 hover:underline sm:block">Tout le catalogue →</a>
+        <a href="/boutique" class="hidden font-bold text-accent-500 hover:underline sm:block">Tout le catalogue →</a>
       </div>
       <ul class="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         {
@@ -126,13 +181,13 @@ const b2bSegments: { icon: IconName; title: string; text: string }[] = [
             <li>
               <a
                 href={`/boutique?categorie=${c.id}`}
-                class="flex h-full flex-col items-center gap-3 rounded-2xl border p-5 text-center transition hover:-translate-y-0.5 hover:shadow-md"
-                style={`background:${c.data.color}1a;border-color:${c.data.color}40`}
+                class="flex h-full flex-col items-center gap-3 rounded-2xl border p-5 text-center transition hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/30"
+                style={`background:${c.data.color}2e;border-color:${c.data.color}73`}
               >
                 <span class="grid size-14 place-items-center rounded-2xl text-white shadow-sm" style={`background:${c.data.color}`}>
                   <Icon name={c.data.icon as IconName} size={28} />
                 </span>
-                <span class="text-sm font-bold" style={`color:color-mix(in srgb, ${c.data.color} 55%, #0a2a20)`}>{c.data.name}</span>
+                <span class="text-sm font-bold text-white">{c.data.name}</span>
               </a>
             </li>
           ))
@@ -339,5 +394,57 @@ const b2bSegments: { icon: IconName; title: string; text: string }[] = [
       }, 5000);
     }
     renderDots();
+  }
+</script>
+
+<script>
+  // Vidéos vitrines : une à la fois, en fondu. Un fichier passe au suivant à la fin de sa lecture,
+  // une vidéo YouTube / Vimeo après 20 s. Rien n'est cliquable ; si le système demande moins
+  // d'animations, seule la première image reste affichée.
+  const box = document.querySelector<HTMLElement>('[data-showcase]');
+  if (box) {
+    const slides = [...box.querySelectorAll<HTMLElement>('[data-slide]')];
+    const dots = [...box.querySelectorAll<HTMLElement>('[data-showcase-dot]')];
+    const title = box.querySelector<HTMLElement>('[data-showcase-title]')!;
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let current = 0;
+    let timer: number | undefined;
+
+    const show = (index: number) => {
+      clearTimeout(timer);
+      slides.forEach((slide, i) => {
+        const active = i === index;
+        slide.classList.toggle('opacity-100', active);
+        slide.classList.toggle('opacity-0', !active);
+        if (slide instanceof HTMLVideoElement) {
+          if (active && !reduced) {
+            slide.currentTime = 0;
+            slide.play().catch(() => {});
+          } else slide.pause();
+        } else if (slide instanceof HTMLIFrameElement) {
+          // L'intégration n'est chargée que lorsqu'elle est à l'écran (et déchargée ensuite).
+          slide.src = active && !reduced ? slide.dataset.src! : 'about:blank';
+        }
+      });
+      dots.forEach((d, i) => {
+        d.classList.toggle('bg-accent-500', i === index);
+        d.classList.toggle('bg-white/30', i !== index);
+      });
+      title.textContent = slides[index].dataset.title ?? '';
+      current = index;
+      if (slides.length > 1 && !reduced && !(slides[index] instanceof HTMLVideoElement)) {
+        timer = window.setTimeout(() => show((current + 1) % slides.length), 20_000);
+      }
+    };
+
+    slides.forEach((slide) => {
+      if (slide instanceof HTMLVideoElement && slides.length > 1) slide.addEventListener('ended', () => show((current + 1) % slides.length));
+    });
+    // Onglet caché : pause, pour ne pas consommer de données inutilement.
+    document.addEventListener('visibilitychange', () => {
+      const slide = slides[current];
+      if (slide instanceof HTMLVideoElement && !reduced) (document.hidden ? slide.pause() : slide.play().catch(() => {}));
+    });
+    show(0);
   }
 </script>

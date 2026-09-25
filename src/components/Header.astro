@@ -43,15 +43,15 @@ const isActive = (href: string) => {
     </button>
 
     <a href="/" class="shrink-0" aria-label="AfriSime, retour à l'accueil">
-      <Logo />
+      <Logo class="lg:[&_img]:h-9 xl:[&_img]:h-11" />
     </a>
 
     <!-- Navigation desktop (dans la barre d'en-tête) -->
-    <nav aria-label="Navigation principale" class="hidden min-w-0 flex-1 lg:block">
+    <nav aria-label="Navigation principale" class="hidden min-w-0 flex-1 lg:ml-4 lg:block xl:ml-10">
       <ul class="flex items-center justify-center gap-0.5 xl:gap-1">
         {
           [...NAV, { label: 'FAQ', href: '/faq' }].map((item) => (
-            <li class:list={['group relative', item.href === '/faq' && 'hidden xl:block']}>
+            <li class:list={['group relative', item.href === '/faq' && 'hidden 2xl:block']}>
               <a
                 href={item.href}
                 class:list={[

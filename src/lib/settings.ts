@@ -36,6 +36,12 @@ export type Settings = {
     /** Paragraphes séparés par une ligne vide. */
     message: string;
   };
+  /** Vidéos vitrines de l'accueil (lecture automatique, muette, non cliquable). */
+  showcase: {
+    enabled: boolean;
+    /** Vidéo envoyée (médiathèque) ou lien YouTube / Vimeo / fichier MP4. */
+    videos: { title: string; mediaId: string; url: string }[];
+  };
   seo: {
     /** Identifiant Google Tag Manager (GTM-XXXX), chargé uniquement après consentement. */
     gtmId: string;
@@ -54,6 +60,7 @@ export const DEFAULT_SETTINGS: Settings = {
   delivery: { zones: DELIVERY_ZONES, freeThreshold: FREE_DELIVERY_THRESHOLD },
   payments: { methods: PAYMENT_METHODS },
   seo: { gtmId: '', googleVerification: '' },
+  showcase: { enabled: true, videos: [] },
   welcome: {
     enabled: true,
     title: 'Le mot du Directeur général',

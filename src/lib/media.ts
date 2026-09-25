@@ -17,6 +17,40 @@ const THUMB_SIZE = 600;
 
 export class UploadError extends Error {}
 
+export const VIDEO_MIME = ['video/mp4', 'video/webm'];
+/** Limite imposée par l'hébergeur au corps d'une requête (4,5 Mo sur Vercel). */
+export const MAX_VIDEO_BYTES = 4 * 1024 * 1024;
+
+/**
+ * Courte vidéo vitrine (MP4 ou WebM, 4 Mo max), stockée telle quelle.
+ * Pour des vidéos plus longues, utiliser un lien (YouTube, Vimeo ou fichier hébergé ailleurs).
+ */
+export async function storeVideo(file: File, uploadedBy: string | null) {
+  if (!file || typeof file === 'string' || file.size === 0) throw new UploadError('Aucune vidéo reçue.');
+  if (!VIDEO_MIME.includes(file.type)) throw new UploadError('Formats vidéo acceptés : MP4, WebM.');
+  if (file.size > MAX_VIDEO_BYTES) throw new UploadError('Vidéo trop lourde (4 Mo maximum) : raccourcissez-la ou utilisez un lien YouTube.');
+  const buffer = Buffer.from(await file.arrayBuffer());
+  // Signatures : MP4 (« ftyp » à l'octet 4) ou WebM (EBML 1A 45 DF A3).
+  const isMp4 = buffer.subarray(4, 8).toString('latin1') === 'ftyp';
+  const isWebm = buffer.subarray(0, 4).equals(Buffer.from([0x1a, 0x45, 0xdf, 0xa3]));
+  if (!isMp4 && !isWebm) throw new UploadError(`« ${file.name} » n'est pas une vidéo MP4 ou WebM valide.`);
+  const id = newMediaId();
+  await db.insert(media).values({
+    id,
+    kind: 'video',
+    filename: file.name.replace(/[^\w.\- ]+/g, '_').slice(0, 120) || 'video',
+    mime: isMp4 ? 'video/mp4' : 'video/webm',
+    size: buffer.length,
+    data: buffer,
+    uploadedBy,
+  });
+  return id;
+}
+
+export function videoUrl(id: string) {
+  return `/video/${id}`;
+}
+
 function newMediaId() {
   return crypto.randomUUID().replace(/-/g, '').slice(0, 20);
 }

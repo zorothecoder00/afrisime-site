@@ -84,6 +84,22 @@ export function invalidateContent() {
   invalidate('content:');
 }
 
+/**
+ * Source d'une vidéo vitrine : fichier (MP4/WebM, lu par la balise <video>) ou intégration
+ * YouTube / Vimeo en mode « fond » (lecture automatique, muette, en boucle, sans commandes).
+ */
+export function showcaseSource(video: { mediaId: string; url: string }): { kind: 'file' | 'embed'; src: string } | null {
+  if (video.mediaId) return { kind: 'file', src: `/video/${video.mediaId}` };
+  const url = video.url.trim();
+  if (!url) return null;
+  if (/^https:\/\/.+\.(mp4|webm)(\?.*)?$/i.test(url)) return { kind: 'file', src: url };
+  const embed = videoEmbedUrl(url);
+  if (!embed) return null;
+  if (embed.includes('vimeo')) return { kind: 'embed', src: `${embed}?background=1&autoplay=1&muted=1&loop=1` };
+  const id = embed.split('/').pop();
+  return { kind: 'embed', src: `${embed}?autoplay=1&mute=1&controls=0&loop=1&playlist=${id}&playsinline=1&modestbranding=1&rel=0&disablekb=1` };
+}
+
 /** URL d'intégration d'une vidéo YouTube ou Vimeo (domaine sans cookie pour YouTube). */
 export function videoEmbedUrl(url: string | null | undefined): string | null {
   if (!url) return null;
