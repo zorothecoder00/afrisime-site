@@ -5,6 +5,7 @@ import Slideshow from '../components/Slideshow.astro';
 import Field from '../components/ui/Field.astro';
 import Icon from '../components/ui/Icon.astro';
 import { getPageTexts } from '../lib/page-texts';
+import { cardTint } from '../lib/tints';
 
 // Textes modifiables dans le back-office (Textes du site › Investir).
 const t = await getPageTexts('investir');
@@ -14,7 +15,7 @@ const t = await getPageTexts('investir');
   <PageHero eyebrow={t.heroEyebrow} title={t.heroTitle} intro={t.heroText} breadcrumbs={[{ label: 'AfriSime', href: '/afrisime' }, { label: 'Investir' }]} />
   <section class="section">
     <div class="container-page grid gap-4 md:grid-cols-2">
-      {t.pillars.map((p) => <article class="card p-7"><Icon name="chart" size={28} class="text-brand-600" /><h2 class="mt-4 text-xl">{p.title}</h2><p class="mt-2 text-muted">{p.text}</p></article>)}
+      {t.pillars.map((p, i) => <article class:list={['card p-7', cardTint(i)]}><Icon name="chart" size={28} class="text-brand-600" /><h2 class="mt-4 text-xl">{p.title}</h2><p class="mt-2 text-muted">{p.text}</p></article>)}
     </div>
   </section>
   <Slideshow placement="investir" class="section !pt-0" />
