@@ -7,6 +7,7 @@ import { videoEmbedUrl } from '../lib/content';
 import { ARTICLE_TYPE_LABELS, formatDate } from '../lib/format';
 import { renderMarkdown } from '../lib/markdown';
 import { imageUrl } from '../lib/media';
+import { articleTint } from '../lib/tints';
 
 interface Props {
   content: Content;
@@ -30,7 +31,7 @@ const date = content.publishedAt ?? content.updatedAt;
   {
     !isPage && (
       <p class="mt-8 flex flex-wrap items-center gap-2 text-sm text-muted">
-        <span class="badge badge-populaire">{ARTICLE_TYPE_LABELS[content.type as keyof typeof ARTICLE_TYPE_LABELS]}</span>
+        <span class:list={['badge text-brand-900', articleTint(content.type) || 'badge-populaire']}>{ARTICLE_TYPE_LABELS[content.type as keyof typeof ARTICLE_TYPE_LABELS]}</span>
         <time datetime={date.toISOString()}>{formatDate(date)}</time> · {content.authorName}
       </p>
     )
@@ -40,7 +41,7 @@ const date = content.publishedAt ?? content.updatedAt;
 
   {
     content.type === 'evenement' && (content.eventDate || content.eventLocation) && (
-      <dl class="card mt-6 grid gap-3 p-5 text-sm sm:grid-cols-2">
+      <dl class:list={['card mt-6 grid gap-3 p-5 text-sm sm:grid-cols-2', articleTint(content.type)]}>
         {content.eventDate && (
           <div>
             <dt class="text-muted">Date</dt>
