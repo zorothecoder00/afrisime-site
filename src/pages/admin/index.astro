@@ -2,6 +2,7 @@
 // Tableau de bord du back-office. Accès : équipe AfriSime avec double authentification
 // (contrôlé par src/middleware.ts). Chaque bloc dépend des permissions du rôle.
 import { count, desc, eq, sql } from 'drizzle-orm';
+import { cardTint } from '../../lib/tints';
 import AdminLayout from '../../components/AdminLayout.astro';
 import LeadsTable from '../../components/admin/LeadsTable.astro';
 import OrdersTable from '../../components/admin/OrdersTable.astro';
@@ -76,10 +77,10 @@ const stats = [
   <div class="space-y-10">
     <ul class="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
       {
-        stats.map((s) => (
+        stats.map((s, i) => (
           <li>
-            <a href={s.href} class:list={['card block h-full p-4', s.href && 'hover:border-brand-600']}>
-              <p class="text-sm text-muted">{s.label}</p>
+            <a href={s.href} class:list={['card block h-full p-4', cardTint(i), s.href && 'hover:!border-brand-600']}>
+              <p class="text-sm text-ink/70">{s.label}</p>
               <p class="mt-1 text-2xl font-extrabold text-brand-900">{s.value}</p>
             </a>
           </li>
