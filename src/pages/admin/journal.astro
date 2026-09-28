@@ -2,6 +2,7 @@
 // Journal d'activité (§10) : traçabilité des actions sensibles (connexions, rôles, commandes,
 // publications, suppressions, exports…).
 import { alias } from 'drizzle-orm/pg-core';
+import { cardTint } from '../../lib/tints';
 import { and, count, desc, eq, ilike, type SQL } from 'drizzle-orm';
 import AdminLayout from '../../components/AdminLayout.astro';
 import Pagination from '../../components/admin/Pagination.astro';
@@ -38,7 +39,7 @@ const [rows, [{ total }]] = await Promise.all([
     <input name="action" value={action} class="input !w-auto !py-2" placeholder="Action (ex. role, commande, connexion)" aria-label="Filtrer par action" />
     <button class="btn btn-secondary btn-sm">Filtrer</button>
   </form>
-  <div class="card mt-4 overflow-x-auto">
+  <div class:list={['card mt-4 overflow-x-auto', cardTint(0)]}>
     <table class="w-full min-w-[720px] text-left text-sm">
       <thead class="border-b border-line bg-canvas text-muted">
         <tr><th class="px-4 py-2">Date</th><th class="px-4 py-2">Qui</th><th class="px-4 py-2">Action</th><th class="px-4 py-2">Cible</th><th class="px-4 py-2">Détails</th><th class="px-4 py-2">IP</th></tr>

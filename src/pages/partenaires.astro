@@ -50,7 +50,7 @@ const offers = t.offers.map((o, i) => ({ ...o, ...layout[i] }));
         </ul>
       </div>
 
-      <form data-lead-form class="card grid gap-4 p-6 sm:grid-cols-2 sm:p-8" data-success-message={t.success} novalidate>
+      <form data-lead-form class:list={['card grid gap-4 p-6 sm:grid-cols-2 sm:p-8', cardTint(0)]} data-success-message={t.success} novalidate>
         <input type="hidden" name="type" value="fournisseur" />
         <input type="hidden" name="source" value="page-partenaires" />
         <div class="hidden" aria-hidden="true"><input name="website" tabindex="-1" autocomplete="off" /></div>

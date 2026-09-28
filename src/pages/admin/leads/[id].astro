@@ -1,5 +1,6 @@
 ---
 import { inArray } from 'drizzle-orm';
+import { cardTint } from '../../../lib/tints';
 import AdminLayout from '../../../components/AdminLayout.astro';
 import { media } from '../../../db/schema';
 import { db } from '../../../lib/db';
@@ -63,7 +64,7 @@ const current = PIPELINE.indexOf(lead.status);
 
   <div class="mt-6 grid gap-6 lg:grid-cols-[1fr_340px]">
     <div class="space-y-6">
-      <section class="card p-5" aria-labelledby="titre-demande">
+      <section class:list={['card p-5', cardTint(0)]} aria-labelledby="titre-demande">
         <h2 id="titre-demande" class="text-lg">Demande</h2>
         <p class="mt-1 text-sm text-muted">
           {LEAD_TYPE_LABELS[lead.type as keyof typeof LEAD_TYPE_LABELS] ?? lead.type} · reçue le {formatDate(lead.createdAt)} · source : {lead.source}
@@ -98,7 +99,7 @@ const current = PIPELINE.indexOf(lead.status);
         }
       </section>
 
-      <section class="card p-5" aria-labelledby="titre-historique">
+      <section class:list={['card p-5', cardTint(1)]} aria-labelledby="titre-historique">
         <h2 id="titre-historique" class="text-lg">Historique</h2>
         {
           events.length === 0 ? (
@@ -123,7 +124,7 @@ const current = PIPELINE.indexOf(lead.status);
     </div>
 
     <aside class="space-y-6">
-      <section class="card p-5" aria-labelledby="titre-contact">
+      <section class:list={['card p-5', cardTint(2)]} aria-labelledby="titre-contact">
         <h2 id="titre-contact" class="text-lg">Contact</h2>
         <dl class="mt-3 space-y-2 text-sm">
           <div><dt class="text-muted">Nom</dt><dd class="font-semibold">{lead.name}</dd></div>
@@ -137,7 +138,7 @@ const current = PIPELINE.indexOf(lead.status);
 
       {
         canUpdate && (
-          <section class="card p-5" aria-labelledby="titre-suivi">
+          <section class:list={['card p-5', cardTint(3)]} aria-labelledby="titre-suivi">
             <h2 id="titre-suivi" class="text-lg">Suivi commercial</h2>
             <form method="post" class="mt-3 space-y-3">
               <label class="block">

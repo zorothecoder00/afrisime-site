@@ -2,6 +2,7 @@
 // Clients & équipe : validation des comptes professionnels (commercial B2B), rôles, blocage
 // et création des comptes de l'équipe (super administrateur).
 import { hashPassword } from 'better-auth/crypto';
+import { cardTint } from '../../lib/tints';
 import { and, count, desc, eq, ilike, ne, or, type SQL } from 'drizzle-orm';
 import AdminLayout from '../../components/AdminLayout.astro';
 import Pagination from '../../components/admin/Pagination.astro';
@@ -139,7 +140,7 @@ const filters = [
   <ul class="mt-4 space-y-2">
     {
       list.map((u) => (
-        <li class="card p-4">
+        <li class:list={['card p-4', cardTint(0)]}>
           <div class="flex flex-wrap items-center gap-3">
             <div class="min-w-0 flex-1">
               <p class="font-semibold">
@@ -187,7 +188,7 @@ const filters = [
 
   {
     canManage && (
-      <form method="post" class="card mt-8 grid gap-3 p-5 sm:grid-cols-4 sm:items-end">
+      <form method="post" class:list={['card mt-8 grid gap-3 p-5 sm:grid-cols-4 sm:items-end', cardTint(1)]}>
         <h2 class="text-lg sm:col-span-4">Créer un compte d'équipe</h2>
         <input type="hidden" name="action" value="create-staff" />
         <label class="block"><span class="label">Nom</span><input name="name" required class="input !py-2" /></label>

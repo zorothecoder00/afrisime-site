@@ -1,6 +1,7 @@
 ---
 // Offres d'emploi de la page Carrières : ajout, modification, publication, suppression.
 import AdminLayout from '../../components/AdminLayout.astro';
+import { cardTint } from '../../lib/tints';
 import { bool, deny, int, str } from '../../lib/admin';
 import { audit } from '../../lib/audit';
 import { listJobs, saveJobs, type Job } from '../../lib/jobs';
@@ -52,10 +53,10 @@ const jobs = await listJobs();
   </p>
 
   <div class="mb-8 space-y-2">
-    {jobs.length === 0 && <p class="card p-4 text-muted">Aucune offre pour le moment. La page Carrières propose alors la candidature spontanée.</p>}
+    {jobs.length === 0 && <p class:list={['card p-4 text-muted', cardTint(0)]}>Aucune offre pour le moment. La page Carrières propose alors la candidature spontanée.</p>}
     {
       jobs.map((j) => (
-        <details class="card p-4">
+        <details class:list={['card p-4', cardTint(1)]}>
           <summary class="cursor-pointer font-semibold">
             {j.position}. {j.title} <span class="font-normal text-muted">· {[j.place, j.contract].filter(Boolean).join(' · ')}</span>
             {!j.published && <span class="badge badge-rupture ml-2">Masquée</span>}
@@ -78,7 +79,7 @@ const jobs = await listJobs();
     }
   </div>
 
-  <form method="post" class="card grid gap-3 p-5 sm:grid-cols-4">
+  <form method="post" class:list={['card grid gap-3 p-5 sm:grid-cols-4', cardTint(2)]}>
     <h2 class="text-lg sm:col-span-4">Nouvelle offre</h2>
     <label class="block sm:col-span-3"><span class="label">Intitulé du poste</span><input name="title" required maxlength="120" class="input !py-2" placeholder="Ex. : Commercial B2B terrain" /></label>
     <label class="block"><span class="label">Ordre</span><input name="position" value={jobs.length + 1} inputmode="numeric" class="input !py-2" /></label>

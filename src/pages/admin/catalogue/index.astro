@@ -1,6 +1,7 @@
 ---
 // Catalogue › Produits : liste, recherche et filtres.
 import AdminLayout from '../../../components/AdminLayout.astro';
+import { cardTint } from '../../../lib/tints';
 import Tabs from '../../../components/admin/Tabs.astro';
 import { deny } from '../../../lib/admin';
 import { getCatalog, lowestVariant } from '../../../lib/catalog';
@@ -64,7 +65,7 @@ const ok = Astro.url.searchParams.get('ok');
   </div>
 
   <p class="mt-4 text-sm text-muted">{list.length} produit{list.length > 1 ? 's' : ''}</p>
-  <div class="card mt-2 overflow-x-auto">
+  <div class:list={['card mt-2 overflow-x-auto', cardTint(0)]}>
     <table class="w-full min-w-[760px] text-left text-sm">
       <thead class="border-b border-line bg-canvas text-muted">
         <tr>

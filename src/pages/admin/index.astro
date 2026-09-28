@@ -95,7 +95,7 @@ const stats = [
             <h2 id="titre-commandes" class="text-xl">Dernières commandes</h2>
             <a href="/admin/commandes" class="text-sm font-semibold text-brand-700 underline">Toutes les commandes</a>
           </div>
-          <OrdersTable rows={recentOrders} empty="Aucune commande pour le moment." />
+          <OrdersTable rows={recentOrders} empty="Aucune commande pour le moment." tint={cardTint(0)} />
         </section>
       )
     }
@@ -107,7 +107,7 @@ const stats = [
             <h2 id="titre-leads" class="text-xl">Derniers leads</h2>
             <a href="/admin/leads" class="text-sm font-semibold text-brand-700 underline">Tous les leads</a>
           </div>
-          <LeadsTable rows={recentLeads} empty="Aucune demande pour le moment." />
+          <LeadsTable rows={recentLeads} empty="Aucune demande pour le moment." tint={cardTint(1)} />
         </section>
       )
     }

@@ -3,6 +3,7 @@
 // affichées sur le site (bloc « Offres du moment » de l'accueil, bandeau en haut des pages).
 // Les prix barrés se règlent sur chaque produit (Catalogue › format › prix barré).
 import { asc, desc, eq } from 'drizzle-orm';
+import { cardTint } from '../../lib/tints';
 import AdminLayout from '../../components/AdminLayout.astro';
 import CampaignFields from '../../components/admin/CampaignFields.astro';
 import Fields from '../../components/admin/PromoFields.astro';
@@ -108,7 +109,7 @@ const describe = (c: (typeof codes)[number]) =>
     <div class="mt-3 space-y-2">
       {
         codes.map((c) => (
-          <details class="card p-4">
+          <details class:list={['card p-4', cardTint(0)]}>
             <summary class="flex cursor-pointer list-none flex-wrap items-center gap-3">
               <strong class="font-mono text-brand-900">{c.code}</strong>
               <span class="text-sm">{describe(c)}</span>
@@ -128,7 +129,7 @@ const describe = (c: (typeof codes)[number]) =>
         ))
       }
     </div>
-    <details class="card mt-3 p-4">
+    <details class:list={['card mt-3 p-4', cardTint(1)]}>
       <summary class="cursor-pointer font-semibold text-brand-700">+ Nouveau code promo</summary>
       <form method="post" class="mt-3 grid gap-3 sm:grid-cols-4">
         <label class="block"><span class="label">Code</span><input name="code" required class="input !py-2 uppercase" /></label>
@@ -144,7 +145,7 @@ const describe = (c: (typeof codes)[number]) =>
     <div class="mt-3 space-y-2">
       {
         campaignList.map((k) => (
-          <details class="card p-4">
+          <details class:list={['card p-4', cardTint(2)]}>
             <summary class="flex cursor-pointer list-none flex-wrap items-center gap-3">
               <strong>{k.title}</strong>
               <span class="text-sm text-muted">{PLACEMENTS[k.placement as keyof typeof PLACEMENTS] ?? k.placement}</span>
@@ -162,7 +163,7 @@ const describe = (c: (typeof codes)[number]) =>
         ))
       }
     </div>
-    <details class="card mt-3 p-4">
+    <details class:list={['card mt-3 p-4', cardTint(3)]}>
       <summary class="cursor-pointer font-semibold text-brand-700">+ Nouvelle campagne</summary>
       <form method="post" enctype="multipart/form-data" class="mt-3 grid gap-3 sm:grid-cols-4">
         <CampaignFields />

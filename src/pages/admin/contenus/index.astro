@@ -2,6 +2,7 @@
 // Contenus : articles de la section Média (actualités, conseils, vidéos, événements, communiqués)
 // et pages (CGV, mentions légales…). Cycle : brouillon → à valider → publié / programmé → archivé.
 import { and, desc, eq, ne, type SQL } from 'drizzle-orm';
+import { cardTint } from '../../../lib/tints';
 import AdminLayout from '../../../components/AdminLayout.astro';
 import Tabs from '../../../components/admin/Tabs.astro';
 import { contents } from '../../../db/schema';
@@ -44,7 +45,7 @@ const tone = { brouillon: 'badge-sur-commande', 'a-valider': 'badge-promotion', 
     {canEdit && <a href={`/admin/contenus/nouveau${pages ? '?type=page' : ''}`} class="btn btn-primary btn-sm">+ {pages ? 'Nouvelle page' : 'Nouveau contenu'}</a>}
   </div>
 
-  <div class="card mt-4 overflow-x-auto">
+  <div class:list={['card mt-4 overflow-x-auto', cardTint(0)]}>
     <table class="w-full min-w-[680px] text-left text-sm">
       <thead class="border-b border-line bg-canvas text-muted">
         <tr>

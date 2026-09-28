@@ -2,6 +2,7 @@
 // Médiathèque : envoi d'images (compressées en WebP), texte alternatif, suppression.
 // Les documents privés joints aux demandes n'apparaissent pas ici (fiche du lead).
 import { and, count, desc, eq, sql } from 'drizzle-orm';
+import { cardTint } from '../../lib/tints';
 import AdminLayout from '../../components/AdminLayout.astro';
 import Pagination from '../../components/admin/Pagination.astro';
 import { brands, campaigns, categories, contents, media, products } from '../../db/schema';
@@ -93,7 +94,7 @@ const ok = Astro.url.searchParams.get('ok');
     <a href="/admin/diaporamas" class="font-semibold underline">diaporama</a>, une fiche produit, un article (couverture ou « Code Markdown » collé dans le texte), une marque, une catégorie ou une campagne.
   </p>
 
-  <form method="post" enctype="multipart/form-data" class="card grid gap-3 p-5 sm:grid-cols-[2fr_2fr_auto] sm:items-end" data-media-upload>
+  <form method="post" enctype="multipart/form-data" class:list={['card grid gap-3 p-5 sm:grid-cols-[2fr_2fr_auto] sm:items-end', cardTint(0)]} data-media-upload>
     <input type="hidden" name="action" value="upload" />
     <label class="block"><span class="label">Images (une ou plusieurs)</span><input type="file" name="files" multiple required accept="image/jpeg,image/png,image/webp,image/avif,image/gif" class="input" /></label>
     <label class="block"><span class="label">Texte alternatif</span><input name="alt" maxlength="300" class="input" placeholder="Décrit l'image (accessibilité, SEO)" /></label>
@@ -108,7 +109,7 @@ const ok = Astro.url.searchParams.get('ok');
   <ul class="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
     {
       items.map((m) => (
-        <li class="card overflow-hidden text-xs">
+        <li class:list={['card overflow-hidden text-xs', cardTint(1)]}>
           <a href={imageUrl(m.id)} target="_blank"><img src={imageUrl(m.id, 'mini')} alt={m.alt} loading="lazy" class="aspect-square w-full bg-canvas object-contain" /></a>
           <div class="space-y-2 p-3">
             <p class="truncate font-semibold" title={m.filename}>{m.filename}</p>

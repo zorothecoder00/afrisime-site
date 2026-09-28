@@ -1,6 +1,7 @@
 ---
 // Catalogue › Catégories : création, modification, ordre d'affichage, suppression (si vide).
 import { count, eq } from 'drizzle-orm';
+import { cardTint } from '../../../lib/tints';
 import AdminLayout from '../../../components/AdminLayout.astro';
 import Tabs from '../../../components/admin/Tabs.astro';
 import { categories, products } from '../../../db/schema';
@@ -87,7 +88,7 @@ const list = await db
   <div class="space-y-3">
     {
       list.map(({ category: c, products: n }) => (
-        <details class="card p-4">
+        <details class:list={['card p-4', cardTint(0)]}>
           <summary class="flex cursor-pointer list-none flex-wrap items-center gap-3">
             <span class="grid size-9 place-items-center rounded-lg text-xs font-bold" style={`background:${c.color}22;color:${c.color}`}>{c.position}</span>
             <span class="flex-1 font-semibold">{c.name} <span class="font-normal text-muted">· {c.id} · {n} produit{n > 1 ? 's' : ''}</span></span>
@@ -120,7 +121,7 @@ const list = await db
 
   {
     canEdit && (
-      <form method="post" enctype="multipart/form-data" class="card mt-8 grid gap-3 p-5 sm:grid-cols-4">
+      <form method="post" enctype="multipart/form-data" class:list={['card mt-8 grid gap-3 p-5 sm:grid-cols-4', cardTint(1)]}>
         <h2 class="text-lg sm:col-span-4">Nouvelle catégorie</h2>
         <label class="block sm:col-span-2"><span class="label">Nom</span><input name="name" required class="input !py-2" data-slug-source /></label>
         <label class="block"><span class="label">Identifiant (URL)</span><input name="newId" class="input !py-2" data-slug-target /></label>

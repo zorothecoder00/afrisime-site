@@ -1,5 +1,6 @@
 ---
 import AdminLayout from '../../../components/AdminLayout.astro';
+import { cardTint } from '../../../lib/tints';
 import LeadsTable from '../../../components/admin/LeadsTable.astro';
 import Pagination from '../../../components/admin/Pagination.astro';
 import { LEAD_STATUS_LABELS, LEAD_TYPE_LABELS } from '../../../lib/format';
@@ -31,7 +32,7 @@ const { rows, total } = await listLeads({
 ---
 
 <AdminLayout title="Leads">
-  <form method="get" class="card grid gap-3 p-4 md:grid-cols-[1fr_180px_180px_auto_auto] md:items-end">
+  <form method="get" class:list={['card grid gap-3 p-4 md:grid-cols-[1fr_180px_180px_auto_auto] md:items-end', cardTint(0)]}>
     <label class="block">
       <span class="label">Recherche</span>
       <input type="search" name="q" value={q} placeholder="Nom, entreprise, téléphone, e-mail" class="input" />
@@ -61,7 +62,7 @@ const { rows, total } = await listLeads({
   </form>
 
   <div class="mt-6">
-    <LeadsTable rows={rows} empty="Aucune demande ne correspond à ces critères." />
+    <LeadsTable rows={rows} empty="Aucune demande ne correspond à ces critères." tint={cardTint(1)} />
     <Pagination total={total} page={page} pageSize={PAGE_SIZE} />
   </div>
 </AdminLayout>

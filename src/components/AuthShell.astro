@@ -1,6 +1,7 @@
 ---
 // Mise en page commune aux écrans de connexion, inscription et mot de passe.
 import Layout from '../layouts/Layout.astro';
+import { cardTint } from '../lib/tints';
 import Logo from './ui/Logo.astro';
 
 interface Props {
@@ -12,7 +13,7 @@ const { title, intro } = Astro.props;
 
 <Layout title={title} noindex>
   <div class="container-page flex justify-center py-12 sm:py-16">
-    <div class="card w-full max-w-md p-6 sm:p-8">
+    <div class:list={['card w-full max-w-md p-6 sm:p-8', cardTint(0)]}>
       <a href="/" class="inline-block" aria-label="AfriSime, retour à l'accueil"><Logo /></a>
       <h1 class="mt-6 text-2xl sm:text-3xl">{title}</h1>
       {intro && <p class="mt-2 text-muted">{intro}</p>}

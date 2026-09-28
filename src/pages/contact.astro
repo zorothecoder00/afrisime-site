@@ -45,7 +45,7 @@ const mapSrc = safeMapUrl(t.mapUrl) ?? DEFAULT_TEXTS.contact.mapUrl;
           referrerpolicy="no-referrer"></iframe>
       </div>
 
-      <form data-lead-form class="card grid h-fit gap-4 p-6 sm:grid-cols-2 sm:p-8" data-success-message={t.success} novalidate>
+      <form data-lead-form class:list={['card grid h-fit gap-4 p-6 sm:grid-cols-2 sm:p-8', cardTint(0)]} data-success-message={t.success} novalidate>
         <h2 class="text-2xl sm:col-span-2">{t.formTitle}</h2>
         <input type="hidden" name="type" value="contact" />
         <input type="hidden" name="source" value="page-contact" />

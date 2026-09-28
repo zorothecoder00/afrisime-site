@@ -1,5 +1,6 @@
 ---
 import Layout from '../../layouts/Layout.astro';
+import { cardTint } from '../../lib/tints';
 import PageHero from '../../components/PageHero.astro';
 import Icon from '../../components/ui/Icon.astro';
 import { listArticles } from '../../lib/content';
@@ -48,7 +49,7 @@ const filterButton = 'btn btn-sm border-0 transition-colors';
     <div class="container-page">
       {
         articles.length === 0 ? (
-          <p class="card p-10 text-center text-muted">{text.empty}</p>
+          <p class:list={['card p-10 text-center text-muted', cardTint(0)]}>{text.empty}</p>
         ) : (
           <>
             <div class="flex flex-wrap gap-2" role="group" aria-label="Filtrer par type">

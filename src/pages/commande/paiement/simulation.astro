@@ -2,6 +2,7 @@
 // Faux prestataire de paiement, pour tester le parcours en développement (PAYMENT_PROVIDER=simulation).
 // Indisponible sur un site de production.
 import { eq } from 'drizzle-orm';
+import { cardTint } from '../../../lib/tints';
 import Layout from '../../../layouts/Layout.astro';
 import { orders, payments } from '../../../db/schema';
 import { db } from '../../../lib/db';
@@ -23,7 +24,7 @@ if (Astro.request.method === 'POST') {
 
 <Layout title="Paiement (simulation)" noindex>
   <div class="container-page max-w-md py-16">
-    <div class="card p-8 text-center">
+    <div class:list={['card p-8 text-center', cardTint(0)]}>
       <p class="badge badge-sur-commande">Simulation — développement uniquement</p>
       <h1 class="mt-4 text-2xl">Commande {order.number}</h1>
       <p class="mt-2 text-3xl font-extrabold text-brand-900">{formatPrice(payment.amount)}</p>

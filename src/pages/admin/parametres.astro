@@ -2,6 +2,7 @@
 // Paramètres : identité et coordonnées (super administrateur), livraison et moyens de paiement
 // (e-commerce manager), état des intégrations (lecture seule : réglées par variables d'environnement).
 import AdminLayout from '../../components/AdminLayout.astro';
+import { cardTint } from '../../lib/tints';
 import { bool, int, isSlug, rows, safeHref, str } from '../../lib/admin';
 import { audit } from '../../lib/audit';
 import { emailConfigured } from '../../lib/notifications';
@@ -150,7 +151,7 @@ const ok = Astro.url.searchParams.get('ok');
 
   {
     canGlobal && (
-      <form method="post" class="card grid gap-4 p-5 sm:grid-cols-2">
+      <form method="post" class:list={['card grid gap-4 p-5 sm:grid-cols-2', cardTint(0)]}>
         <input type="hidden" name="action" value="identite" />
         <h2 class="text-xl sm:col-span-2">Identité et coordonnées</h2>
         <label class="block"><span class="label">Nom</span><input name="name" value={s.identity.name} class="input !py-2" /></label>
@@ -181,7 +182,7 @@ const ok = Astro.url.searchParams.get('ok');
 
   {
     canCommerce && (
-      <form method="post" class="card mt-6 p-5">
+      <form method="post" class:list={['card mt-6 p-5', cardTint(1)]}>
         <input type="hidden" name="action" value="livraison" />
         <h2 class="text-xl">Livraison</h2>
         <p class="hint">Frais recalculés par le serveur à chaque commande. « Offerte au-delà du seuil » : livraison gratuite dès le montant ci-dessous.</p>
@@ -224,7 +225,7 @@ const ok = Astro.url.searchParams.get('ok');
 
   {
     canWelcome && (
-      <form method="post" enctype="multipart/form-data" class="card mt-6 grid gap-4 p-5 sm:grid-cols-2" id="mot-du-dirigeant">
+      <form method="post" enctype="multipart/form-data" class:list={['card mt-6 grid gap-4 p-5 sm:grid-cols-2', cardTint(2)]} id="mot-du-dirigeant">
         <input type="hidden" name="action" value="mot" />
         <div class="sm:col-span-2">
           <h2 class="text-xl">Mot du dirigeant</h2>
@@ -257,7 +258,7 @@ const ok = Astro.url.searchParams.get('ok');
 
   {
     canWelcome && (
-      <form method="post" enctype="multipart/form-data" class="card mt-6 space-y-4 p-5" id="videos-vitrines">
+      <form method="post" enctype="multipart/form-data" class:list={['card mt-6 space-y-4 p-5', cardTint(3)]} id="videos-vitrines">
         <input type="hidden" name="action" value="vitrine" />
         <div>
           <h2 class="text-xl">Vidéos vitrines de l'accueil</h2>
@@ -304,7 +305,7 @@ const ok = Astro.url.searchParams.get('ok');
     )
   }
 
-  <section class="card mt-6 p-5" aria-labelledby="titre-integrations">
+  <section class:list={['card mt-6 p-5', cardTint(4)]} aria-labelledby="titre-integrations">
     <h2 id="titre-integrations" class="text-xl">Intégrations</h2>
     <p class="hint">Réglées par variables d'environnement sur l'hébergeur (voir docs/deploiement.md). Aucun secret n'est affiché ici.</p>
     <ul class="mt-3 divide-y divide-line text-sm">

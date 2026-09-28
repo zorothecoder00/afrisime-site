@@ -2,6 +2,7 @@
 // Édition d'un contenu. Un éditeur enregistre des brouillons et les soumet à validation ;
 // l'administrateur web (permission « publier ») publie, programme, dépublie ou archive.
 import { eq } from 'drizzle-orm';
+import { cardTint } from '../../../lib/tints';
 import AdminLayout from '../../../components/AdminLayout.astro';
 import { contents } from '../../../db/schema';
 import { dateTime, deny, isSlug, optionalStr, safeHref, slugify, str, toInputDateTime } from '../../../lib/admin';
@@ -135,7 +136,7 @@ const scheduled = draft.status === 'publie' && draft.publishedAt && draft.publis
   <form method="post" enctype="multipart/form-data" class="grid gap-6 lg:grid-cols-[1fr_320px]">
     <fieldset disabled={!editable} class="contents">
       <div class="space-y-6">
-        <section class="card grid gap-4 p-5 sm:grid-cols-2">
+        <section class:list={['card grid gap-4 p-5 sm:grid-cols-2', cardTint(0)]}>
           <label class="block">
             <span class="label">Type</span>
             <select name="type" class="input">{TYPES.map((t) => <option value={t} selected={t === draft.type}>{typeLabel(t)}</option>)}</select>
@@ -157,7 +158,7 @@ const scheduled = draft.status === 'publie' && draft.publishedAt && draft.publis
           </label>
         </section>
 
-        <section class="card grid gap-4 p-5 sm:grid-cols-2">
+        <section class:list={['card grid gap-4 p-5 sm:grid-cols-2', cardTint(1)]}>
           <h2 class="text-lg sm:col-span-2">Médias et événement</h2>
           <div class="sm:col-span-2">
             <span class="label">Image de couverture</span>
@@ -174,7 +175,7 @@ const scheduled = draft.status === 'publie' && draft.publishedAt && draft.publis
           <label class="block"><span class="label">Lieu de l'événement</span><input name="eventLocation" value={draft.eventLocation ?? ''} class="input" /></label>
         </section>
 
-        <section class="card grid gap-4 p-5">
+        <section class:list={['card grid gap-4 p-5', cardTint(2)]}>
           <h2 class="text-lg">Référencement (SEO)</h2>
           <label class="block"><span class="label">Titre de la page <span class="font-normal text-muted">(70 max, sinon le titre)</span></span><input name="seoTitle" maxlength="70" value={draft.seoTitle ?? ''} class="input" /></label>
           <label class="block"><span class="label">Méta-description <span class="font-normal text-muted">(170 max, sinon l'extrait)</span></span><textarea name="seoDescription" maxlength="170" rows="2" class="input">{draft.seoDescription ?? ''}</textarea></label>
@@ -182,7 +183,7 @@ const scheduled = draft.status === 'publie' && draft.publishedAt && draft.publis
       </div>
 
       <aside class="space-y-6">
-        <section class="card space-y-4 p-5">
+        <section class:list={['card space-y-4 p-5', cardTint(3)]}>
           <h2 class="text-lg">Publication</h2>
           <p class="text-sm">
             Statut : <strong>{scheduled ? `Programmé le ${formatDateTime(draft.publishedAt!)}` : CONTENT_STATUS_LABELS[draft.status ?? 'brouillon']}</strong>

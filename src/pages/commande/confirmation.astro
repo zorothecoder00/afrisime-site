@@ -3,6 +3,7 @@
 // aussi par e-mail : paiement à finaliser ou à relancer, annulation tant que la préparation
 // n'a pas commencé, historique.
 import Layout from '../../layouts/Layout.astro';
+import { cardTint } from '../../lib/tints';
 import OrderProgress from '../../components/OrderProgress.astro';
 import Icon from '../../components/ui/Icon.astro';
 import { audit } from '../../lib/audit';
@@ -59,7 +60,7 @@ Astro.response.headers.set('Referrer-Policy', 'same-origin');
   <div class="container-page max-w-3xl py-12">
     {
       !row ? (
-        <div class="card p-8 text-center">
+        <div class:list={['card p-8 text-center', cardTint(0)]}>
           <h1 class="text-2xl">Commande introuvable</h1>
           <p class="mt-2 text-muted">Le lien est incomplet ou a expiré. Retrouvez votre commande avec son numéro et votre téléphone.</p>
           <div class="mt-6 flex justify-center gap-2">
@@ -89,7 +90,7 @@ Astro.response.headers.set('Referrer-Policy', 'same-origin');
 
           {
             awaitingOnline && (
-              <section class="card mt-8 border-accent-500 p-6" aria-labelledby="titre-paiement">
+              <section class:list={['card mt-8 border-accent-500 p-6', cardTint(1)]} aria-labelledby="titre-paiement">
                 <h2 id="titre-paiement" class="text-xl">Paiement à finaliser : {formatPrice(row.total)}</h2>
                 {canPay ? (
                   <form method="post" action="/commande/paiement" class="mt-4">
@@ -107,7 +108,7 @@ Astro.response.headers.set('Referrer-Policy', 'same-origin');
             )
           }
 
-          <section class="card mt-6 p-6" aria-labelledby="titre-suivi">
+          <section class:list={['card mt-6 p-6', cardTint(2)]} aria-labelledby="titre-suivi">
             <h2 id="titre-suivi" class="text-xl">Suivi</h2>
             <div class="mt-4">
               <OrderProgress status={row.status} />
@@ -121,7 +122,7 @@ Astro.response.headers.set('Referrer-Policy', 'same-origin');
             </ul>
           </section>
 
-          <section class="card mt-6 p-6" aria-labelledby="recap">
+          <section class:list={['card mt-6 p-6', cardTint(3)]} aria-labelledby="recap">
             <h2 id="recap" class="text-xl">Récapitulatif</h2>
             <ul class="mt-4 divide-y divide-line text-sm">
               {detail!.lines.map((l) => (
@@ -147,7 +148,7 @@ Astro.response.headers.set('Referrer-Policy', 'same-origin');
 
           {
             row.status !== 'annulee' && (
-              <section class="card mt-6 p-6" aria-labelledby="suite">
+              <section class:list={['card mt-6 p-6', cardTint(4)]} aria-labelledby="suite">
                 <h2 id="suite" class="text-xl">Et maintenant ?</h2>
                 <ol class="mt-4 space-y-4 text-sm">
                   <li class="flex gap-3"><span class="grid size-7 shrink-0 place-items-center rounded-full bg-brand-900 text-xs font-bold text-white">1</span><span>Vous recevez une confirmation par e-mail à <strong>{row.customer.email}</strong>.</span></li>
@@ -160,7 +161,7 @@ Astro.response.headers.set('Referrer-Policy', 'same-origin');
 
           {
             CUSTOMER_CANCELLABLE.includes(row.status) && !row.paidAt && (
-              <details class="card mt-6 p-6">
+              <details class:list={['card mt-6 p-6', cardTint(5)]}>
                 <summary class="cursor-pointer font-bold text-danger">Annuler cette commande</summary>
                 <form method="post" class="mt-4 space-y-3">
                   <input type="hidden" name="action" value="cancel" />

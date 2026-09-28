@@ -289,7 +289,7 @@ const b2bSegments = t.b2bSegments.map((r, i) => ({ ...r, icon: segmentIcons[i] }
         {
           brands.map((b) => (
             <li>
-              <a href={`/boutique?marque=${b.id}`} class="card grid h-20 place-items-center px-3 text-center text-sm font-extrabold uppercase tracking-wider text-muted transition hover:text-brand-700">
+              <a href={`/boutique?marque=${b.id}`} class:list={['card grid h-20 place-items-center px-3 text-center text-sm font-extrabold uppercase tracking-wider text-muted transition hover:text-brand-700', cardTint(0)]}>
                 {b.data.logo ? <img src={imageUrl(b.data.logo.id, 'mini')} alt={b.data.name} loading="lazy" class="max-h-12 w-auto object-contain" /> : b.data.name}
               </a>
             </li>

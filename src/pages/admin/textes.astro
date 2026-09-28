@@ -3,6 +3,7 @@
 // contact, activités, B2B, carrières, investir, partenaires).
 // Modifiables par le super administrateur et l'administrateur web (publication de contenus).
 import AdminLayout from '../../components/AdminLayout.astro';
+import { cardTint } from '../../lib/tints';
 import Tabs from '../../components/admin/Tabs.astro';
 import { str } from '../../lib/admin';
 import { audit } from '../../lib/audit';
@@ -62,7 +63,7 @@ const rowsFor = (v: string) => Math.min(12, Math.max(2, Math.ceil(v.length / 90)
     <input type="hidden" name="action" value="enregistrer" />
     {
       def.sections.map((section) => (
-        <fieldset class="card space-y-4 p-5">
+        <fieldset class:list={['card space-y-4 p-5', cardTint(0)]}>
           <legend class="sr-only">{section.title}</legend>
           <h2 class="text-xl" aria-hidden="true">{section.title}</h2>
           {section.fields.map((field) =>

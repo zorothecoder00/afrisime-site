@@ -1,6 +1,7 @@
 ---
 // FAQ : questions par rubrique, ordre, publication.
 import { asc, eq } from 'drizzle-orm';
+import { cardTint } from '../../lib/tints';
 import AdminLayout from '../../components/AdminLayout.astro';
 import { faqItems } from '../../db/schema';
 import { bool, deny, int, str } from '../../lib/admin';
@@ -53,7 +54,7 @@ const items = await db.select().from(faqItems).orderBy(asc(faqItems.position), a
           {items
             .filter((q) => q.group === g.id)
             .map((q) => (
-              <details class="card p-4">
+              <details class:list={['card p-4', cardTint(0)]}>
                 <summary class="cursor-pointer font-semibold">
                   {q.position}. {q.question} {!q.published && <span class="badge badge-rupture ml-2">Masquée</span>}
                 </summary>
@@ -79,7 +80,7 @@ const items = await db.select().from(faqItems).orderBy(asc(faqItems.position), a
     ))
   }
 
-  <form method="post" class="card grid gap-3 p-5 sm:grid-cols-4">
+  <form method="post" class:list={['card grid gap-3 p-5 sm:grid-cols-4', cardTint(1)]}>
     <h2 class="text-lg sm:col-span-4">Nouvelle question</h2>
     <label class="block sm:col-span-3"><span class="label">Question</span><input name="question" required class="input !py-2" /></label>
     <label class="block"><span class="label">Ordre</span><input name="position" value={items.length + 1} inputmode="numeric" class="input !py-2" /></label>

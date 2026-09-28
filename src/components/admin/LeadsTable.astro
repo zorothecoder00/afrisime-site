@@ -5,15 +5,17 @@ import { formatDate, LEAD_STATUS_LABELS, LEAD_TYPE_LABELS } from '../../lib/form
 interface Props {
   rows: (typeof leads.$inferSelect & { assigneeName?: string | null })[];
   empty?: string;
+  /** Fond coloré de la carte (classes de cardTint). */
+  tint?: string;
 }
-const { rows, empty = 'Aucune demande.' } = Astro.props;
+const { rows, empty = 'Aucune demande.', tint } = Astro.props;
 ---
 
 {
   rows.length === 0 ? (
-    <p class="card p-6 text-sm text-muted">{empty}</p>
+    <p class:list={['card p-6 text-sm text-muted', tint]}>{empty}</p>
   ) : (
-    <div class="card overflow-x-auto">
+    <div class:list={['card overflow-x-auto', tint]}>
       <table class="w-full min-w-[760px] text-left text-sm">
         <thead class="border-b border-line bg-canvas text-muted">
           <tr>

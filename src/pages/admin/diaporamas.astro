@@ -2,6 +2,7 @@
 // Diaporamas : plusieurs images affichées en carrousel ou en défilement automatique,
 // à un emplacement choisi du site. Images prises dans la médiathèque ou envoyées ici.
 import { and, desc, eq, inArray } from 'drizzle-orm';
+import { cardTint } from '../../lib/tints';
 import AdminLayout from '../../components/AdminLayout.astro';
 import { media } from '../../db/schema';
 import { bool, deny, int, safeHref, str } from '../../lib/admin';
@@ -154,7 +155,7 @@ const blank: Slideshow = { id: '', title: '', placement: 'accueil', mode: 'defil
       [...shows, blank].map((s) => {
         const isNew = !s.id;
         return (
-          <details class="card p-5" open={isNew && shows.length === 0}>
+          <details class:list={['card p-5', cardTint(0)]} open={isNew && shows.length === 0}>
             <summary class="cursor-pointer text-lg font-bold">
               {isNew ? (
                 '+ Nouveau diaporama'

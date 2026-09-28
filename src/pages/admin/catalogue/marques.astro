@@ -1,6 +1,7 @@
 ---
 // Catalogue › Marques : création, modification, logo, suppression (si aucun produit).
 import { count, eq } from 'drizzle-orm';
+import { cardTint } from '../../../lib/tints';
 import AdminLayout from '../../../components/AdminLayout.astro';
 import Tabs from '../../../components/admin/Tabs.astro';
 import { brands, products } from '../../../db/schema';
@@ -83,7 +84,7 @@ const list = await db
   <div class="space-y-3">
     {
       list.map(({ brand: b, products: n }) => (
-        <details class="card p-4">
+        <details class:list={['card p-4', cardTint(0)]}>
           <summary class="flex cursor-pointer list-none items-center gap-3">
             {b.logoId ? <img src={imageUrl(b.logoId, 'mini')} alt="" class="h-9 w-16 object-contain" /> : <span class="grid h-9 w-16 place-items-center rounded bg-canvas text-xs text-muted">logo</span>}
             <span class="flex-1 font-semibold">{b.name} <span class="font-normal text-muted">· {b.id} · {n} produit{n > 1 ? 's' : ''}</span></span>
@@ -110,7 +111,7 @@ const list = await db
 
   {
     canEdit && (
-      <form method="post" enctype="multipart/form-data" class="card mt-8 grid gap-3 p-5 sm:grid-cols-4">
+      <form method="post" enctype="multipart/form-data" class:list={['card mt-8 grid gap-3 p-5 sm:grid-cols-4', cardTint(1)]}>
         <h2 class="text-lg sm:col-span-4">Nouvelle marque</h2>
         <label class="block sm:col-span-2"><span class="label">Nom</span><input name="name" required class="input !py-2" data-slug-source /></label>
         <label class="block"><span class="label">Identifiant (URL)</span><input name="newId" class="input !py-2" data-slug-target /></label>
