@@ -6,6 +6,7 @@ import Field from '../components/ui/Field.astro';
 import FileField from '../components/ui/FileField.astro';
 import Icon, { type IconName } from '../components/ui/Icon.astro';
 import { getPageTexts, splitLines } from '../lib/page-texts';
+import { cardTint } from '../lib/tints';
 import { contactLinks, getSettings } from '../lib/settings';
 const { contact } = await getSettings();
 const links = contactLinks(contact);
@@ -32,8 +33,8 @@ const segments = t.segments.map((s, i) => ({ ...s, ...layout[i] }));
   <section class="section">
     <div class="container-page grid gap-4 md:grid-cols-2">
       {
-        segments.map((s) => (
-          <article id={s.id} class="card p-7">
+        segments.map((s, i) => (
+          <article id={s.id} class:list={['card p-7', cardTint(i)]}>
             <span class="grid size-12 place-items-center rounded-xl bg-brand-900 text-accent-500"><Icon name={s.icon} size={24} /></span>
             <h2 class="mt-5 text-2xl">{s.title}</h2>
             <p class="mt-2 text-muted">{s.text}</p>

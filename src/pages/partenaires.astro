@@ -6,6 +6,7 @@ import Field from '../components/ui/Field.astro';
 import FileField from '../components/ui/FileField.astro';
 import Icon, { type IconName } from '../components/ui/Icon.astro';
 import { getPageTexts } from '../lib/page-texts';
+import { cardTint } from '../lib/tints';
 
 // Textes modifiables dans le back-office (Textes du site › Partenaires). Ancres et icônes restent fixes.
 const t = await getPageTexts('partenaires');
@@ -24,8 +25,8 @@ const offers = t.offers.map((o, i) => ({ ...o, ...layout[i] }));
   <section class="section">
     <div class="container-page grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {
-        offers.map((o) => (
-          <article id={o.id} class="card p-6">
+        offers.map((o, i) => (
+          <article id={o.id} class:list={['card p-6', cardTint(i)]}>
             <Icon name={o.icon} size={28} class="text-brand-600" />
             <h2 class="mt-4 text-xl">{o.title}</h2>
             <p class="mt-2 text-sm text-muted">{o.text}</p>

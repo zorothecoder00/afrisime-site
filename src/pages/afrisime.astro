@@ -6,6 +6,7 @@ import Icon, { type IconName } from '../components/ui/Icon.astro';
 import { imageUrl } from '../lib/media';
 import { getSettings } from '../lib/settings';
 import { getPageTexts } from '../lib/page-texts';
+import { cardTint } from '../lib/tints';
 
 // Mot du dirigeant : modifiable dans le back-office (Paramètres › Mot du dirigeant).
 const { welcome } = await getSettings();
@@ -36,8 +37,15 @@ const values = t.values.map((v, i) => ({ ...v, icon: valueIcons[i] }));
   />
 
   <section class="border-b border-line bg-white">
-    <dl class="container-page grid grid-cols-2 gap-6 py-10 md:grid-cols-4">
-      {t.figures.map((f) => <div><dt class="sr-only">{f.label}</dt><dd><span class="block text-3xl font-extrabold text-brand-900 sm:text-4xl">{f.value}</span><span class="text-sm text-muted">{f.label}</span></dd></div>)}
+    <dl class="container-page grid grid-cols-2 gap-4 py-10 md:grid-cols-4">
+      {
+        t.figures.map((f, i) => (
+          <div class:list={['rounded-2xl border p-5 sm:p-6', cardTint(i)]}>
+            <dt class="sr-only">{f.label}</dt>
+            <dd><span class="block text-3xl font-extrabold text-brand-900 sm:text-4xl">{f.value}</span><span class="text-sm text-ink/70">{f.label}</span></dd>
+          </div>
+        ))
+      }
     </dl>
   </section>
 

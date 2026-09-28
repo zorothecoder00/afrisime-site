@@ -4,6 +4,7 @@ import PageHero from '../components/PageHero.astro';
 import Slideshow from '../components/Slideshow.astro';
 import Icon, { type IconName } from '../components/ui/Icon.astro';
 import { getPageTexts, splitLines } from '../lib/page-texts';
+import { cardTint } from '../lib/tints';
 
 // Textes modifiables dans le back-office (Textes du site › Activités). Ancres, icônes et liens restent fixes.
 const t = await getPageTexts('activites');
@@ -24,15 +25,15 @@ const activities = t.activities.map((a, i) => ({ ...a, ...layout[i] }));
     <div class="container-page space-y-6">
       {
         activities.map((a, i) => (
-          <article id={a.id} class="card grid scroll-mt-32 gap-6 p-7 md:grid-cols-[auto_1fr_auto] md:items-center md:p-10">
-            <span class:list={['grid size-16 place-items-center rounded-2xl', i % 2 ? 'bg-accent-100 text-warning' : 'bg-brand-100 text-brand-700']}>
+          <article id={a.id} class:list={['card grid scroll-mt-32 gap-6 p-7 md:grid-cols-[auto_1fr_auto] md:items-center md:p-10', cardTint(i)]}>
+            <span class="grid size-16 place-items-center rounded-2xl bg-white text-brand-700">
               <Icon name={a.icon} size={32} />
             </span>
             <div>
               <h2 class="text-2xl">{a.title}</h2>
               <p class="mt-2 max-w-2xl text-muted">{a.text}</p>
               <ul class="mt-4 flex flex-wrap gap-2">
-                {splitLines(a.points).map((p) => <li class="rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-800">{p}</li>)}
+                {splitLines(a.points).map((p) => <li class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-brand-800">{p}</li>)}
               </ul>
             </div>
             <a href={a.href} class="btn btn-secondary">{a.cta}</a>
