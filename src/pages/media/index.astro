@@ -10,6 +10,36 @@ import { getPageTexts } from '../../lib/page-texts';
 // Articles : rubrique Contenus ; titres de la page : Textes du site › Média.
 const [articles, text] = await Promise.all([listArticles(), getPageTexts('media')]);
 const types = [...new Set(articles.map((a) => a.type))] as (keyof typeof ARTICLE_TYPE_LABELS)[];
+
+// Une couleur par type : fond clair au repos, plein une fois le filtre choisi ; même teinte sur l'étiquette des articles.
+const TYPE_COLORS: Record<string, { button: string; badge: string; card: string }> = {
+  actualite: {
+    button: 'bg-green-100 text-green-800 hover:bg-green-200 aria-pressed:bg-green-600 aria-pressed:text-white',
+    badge: 'bg-white text-green-800',
+    card: '!border-green-200 !bg-green-100',
+  },
+  conseil: {
+    button: 'bg-blue-100 text-blue-800 hover:bg-blue-200 aria-pressed:bg-blue-600 aria-pressed:text-white',
+    badge: 'bg-white text-blue-800',
+    card: '!border-blue-200 !bg-blue-100',
+  },
+  communique: {
+    button: 'bg-violet-100 text-violet-800 hover:bg-violet-200 aria-pressed:bg-violet-600 aria-pressed:text-white',
+    badge: 'bg-white text-violet-800',
+    card: '!border-violet-200 !bg-violet-100',
+  },
+  video: {
+    button: 'bg-rose-100 text-rose-800 hover:bg-rose-200 aria-pressed:bg-rose-600 aria-pressed:text-white',
+    badge: 'bg-white text-rose-800',
+    card: '!border-rose-200 !bg-rose-100',
+  },
+  evenement: {
+    button: 'bg-amber-100 text-amber-900 hover:bg-amber-200 aria-pressed:bg-amber-500 aria-pressed:text-white',
+    badge: 'bg-white text-amber-900',
+    card: '!border-amber-200 !bg-amber-100',
+  },
+};
+const filterButton = 'btn btn-sm border-0 transition-colors';
 ---
 
 <Layout title="Média" description={text.seoDescription}>
@@ -22,12 +52,16 @@ const types = [...new Set(articles.map((a) => a.type))] as (keyof typeof ARTICLE
         ) : (
           <>
             <div class="flex flex-wrap gap-2" role="group" aria-label="Filtrer par type">
-              <button type="button" class="btn btn-primary btn-sm" data-type="" aria-pressed="true">Tout</button>
-              {types.map((t) => <button type="button" class="btn btn-secondary btn-sm" data-type={t} aria-pressed="false">{ARTICLE_TYPE_LABELS[t]}</button>)}
+              <button type="button" class:list={[filterButton, 'bg-brand-100 text-brand-900 hover:bg-brand-200 aria-pressed:bg-brand-900 aria-pressed:text-white']} data-type="" aria-pressed="true">Tout</button>
+              {types.map((t) => (
+                <button type="button" class:list={[filterButton, TYPE_COLORS[t]?.button]} data-type={t} aria-pressed="false">
+                  {ARTICLE_TYPE_LABELS[t]}
+                </button>
+              ))}
             </div>
             <div class="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {articles.map((a) => (
-                <article class="card flex flex-col overflow-hidden" data-article-type={a.type}>
+                <article class:list={['card flex flex-col overflow-hidden', TYPE_COLORS[a.type]?.card]} data-article-type={a.type}>
                   {a.coverId && (
                     <a href={`/media/${a.slug}`} tabindex="-1" aria-hidden="true" class="relative block">
                       <img src={imageUrl(a.coverId, 'mini')} alt="" loading="lazy" class="aspect-video w-full object-cover" />
@@ -40,7 +74,7 @@ const types = [...new Set(articles.map((a) => a.type))] as (keyof typeof ARTICLE
                   )}
                   <div class="flex flex-1 flex-col p-6">
                     <p class="flex flex-wrap items-center gap-2 text-xs font-semibold text-muted">
-                      <span class="badge badge-populaire">{ARTICLE_TYPE_LABELS[a.type as keyof typeof ARTICLE_TYPE_LABELS]}</span>
+                      <span class:list={['badge', TYPE_COLORS[a.type]?.badge ?? 'badge-populaire']}>{ARTICLE_TYPE_LABELS[a.type as keyof typeof ARTICLE_TYPE_LABELS]}</span>
                       <time datetime={a.publishedAt!.toISOString()}>{formatDate(a.publishedAt!)}</time>
                       {a.type === 'evenement' && a.eventDate && <span>· Le {formatDate(a.eventDate)}</span>}
                     </p>
@@ -66,12 +100,8 @@ const types = [...new Set(articles.map((a) => a.type))] as (keyof typeof ARTICLE
   const buttons = document.querySelectorAll<HTMLButtonElement>('[data-type]');
   buttons.forEach((b) =>
     b.addEventListener('click', () => {
-      buttons.forEach((x) => {
-        const on = x === b;
-        x.setAttribute('aria-pressed', String(on));
-        x.classList.toggle('btn-primary', on);
-        x.classList.toggle('btn-secondary', !on);
-      });
+      // Les couleurs suivent aria-pressed (classes aria-pressed:… de chaque bouton).
+      buttons.forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
       document.querySelectorAll<HTMLElement>('[data-article-type]').forEach((el) => {
         el.hidden = !!b.dataset.type && el.dataset.articleType !== b.dataset.type;
       });
