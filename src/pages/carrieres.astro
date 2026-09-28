@@ -1,6 +1,7 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import PageHero from '../components/PageHero.astro';
+import Slideshow from '../components/Slideshow.astro';
 import Field from '../components/ui/Field.astro';
 import Icon from '../components/ui/Icon.astro';
 import { listPublishedJobs } from '../lib/jobs';
@@ -12,6 +13,7 @@ const [jobs, t] = await Promise.all([listPublishedJobs(), getPageTexts('carriere
 
 <Layout title="Carrières" description={t.seoDescription}>
   <PageHero eyebrow={t.heroEyebrow} title={t.heroTitle} intro={t.heroText} breadcrumbs={[{ label: 'AfriSime', href: '/afrisime' }, { label: 'Carrières' }]} />
+  <Slideshow placement="carrieres" class="pt-10 sm:pt-14" />
 
   <section class="section">
     <div class="container-page grid gap-10 lg:grid-cols-[1.5fr_1fr]">

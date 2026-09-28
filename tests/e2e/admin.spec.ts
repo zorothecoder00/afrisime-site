@@ -35,6 +35,7 @@ const ADMIN_PAGES = [
   '/admin/faq',
   '/admin/offres-emploi',
   '/admin/medias',
+  '/admin/diaporamas',
   '/admin/textes',
   '/admin/seo',
   '/admin/parametres',
@@ -64,6 +65,7 @@ test.afterAll(async () => {
 });
 
 test('REC-09 back-office : double authentification, alerte de sécurité, toutes les rubriques s’affichent', async ({ page }) => {
+  test.setTimeout(120_000);
   await page.goto('/admin');
   await expect(page).toHaveURL(/\/compte\/connexion/);
   await dismissConsent(page);
@@ -134,4 +136,49 @@ test('REC-09 back-office : double authentification, alerte de sécurité, toutes
   await item.getByRole('button', { name: 'Supprimer' }).click();
   await expect(page.locator('.alert-success')).toBeVisible();
   await expect(page.locator('details', { hasText: job })).toHaveCount(0);
+
+  // Diaporamas : deux images envoyées, affichées sur Carrières en défilement automatique, puis supprimées.
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
+  const show = `Diaporama E2E ${Date.now()}`;
+  await page.goto('/admin/diaporamas');
+  const creation = page.locator('details', { has: page.locator(':scope > summary', { hasText: '+ Nouveau diaporama' }) });
+  await creation.evaluate((d: HTMLDetailsElement) => (d.open = true));
+  await creation.locator('input[name="title"]').fill(show);
+  await creation.locator('select[name="placement"]').selectOption('carrieres');
+  await creation.locator('select[name="mode"]').selectOption('defilement');
+  await creation.locator('input[name="interval"]').fill('2');
+  await creation.locator('input[name="files"]').setInputFiles([
+    { name: 'e2e-1.png', mimeType: 'image/png', buffer: png },
+    { name: 'e2e-2.png', mimeType: 'image/png', buffer: png },
+  ]);
+  await creation.getByRole('button', { name: 'Créer le diaporama' }).click();
+  await expect(page.locator('.alert-success')).toBeVisible();
+
+  await page.goto('/carrieres');
+  const slideshow = page.locator('[data-slideshow]', { has: page.getByRole('heading', { name: show }) });
+  await expect(slideshow.locator('[data-track] > li')).toHaveCount(2);
+  await expect(slideshow.locator('[data-track]')).toHaveAttribute('style', /translateX\(-100%\)/, { timeout: 5000 });
+
+  await page.goto('/admin/diaporamas');
+  const saved = page.locator('details', { has: page.locator(':scope > summary', { hasText: show }) });
+  await saved.evaluate((d: HTMLDetailsElement) => (d.open = true));
+  page.once('dialog', (d) => d.accept());
+  await saved.getByRole('button', { name: 'Supprimer' }).click();
+  await expect(page.locator('.alert-success')).toBeVisible();
+  await expect(saved).toHaveCount(0);
+
+  // Médiathèque : plusieurs images envoyées d'un coup (une requête par image).
+  await page.goto('/admin/medias');
+  await page.locator('[data-media-upload] input[type="file"]').setInputFiles(
+    ['e2e-a.png', 'e2e-b.png', 'e2e-c.png'].map((name) => ({ name, mimeType: 'image/png', buffer: png })),
+  );
+  await page.getByRole('button', { name: 'Envoyer les 3 images' }).click();
+  await expect(page.getByText('3 image(s) ajoutée(s).')).toBeVisible();
+
+  // Les images de test sont retirées de la médiathèque (elles ne sont plus utilisées).
+  for (const name of ['e2e-1.png', 'e2e-2.png', 'e2e-a.png', 'e2e-b.png', 'e2e-c.png']) {
+    page.once('dialog', (d) => d.accept());
+    await page.locator('li', { hasText: name }).first().getByRole('button', { name: 'Supprimer' }).click();
+    await expect(page.locator('.alert-success')).toBeVisible();
+  }
 });

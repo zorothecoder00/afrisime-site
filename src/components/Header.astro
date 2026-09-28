@@ -33,6 +33,14 @@ const isActive = (href: string) => {
   )
 }
 
+<!-- Bandeau équipe : affiché seulement sur un appareil passé par le back-office (scripts/staff.ts). -->
+<div class="bg-brand-950 text-xs text-brand-100" data-staff-link hidden>
+  <div class="container-page flex items-center justify-between gap-3 py-1.5">
+    <span class="font-semibold uppercase tracking-wider text-brand-200">Espace équipe</span>
+    <a href="/admin" class="font-bold text-white underline-offset-4 hover:underline">← Retour au back-office</a>
+  </div>
+</div>
+
 <header class="sticky top-0 z-40 border-b border-line bg-white/95 backdrop-blur" data-header>
   <div class="container-page flex items-center gap-3 py-3 lg:gap-6">
     <button
@@ -50,15 +58,16 @@ const isActive = (href: string) => {
     </a>
 
     <!-- Navigation desktop (dans la barre d'en-tête) -->
-    <nav aria-label="Navigation principale" class="hidden min-w-0 flex-1 lg:ml-4 lg:block xl:ml-8">
-      <ul class="flex items-center justify-center gap-0.5 xl:gap-1">
+    <nav aria-label="Navigation principale" class="hidden min-w-0 flex-1 lg:ml-4 lg:block xl:ml-6">
+      <!-- justify-center-safe : si le menu est trop long, il ne déborde jamais sur le logo. -->
+      <ul class="flex items-center justify-center-safe gap-0.5">
         {
           NAV.map((item) => (
             <li class="group relative">
               <a
                 href={item.href}
                 class:list={[
-                  'flex items-center gap-1 whitespace-nowrap rounded-lg px-2 py-2 text-sm font-semibold transition hover:bg-brand-50 hover:text-brand-700 xl:px-3',
+                  'flex items-center gap-1 whitespace-nowrap rounded-lg px-1.5 py-2 text-sm font-semibold transition hover:bg-brand-50 hover:text-brand-700 xl:px-2.5',
                   isActive(item.href) ? 'text-brand-700 shadow-[inset_0_-2px_0] shadow-brand-600' : 'text-ink',
                 ]}
                 aria-current={isActive(item.href) ? 'page' : undefined}
@@ -84,7 +93,6 @@ const isActive = (href: string) => {
     </nav>
 
     <div class="ml-auto flex shrink-0 items-center gap-1 sm:gap-2 lg:ml-0">
-      <a href="/admin" class="btn btn-primary btn-sm" data-staff-link hidden>← Back-office</a>
       <a href="/b2b" class="btn btn-accent btn-sm hidden sm:inline-flex lg:hidden xl:inline-flex">{t.headerPro}</a>
       <a href="/compte" class="btn btn-ghost btn-sm" aria-label="Mon compte">
         <Icon name="user" size={22} />

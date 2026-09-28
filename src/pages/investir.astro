@@ -1,6 +1,7 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import PageHero from '../components/PageHero.astro';
+import Slideshow from '../components/Slideshow.astro';
 import Field from '../components/ui/Field.astro';
 import Icon from '../components/ui/Icon.astro';
 import { getPageTexts } from '../lib/page-texts';
@@ -16,6 +17,7 @@ const t = await getPageTexts('investir');
       {t.pillars.map((p) => <article class="card p-7"><Icon name="chart" size={28} class="text-brand-600" /><h2 class="mt-4 text-xl">{p.title}</h2><p class="mt-2 text-muted">{p.text}</p></article>)}
     </div>
   </section>
+  <Slideshow placement="investir" class="section !pt-0" />
   <section class="section bg-white">
     <div class="container-page max-w-3xl">
       <h2 class="text-3xl">{t.formTitle}</h2>

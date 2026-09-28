@@ -13,7 +13,7 @@ const types = [...new Set(articles.map((a) => a.type))] as (keyof typeof ARTICLE
 ---
 
 <Layout title="Média" description={text.seoDescription}>
-  <PageHero eyebrow={text.heroEyebrow} title={text.heroTitle} intro={text.heroText} breadcrumbs={[{ label: 'Média' }]} />
+  <PageHero eyebrow={text.heroEyebrow} title={text.heroTitle} intro={text.heroText} breadcrumbs={[{ label: 'Média' }]} media="entete-media" />
   <section class="section">
     <div class="container-page">
       {

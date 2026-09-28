@@ -13,6 +13,7 @@ import { db } from '../../lib/db';
 import { formatDateTime } from '../../lib/format';
 import { imageUrl, storeUpload, UploadError } from '../../lib/media';
 import { can } from '../../lib/roles';
+import { slideshowUsage } from '../../lib/slideshows';
 
 const me = Astro.locals.user!;
 if (!can(me.role, { content: ['update'] }) && !can(me.role, { catalog: ['update'] })) return new Response('Accès refusé.', { status: 403 });
@@ -20,16 +21,17 @@ const PAGE_SIZE = 48;
 const errors: string[] = [];
 let uploaded = 0;
 
-/** Un média encore utilisé ne peut pas être supprimé (photo produit, couverture, logo…). */
+/** Un média encore utilisé ne peut pas être supprimé (photo produit, couverture, logo, diaporama…). */
 async function usage(id: string) {
-  const [p, c, b, k, cp] = await Promise.all([
+  const [p, c, b, k, cp, sl] = await Promise.all([
     db.select({ n: count() }).from(products).where(sql`${products.imageIds} ? ${id}`),
     db.select({ n: count() }).from(contents).where(sql`${contents.coverId} = ${id} or ${contents.body} like ${`%/img/${id}%`}`),
     db.select({ n: count() }).from(brands).where(eq(brands.logoId, id)),
     db.select({ n: count() }).from(categories).where(eq(categories.imageId, id)),
     db.select({ n: count() }).from(campaigns).where(eq(campaigns.imageId, id)),
+    slideshowUsage(id),
   ]);
-  return p[0].n + c[0].n + b[0].n + k[0].n + cp[0].n;
+  return p[0].n + c[0].n + b[0].n + k[0].n + cp[0].n + sl;
 }
 
 if (Astro.request.method === 'POST') {
@@ -56,7 +58,7 @@ if (Astro.request.method === 'POST') {
   }
   if (action === 'delete') {
     const used = await usage(id);
-    if (used > 0) errors.push(`Ce média est encore utilisé (${used} fois) : retirez-le d'abord des produits ou contenus concernés.`);
+    if (used > 0) errors.push(`Ce média est encore utilisé (${used} fois) : retirez-le d'abord des produits, contenus ou diaporamas concernés.`);
     else {
       await db.delete(media).where(and(eq(media.id, id), eq(media.private, false)));
       await audit({ actorId: me.id, action: 'media-supprime', target: id, ipAddress: Astro.clientAddress });
@@ -86,12 +88,21 @@ const ok = Astro.url.searchParams.get('ok');
   {ok === 'delete' && <p class="alert alert-success mb-4">Image supprimée.</p>}
   {errors.length > 0 && <div class="alert alert-error mb-4" role="alert"><ul class="list-disc pl-5">{errors.map((e) => <li>{e}</li>)}</ul></div>}
 
-  <form method="post" enctype="multipart/form-data" class="card grid gap-3 p-5 sm:grid-cols-[2fr_2fr_auto] sm:items-end">
+  <p class="hint mb-4">
+    La médiathèque est une réserve d'images : une image n'apparaît sur le site qu'une fois utilisée, dans un
+    <a href="/admin/diaporamas" class="font-semibold underline">diaporama</a>, une fiche produit, un article (couverture ou « Code Markdown » collé dans le texte), une marque, une catégorie ou une campagne.
+  </p>
+
+  <form method="post" enctype="multipart/form-data" class="card grid gap-3 p-5 sm:grid-cols-[2fr_2fr_auto] sm:items-end" data-media-upload>
     <input type="hidden" name="action" value="upload" />
-    <label class="block"><span class="label">Images</span><input type="file" name="files" multiple required accept="image/jpeg,image/png,image/webp,image/avif,image/gif" class="input" /></label>
+    <label class="block"><span class="label">Images (une ou plusieurs)</span><input type="file" name="files" multiple required accept="image/jpeg,image/png,image/webp,image/avif,image/gif" class="input" /></label>
     <label class="block"><span class="label">Texte alternatif</span><input name="alt" maxlength="300" class="input" placeholder="Décrit l'image (accessibilité, SEO)" /></label>
-    <button class="btn btn-primary">Envoyer</button>
-    <p class="hint sm:col-span-3">JPG, PNG, WebP, AVIF ou GIF, 8 Mo max. Les images sont converties en WebP (1600 px max) avec une miniature.</p>
+    <button type="submit" class="btn btn-primary">Envoyer</button>
+    <p class="hint sm:col-span-3">
+      Plusieurs images d'un coup : dans la fenêtre de sélection, maintenez <kbd>Ctrl</kbd> (<kbd>Cmd</kbd> sur Mac) en cliquant sur chaque image, <kbd>Maj</kbd> pour une série, ou <kbd>Ctrl</kbd>+<kbd>A</kbd> pour tout le dossier. Vous pouvez aussi glisser les fichiers sur le champ.
+      JPG, PNG, WebP, AVIF ou GIF, 8 Mo max par image. Converties en WebP (1600 px max) avec une miniature.
+    </p>
+    <ul class="hidden space-y-1 text-sm sm:col-span-3" data-upload-list></ul>
   </form>
 
   <ul class="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
@@ -127,4 +138,70 @@ const ok = Astro.url.searchParams.get('ok');
 <script>
   import { initAdminForms } from '../../scripts/admin';
   initAdminForms();
+
+  // Envoi image par image : l'hébergeur limite chaque requête à 4,5 Mo, et chaque fichier
+  // affiche son propre résultat. Sans JavaScript, le formulaire s'envoie en une fois.
+  const form = document.querySelector<HTMLFormElement>('[data-media-upload]')!;
+  const input = form.querySelector<HTMLInputElement>('input[type="file"]')!;
+  const list = form.querySelector<HTMLUListElement>('[data-upload-list]')!;
+  const submit = form.querySelector<HTMLButtonElement>('button[type="submit"]')!;
+
+  const kb = (n: number) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)} Mo` : `${Math.round(n / 1024)} Ko`);
+  const renderList = () => {
+    const files = [...(input.files ?? [])];
+    list.classList.toggle('hidden', files.length === 0);
+    list.replaceChildren(
+      ...files.map((f) => {
+        const li = document.createElement('li');
+        li.className = 'flex justify-between gap-3 rounded-lg bg-canvas px-3 py-1.5';
+        li.innerHTML = '<span class="truncate"></span><span class="shrink-0 text-muted" data-state></span>';
+        li.firstElementChild!.textContent = f.name;
+        li.lastElementChild!.textContent = kb(f.size);
+        return li;
+      }),
+    );
+    submit.textContent = files.length > 1 ? `Envoyer les ${files.length} images` : 'Envoyer';
+  };
+  input.addEventListener('change', renderList);
+
+  form.addEventListener('submit', async (event) => {
+    const files = [...(input.files ?? [])];
+    if (!files.length) return;
+    event.preventDefault();
+    submit.disabled = true;
+    input.disabled = true;
+    const alt = (form.elements.namedItem('alt') as HTMLInputElement).value;
+    let sent = 0;
+    for (const [i, file] of files.entries()) {
+      const state = list.children[i].querySelector<HTMLElement>('[data-state]')!;
+      state.textContent = 'Envoi…';
+      const data = new FormData();
+      data.set('action', 'upload');
+      data.set('alt', alt);
+      data.append('files', file);
+      try {
+        const res = await fetch(form.action || location.pathname, { method: 'POST', body: data });
+        // Succès : le serveur redirige vers ?ok=upload ; sinon il renvoie la page avec le message d'erreur.
+        if (res.ok && res.redirected && res.url.includes('ok=upload')) {
+          sent++;
+          state.textContent = '✓ Ajoutée';
+          state.className = 'shrink-0 font-semibold text-brand-700';
+        } else {
+          const message = res.status === 413 ? 'Fichier trop lourd pour l’envoi' : new DOMParser().parseFromString(await res.text(), 'text/html').querySelector('.alert-error li')?.textContent;
+          state.textContent = `✗ ${message ?? 'Échec'}`;
+          state.className = 'shrink-0 font-semibold text-danger';
+        }
+      } catch {
+        state.textContent = '✗ Connexion impossible';
+        state.className = 'shrink-0 font-semibold text-danger';
+      }
+    }
+    if (sent === files.length) location.href = `/admin/medias?ok=upload&n=${sent}`;
+    else {
+      submit.disabled = false;
+      input.disabled = false;
+      submit.textContent = sent ? `${sent} image(s) ajoutée(s) — voir la médiathèque` : 'Réessayer';
+      if (sent) submit.onclick = (e) => ((e.preventDefault(), (location.href = `/admin/medias?ok=upload&n=${sent}`)));
+    }
+  });
 </script>

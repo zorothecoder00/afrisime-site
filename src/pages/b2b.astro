@@ -1,6 +1,7 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import PageHero from '../components/PageHero.astro';
+import Slideshow from '../components/Slideshow.astro';
 import Field from '../components/ui/Field.astro';
 import FileField from '../components/ui/FileField.astro';
 import Icon, { type IconName } from '../components/ui/Icon.astro';
@@ -21,7 +22,7 @@ const segments = t.segments.map((s, i) => ({ ...s, ...layout[i] }));
 ---
 
 <Layout title="Solutions B2B" description={t.seoDescription}>
-  <PageHero eyebrow={t.heroEyebrow} title={t.heroTitle} intro={t.heroText} breadcrumbs={[{ label: 'Solutions B2B' }]}>
+  <PageHero eyebrow={t.heroEyebrow} title={t.heroTitle} intro={t.heroText} breadcrumbs={[{ label: 'Solutions B2B' }]} media="entete-b2b">
     <div class="mt-8 flex flex-col gap-3 sm:flex-row">
       <a href="#devis" class="btn btn-primary">{t.ctaQuote}</a>
       <a href={links.phoneHref} class="btn btn-secondary"><Icon name="phone" size={18} />{t.ctaCall}</a>
@@ -44,6 +45,8 @@ const segments = t.segments.map((s, i) => ({ ...s, ...layout[i] }));
       }
     </div>
   </section>
+
+  <Slideshow placement="b2b" class="section !pt-0" />
 
   <section class="bg-white py-14">
     <div class="container-page">

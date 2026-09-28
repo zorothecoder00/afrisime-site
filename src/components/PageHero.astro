@@ -1,21 +1,32 @@
 ---
+// En-tête des pages. Avec `media`, le premier diaporama actif de cet emplacement
+// (back-office › Diaporamas) s'affiche à droite du texte, comme sur l'accueil.
 import Breadcrumbs from './ui/Breadcrumbs.astro';
+import HeroMedia from './HeroMedia.astro';
+import { slideshowsFor, type HeroPlacement } from '../lib/slideshows';
 
 interface Props {
   eyebrow?: string;
   title: string;
   intro?: string;
   breadcrumbs: { label: string; href?: string }[];
+  media?: HeroPlacement;
 }
-const { eyebrow, title, intro, breadcrumbs } = Astro.props;
+const { eyebrow, title, intro, breadcrumbs, media } = Astro.props;
+const [show] = media ? await slideshowsFor(media) : [];
 ---
 
-<section class="border-b border-line bg-brand-50">
+<section class="overflow-hidden border-b border-line bg-brand-50">
   <div class="container-page py-10 sm:py-14">
     <Breadcrumbs items={breadcrumbs} />
-    {eyebrow && <p class="eyebrow mt-6">{eyebrow}</p>}
-    <h1 class="mt-2 max-w-3xl text-3xl sm:text-5xl">{title}</h1>
-    {intro && <p class="mt-4 max-w-2xl text-lg text-muted">{intro}</p>}
-    <slot />
+    <div class:list={[show && 'mt-6 grid items-center gap-10 lg:mt-2 lg:grid-cols-[1.1fr_1fr] lg:gap-14']}>
+      <div>
+        {eyebrow && <p class:list={['eyebrow', show ? 'lg:mt-6' : 'mt-6']}>{eyebrow}</p>}
+        <h1 class="mt-2 max-w-3xl text-3xl sm:text-5xl">{title}</h1>
+        {intro && <p class="mt-4 max-w-2xl text-lg text-muted">{intro}</p>}
+        <slot />
+      </div>
+      {show && <HeroMedia slides={show.slides} interval={show.interval} />}
+    </div>
   </div>
 </section>

@@ -1,0 +1,108 @@
+---
+// Visuel d'en-tête (à droite du titre), comme les vidéos vitrines de l'accueil : une diapositive
+// à la fois, en fondu. Image : N secondes ; fichier vidéo : jusqu'à la fin ; YouTube / Vimeo : 20 s.
+import type { RenderedSlide } from '../lib/slideshows';
+
+interface Props {
+  slides: RenderedSlide[];
+  /** Secondes d'affichage d'une image. */
+  interval: number;
+}
+const { slides, interval } = Astro.props;
+const layer = 'absolute inset-0 size-full transition-opacity duration-700';
+---
+
+<div class="relative w-full max-w-2xl lg:max-w-none" data-hero-media data-interval={interval}>
+  <div class="absolute -inset-3 rotate-2 rounded-[2rem] bg-accent-500/25" aria-hidden="true"></div>
+  <div class="relative aspect-video overflow-hidden rounded-3xl bg-brand-950 shadow-2xl ring-1 ring-black/5">
+    {
+      slides.map((sl, i) => {
+        const visible = i === 0 ? 'opacity-100' : 'opacity-0 pointer-events-none';
+        const content =
+          sl.type === 'image' ? (
+            <img src={sl.src} alt={sl.alt} loading={i === 0 ? 'eager' : 'lazy'} class="size-full object-cover" />
+          ) : sl.type === 'video' ? (
+            <video src={sl.src} class="size-full object-cover" muted playsinline loop={slides.length === 1} preload={i === 0 ? 'auto' : 'metadata'} tabindex="-1" aria-label={sl.alt || undefined} />
+          ) : (
+            <iframe data-src={sl.src} title={sl.alt || 'Vidéo AfriSime'} allow="autoplay; encrypted-media" tabindex="-1" class="pointer-events-none size-full scale-[1.35]" />
+          );
+        return (
+          <div class:list={[layer, visible]} data-slide data-type={sl.type} data-caption={sl.caption} aria-hidden={i > 0 ? 'true' : undefined}>
+            {sl.href ? <a href={sl.href} class="block size-full">{content}</a> : content}
+          </div>
+        );
+      })
+    }
+    {
+      (slides.some((s) => s.caption) || slides.length > 1) && (
+        <div class="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent px-4 pb-3 pt-10">
+          <p class="text-sm font-semibold text-white" data-caption-text>{slides[0].caption}</p>
+          {slides.length > 1 && (
+            <div class="mt-2 flex gap-1.5" aria-hidden="true">
+              {slides.map((_, i) => <span class:list={['h-1 flex-1 rounded-full transition-colors', i === 0 ? 'bg-accent-500' : 'bg-white/30']} data-dot />)}
+            </div>
+          )}
+        </div>
+      )
+    }
+  </div>
+</div>
+
+<script>
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  document.querySelectorAll<HTMLElement>('[data-hero-media]').forEach((box) => {
+    const slides = [...box.querySelectorAll<HTMLElement>('[data-slide]')];
+    const dots = [...box.querySelectorAll<HTMLElement>('[data-dot]')];
+    const caption = box.querySelector<HTMLElement>('[data-caption-text]');
+    const delay = Math.max(2, Number(box.dataset.interval) || 5) * 1000;
+    let current = 0;
+    let timer: number | undefined;
+
+    const media = (slide: HTMLElement) => slide.querySelector<HTMLVideoElement | HTMLIFrameElement>('video, iframe');
+    const next = () => show((current + 1) % slides.length);
+
+    function show(index: number) {
+      clearTimeout(timer);
+      slides.forEach((slide, i) => {
+        const active = i === index;
+        slide.classList.toggle('opacity-100', active);
+        slide.classList.toggle('opacity-0', !active);
+        slide.classList.toggle('pointer-events-none', !active);
+        if (active) slide.removeAttribute('aria-hidden');
+        else slide.setAttribute('aria-hidden', 'true');
+        const m = media(slide);
+        if (m instanceof HTMLVideoElement) {
+          if (active && !reduced) {
+            m.currentTime = 0;
+            m.play().catch(() => {});
+          } else m.pause();
+        } else if (m instanceof HTMLIFrameElement) {
+          // L'intégration n'est chargée que lorsqu'elle est à l'écran (et déchargée ensuite).
+          m.src = active && !reduced ? m.dataset.src! : 'about:blank';
+        }
+      });
+      dots.forEach((d, i) => {
+        d.classList.toggle('bg-accent-500', i === index);
+        d.classList.toggle('bg-white/30', i !== index);
+      });
+      if (caption) caption.textContent = slides[index].dataset.caption ?? '';
+      current = index;
+      if (slides.length < 2 || reduced) return;
+      const type = slides[index].dataset.type;
+      if (type === 'image') timer = window.setTimeout(next, delay);
+      else if (type === 'embed') timer = window.setTimeout(next, 20_000);
+      // Fichier vidéo : suivant à la fin de la lecture (événement « ended »).
+    }
+
+    slides.forEach((slide) => {
+      const m = media(slide);
+      if (m instanceof HTMLVideoElement && slides.length > 1) m.addEventListener('ended', next);
+    });
+    document.addEventListener('visibilitychange', () => {
+      const m = media(slides[current]);
+      if (m instanceof HTMLVideoElement && !reduced) (document.hidden ? m.pause() : m.play().catch(() => {}));
+    });
+    show(0);
+  });
+</script>

@@ -1,6 +1,7 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import PageHero from '../components/PageHero.astro';
+import Slideshow from '../components/Slideshow.astro';
 import Icon, { type IconName } from '../components/ui/Icon.astro';
 import { imageUrl } from '../lib/media';
 import { getSettings } from '../lib/settings';
@@ -31,6 +32,7 @@ const values = t.values.map((v, i) => ({ ...v, icon: valueIcons[i] }));
     title={t.heroTitle}
     intro={t.heroText}
     breadcrumbs={[{ label: 'AfriSime' }]}
+    media="entete-afrisime"
   />
 
   <section class="border-b border-line bg-white">
@@ -91,6 +93,8 @@ const values = t.values.map((v, i) => ({ ...v, icon: valueIcons[i] }));
       )
     }
   </section>
+
+  <Slideshow placement="afrisime" class="section !pt-0" />
 
   <section id="vision" class="section scroll-mt-32 bg-brand-900 text-white">
     <div class="container-page grid gap-6 md:grid-cols-2">

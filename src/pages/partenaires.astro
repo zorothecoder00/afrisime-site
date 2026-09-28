@@ -1,6 +1,7 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import PageHero from '../components/PageHero.astro';
+import Slideshow from '../components/Slideshow.astro';
 import Field from '../components/ui/Field.astro';
 import FileField from '../components/ui/FileField.astro';
 import Icon, { type IconName } from '../components/ui/Icon.astro';
@@ -18,7 +19,7 @@ const offers = t.offers.map((o, i) => ({ ...o, ...layout[i] }));
 ---
 
 <Layout title="Partenaires & fournisseurs" description={t.seoDescription}>
-  <PageHero eyebrow={t.heroEyebrow} title={t.heroTitle} intro={t.heroText} breadcrumbs={[{ label: 'Partenaires' }]} />
+  <PageHero eyebrow={t.heroEyebrow} title={t.heroTitle} intro={t.heroText} breadcrumbs={[{ label: 'Partenaires' }]} media="entete-partenaires" />
 
   <section class="section">
     <div class="container-page grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -33,6 +34,8 @@ const offers = t.offers.map((o, i) => ({ ...o, ...layout[i] }));
       }
     </div>
   </section>
+
+  <Slideshow placement="partenaires" class="section !pt-0" />
 
   <section id="formulaire" class="section scroll-mt-32 bg-white">
     <div class="container-page grid gap-10 lg:grid-cols-[1fr_1.5fr]">

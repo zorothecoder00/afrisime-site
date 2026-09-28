@@ -1,0 +1,276 @@
+---
+// Diaporamas : plusieurs images affichées en carrousel ou en défilement automatique,
+// à un emplacement choisi du site. Images prises dans la médiathèque ou envoyées ici.
+import { and, desc, eq, inArray } from 'drizzle-orm';
+import AdminLayout from '../../components/AdminLayout.astro';
+import { media } from '../../db/schema';
+import { bool, deny, int, safeHref, str } from '../../lib/admin';
+import { audit } from '../../lib/audit';
+import { db } from '../../lib/db';
+import { showcaseSource } from '../../lib/content';
+import { imageUrl, storeUpload, storeVideo, UploadError, videoUrl as videoFileUrl } from '../../lib/media';
+import { getSettings } from '../../lib/settings';
+import {
+  isMode,
+  isPlacement,
+  listSlideshows,
+  MAX_INTERVAL,
+  MIN_INTERVAL,
+  saveSlideshows,
+  SLIDESHOW_MODES,
+  SLIDESHOW_PLACEMENTS,
+  type Slide,
+  type Slideshow,
+} from '../../lib/slideshows';
+
+const me = Astro.locals.user!;
+const denied = deny(me, { content: ['update'] });
+if (denied) return denied;
+const errors: string[] = [];
+const MAX_SLIDES = 20;
+
+/** Diapositives conservées (ordre, légende, lien), images cochées dans la médiathèque, images envoyées, puis vidéo. */
+async function readSlides(form: FormData, current: Slide[]): Promise<Slide[]> {
+  const kept = current
+    .map((sl, i) => ({
+      slide: { mediaId: sl.mediaId, videoUrl: sl.videoUrl, caption: str(form, `slide.${i}.caption`, 160), href: str(form, `slide.${i}.href`, 300) },
+      order: int(form, `slide.${i}.order`) ?? i + 1,
+      remove: bool(form, `slide.${i}.remove`),
+    }))
+    .filter((s) => !s.remove)
+    .sort((a, b) => a.order - b.order)
+    .map((s) => s.slide);
+  for (const s of kept) if (s.href && !safeHref(s.href)) errors.push(`Lien non valide : « ${s.href} » (adresse du site commençant par /, ou lien https://…).`);
+
+  const added = form.getAll('add').map(String).filter((id) => /^[\w-]{1,40}$/.test(id) && !kept.some((s) => s.mediaId === id));
+  const slides: Slide[] = [...kept, ...added.map((mediaId) => ({ mediaId, caption: '', href: '' }))];
+
+  for (const file of form.getAll('files')) {
+    if (typeof file === 'string' || file.size === 0) continue;
+    try {
+      const stored = await storeUpload(file, { uploadedBy: me.id, alt: str(form, 'title', 300) });
+      slides.push({ mediaId: stored.id, caption: '', href: '' });
+    } catch (err) {
+      errors.push(err instanceof UploadError ? err.message : `« ${file.name} » n'a pas pu être enregistré.`);
+    }
+  }
+
+  const videoUrl = str(form, 'videoUrl', 500);
+  if (videoUrl) {
+    if (showcaseSource({ mediaId: '', url: videoUrl })) slides.push({ mediaId: '', videoUrl, caption: str(form, 'videoCaption', 160), href: '' });
+    else errors.push('Lien vidéo non reconnu : lien YouTube, Vimeo, ou fichier https://….mp4 / .webm.');
+  }
+  const videoFile = form.get('videoFile');
+  if (videoFile && typeof videoFile !== 'string' && videoFile.size > 0) {
+    try {
+      slides.push({ mediaId: await storeVideo(videoFile, me.id), caption: str(form, 'videoCaption', 160), href: '' });
+    } catch (err) {
+      errors.push(err instanceof UploadError ? err.message : `« ${videoFile.name} » n'a pas pu être enregistrée.`);
+    }
+  }
+  return slides.slice(0, MAX_SLIDES);
+}
+
+/** Vidéos envoyées ici et retirées : supprimées si plus aucun diaporama ni les vidéos vitrines ne les utilisent. */
+async function dropUnusedVideos(before: Slideshow[], after: Slideshow[]) {
+  const ids = (list: Slideshow[]) => new Set(list.flatMap((s) => s.slides.map((sl) => sl.mediaId)).filter(Boolean));
+  const still = ids(after);
+  for (const v of (await getSettings()).showcase.videos) if (v.mediaId) still.add(v.mediaId);
+  const gone = [...ids(before)].filter((id) => !still.has(id));
+  if (gone.length) await db.delete(media).where(and(inArray(media.id, gone), eq(media.kind, 'video')));
+}
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const action = str(form, 'action');
+  const id = str(form, 'id', 80);
+  const list = [...(await listSlideshows())];
+  const current = list.find((s) => s.id === id);
+
+  if (action === 'delete') {
+    const after = list.filter((s) => s.id !== id);
+    await saveSlideshows(after, me.id);
+    await dropUnusedVideos(list, after);
+  } else if (action === 'create' || (action === 'save' && current)) {
+    const placement = str(form, 'placement');
+    const mode = str(form, 'mode');
+    const show: Slideshow = {
+      id: current?.id ?? crypto.randomUUID(),
+      title: str(form, 'title', 120),
+      placement: isPlacement(placement) ? placement : 'accueil',
+      mode: isMode(mode) ? mode : 'carrousel',
+      interval: Math.min(MAX_INTERVAL, Math.max(MIN_INTERVAL, int(form, 'interval') ?? 5)),
+      active: bool(form, 'active'),
+      position: int(form, 'position') ?? list.length + 1,
+      slides: await readSlides(form, current?.slides ?? []),
+    };
+    if (!errors.length) {
+      const after = current ? list.map((s) => (s.id === id ? show : s)) : [...list, show];
+      await saveSlideshows(after, me.id);
+      await dropUnusedVideos(list, after);
+    }
+  } else {
+    errors.push('Ce diaporama n’existe plus.');
+  }
+  if (!errors.length) {
+    await audit({ actorId: me.id, action: `diaporama-${action}`, target: id || undefined, ipAddress: Astro.clientAddress });
+    return Astro.redirect('/admin/diaporamas?ok=1', 303);
+  }
+}
+
+const [shows, library] = await Promise.all([
+  listSlideshows(),
+  db
+    .select({ id: media.id, alt: media.alt, filename: media.filename })
+    .from(media)
+    .where(and(eq(media.private, false), eq(media.kind, 'image')))
+    .orderBy(desc(media.createdAt))
+    .limit(60),
+]);
+const placementLabel = (id: string) => SLIDESHOW_PLACEMENTS.find((p) => p.id === id)?.label ?? id;
+// Type de chaque fichier utilisé (image ou vidéo), pour la vignette.
+const usedIds = [...new Set(shows.flatMap((s) => s.slides.map((sl) => sl.mediaId)).filter(Boolean))];
+const kinds = new Map(
+  (usedIds.length ? await db.select({ id: media.id, kind: media.kind }).from(media).where(inArray(media.id, usedIds)) : []).map((r) => [r.id, r.kind]),
+);
+const placementGroups = [
+  { label: 'En-tête de page (à droite du titre, comme sur l’accueil)', items: SLIDESHOW_PLACEMENTS.filter((p) => p.hero) },
+  { label: 'Dans le corps de la page', items: SLIDESHOW_PLACEMENTS.filter((p) => !p.hero) },
+];
+const blank: Slideshow = { id: '', title: '', placement: 'accueil', mode: 'defilement', interval: 5, active: true, position: shows.length + 1, slides: [] };
+---
+
+<AdminLayout title="Diaporamas">
+  {Astro.url.searchParams.has('ok') && <p class="alert alert-success mb-4">Diaporamas mis à jour. Visibles sur le site d'ici une minute.</p>}
+  {errors.length > 0 && <div class="alert alert-error mb-4" role="alert"><ul class="list-disc pl-5">{errors.map((e) => <li>{e}</li>)}</ul></div>}
+
+  <p class="hint mb-6">
+    Photos et vidéos affichées ensemble sur une page du site. <strong>En-tête de page</strong> : à droite du titre, une diapositive à la fois en fondu, comme les vidéos vitrines de l'accueil. <strong>Corps de page</strong> : en carrousel (images côte à côte, flèches) ou en défilement automatique (une grande image remplacée par la suivante). Les images viennent de la
+    <a href="/admin/medias" class="font-semibold underline">médiathèque</a>, ou peuvent être envoyées directement ici.
+  </p>
+
+  <div class="space-y-4">
+    {
+      [...shows, blank].map((s) => {
+        const isNew = !s.id;
+        return (
+          <details class="card p-5" open={isNew && shows.length === 0}>
+            <summary class="cursor-pointer text-lg font-bold">
+              {isNew ? (
+                '+ Nouveau diaporama'
+              ) : (
+                <>
+                  {s.title || 'Sans titre'} <span class="text-sm font-normal text-muted">· {placementLabel(s.placement)} · {s.slides.length} image(s)</span>
+                  {!s.active && <span class="badge badge-rupture ml-2">Masqué</span>}
+                </>
+              )}
+            </summary>
+            <form method="post" enctype="multipart/form-data" class="mt-4 space-y-5">
+              {!isNew &&<input type="hidden" name="id" value={s.id} />}
+
+              <div class="grid gap-3 sm:grid-cols-6">
+                <label class="block sm:col-span-3"><span class="label">Titre affiché au-dessus (facultatif)</span><input name="title" value={s.title} maxlength="120" class="input !py-2" /></label>
+                <label class="block sm:col-span-3">
+                  <span class="label">Emplacement</span>
+                  <select name="placement" class="input !py-2">
+                    {placementGroups.map((g) => (
+                      <optgroup label={g.label}>{g.items.map((p) => <option value={p.id} selected={p.id === s.placement}>{p.label}</option>)}</optgroup>
+                    ))}
+                  </select>
+                </label>
+                <label class="block sm:col-span-3">
+                  <span class="label">Style</span>
+                  <select name="mode" class="input !py-2">{SLIDESHOW_MODES.map((m) => <option value={m.id} selected={m.id === s.mode}>{m.label} — {m.hint}</option>)}</select>
+                  <span class="hint block">Ignoré en en-tête de page : une diapositive à la fois, en fondu.</span>
+                </label>
+                <label class="block" title="Durée d'affichage d'une image. Une vidéo est lue jusqu'au bout (20 s pour YouTube / Vimeo)."><span class="label">Délai image (s)</span><input name="interval" type="number" min={MIN_INTERVAL} max={MAX_INTERVAL} value={s.interval} class="input !py-2" /></label>
+                <label class="block"><span class="label">Ordre</span><input name="position" value={s.position} inputmode="numeric" class="input !py-2" /></label>
+                <label class="flex items-end gap-2 pb-2 text-sm"><input type="checkbox" name="active" checked={s.active} />Affiché</label>
+              </div>
+
+              {s.slides.length > 0 && (
+                <div>
+                  <span class="label">Images du diaporama</span>
+                  <ol class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {s.slides.map((sl, i) => (
+                      <li class="space-y-2 rounded-xl border border-line p-3">
+                        {!sl.mediaId ? (
+                          <p class="grid aspect-video place-items-center rounded-lg bg-brand-950 p-3 text-center text-xs text-white">
+                            <span><strong class="block text-sm">▶ Vidéo en ligne</strong><span class="break-all opacity-80">{sl.videoUrl}</span></span>
+                          </p>
+                        ) : kinds.get(sl.mediaId) === 'video' ? (
+                          <video src={videoFileUrl(sl.mediaId)} muted preload="metadata" class="aspect-video w-full rounded-lg bg-brand-950 object-cover" />
+                        ) : (
+                          <img src={imageUrl(sl.mediaId, 'mini')} alt="" class="aspect-video w-full rounded-lg bg-canvas object-cover" loading="lazy" />
+                        )}
+                        <div class="grid grid-cols-[4rem_1fr] gap-2">
+                          <label class="block"><span class="label !text-xs">Ordre</span><input name={`slide.${i}.order`} value={i + 1} inputmode="numeric" class="input !py-1.5" /></label>
+                          <label class="block"><span class="label !text-xs">Légende (facultatif)</span><input name={`slide.${i}.caption`} value={sl.caption} maxlength="160" class="input !py-1.5" /></label>
+                        </div>
+                        <label class="block"><span class="label !text-xs">Lien au clic (facultatif)</span><input name={`slide.${i}.href`} value={sl.href} maxlength="300" placeholder="/boutique ou https://…" class="input !py-1.5" /></label>
+                        <label class="flex items-center gap-2 text-xs text-danger"><input type="checkbox" name={`slide.${i}.remove`} />Retirer du diaporama</label>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              )}
+
+              <details class="rounded-xl border border-line p-3">
+                <summary class="cursor-pointer text-sm font-semibold">Ajouter des images de la médiathèque ({library.length} plus récentes)</summary>
+                {library.length === 0 ? (
+                  <p class="mt-3 text-sm text-muted">La médiathèque est vide : envoyez des images ci-dessous.</p>
+                ) : (
+                  <ul class="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-6 lg:grid-cols-8">
+                    {library
+                      .filter((m) => !s.slides.some((sl) => sl.mediaId === m.id))
+                      .map((m) => (
+                        <li>
+                          <label class="block cursor-pointer rounded-lg ring-brand-600 has-[:checked]:ring-4" title={m.alt || m.filename}>
+                            <input type="checkbox" name="add" value={m.id} class="sr-only" />
+                            <img src={imageUrl(m.id, 'mini')} alt={m.alt || m.filename} class="aspect-square w-full rounded-lg bg-canvas object-cover" loading="lazy" />
+                          </label>
+                        </li>
+                      ))}
+                  </ul>
+                )}
+              </details>
+
+              <label class="block">
+                <span class="label">Ou envoyer de nouvelles images</span>
+                <input type="file" name="files" multiple accept="image/jpeg,image/png,image/webp,image/avif" class="input" />
+                <span class="hint block">Ajoutées à la médiathèque et au diaporama. 4 Mo au total par envoi : pour beaucoup d'images, envoyez-les en plusieurs fois (ou ajoutez-les d'abord dans Médias). 20 diapositives maximum.</span>
+              </label>
+
+              <fieldset class="grid gap-3 rounded-xl border border-line p-3 sm:grid-cols-2">
+                <legend class="px-1 text-sm font-semibold">Ajouter une vidéo (lecture automatique, sans le son)</legend>
+                <label class="block"><span class="label">Lien YouTube, Vimeo ou .mp4</span><input name="videoUrl" maxlength="500" placeholder="https://www.youtube.com/watch?v=…" class="input !py-2" /></label>
+                <label class="block"><span class="label">Ou fichier vidéo</span><input type="file" name="videoFile" accept="video/mp4,video/webm" class="input !py-1.5" /></label>
+                <label class="block sm:col-span-2"><span class="label">Légende de la vidéo (facultatif)</span><input name="videoCaption" maxlength="160" class="input !py-2" /></label>
+                <span class="hint sm:col-span-2">Fichier : MP4 ou WebM, 4 Mo maximum (≈ 15 à 30 s en 720p). Pour une vidéo plus longue, utilisez un lien YouTube.</span>
+              </fieldset>
+
+              <div class="flex flex-wrap gap-2">
+                <button name="action" value={isNew ? 'create' : 'save'} class="btn btn-primary btn-sm">{isNew ? 'Créer le diaporama' : 'Enregistrer'}</button>
+                {!isNew && (
+                  <button name="action" value="delete" formnovalidate class="btn btn-ghost btn-sm text-danger" data-confirm="Supprimer ce diaporama ? Les images restent dans la médiathèque.">
+                    Supprimer
+                  </button>
+                )}
+                {!isNew && (
+                  <a href={SLIDESHOW_PLACEMENTS.find((p) => p.id === s.placement)?.path ?? '/'} target="_blank" class="btn btn-ghost btn-sm">
+                    Voir la page ↗
+                  </a>
+                )}
+              </div>
+            </form>
+          </details>
+        );
+      })
+    }
+  </div>
+</AdminLayout>
+
+<script>
+  import { initAdminForms } from '../../scripts/admin';
+  initAdminForms();
+</script>

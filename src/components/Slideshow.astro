@@ -1,0 +1,130 @@
+---
+// Diaporamas d'un emplacement (back-office › Diaporamas) : carrousel ou défilement automatique.
+// Images, vidéos (muettes, en boucle) et vidéos YouTube / Vimeo en mode « fond ».
+import { slideshowsFor, type SlideshowPlacement } from '../lib/slideshows';
+
+interface Props {
+  placement: SlideshowPlacement;
+  /** Classes de la section (fond, marges). */
+  class?: string;
+}
+const { placement, class: className = 'section' } = Astro.props;
+const shows = await slideshowsFor(placement);
+const arrow =
+  'absolute top-1/2 z-10 grid size-11 -translate-y-1/2 place-items-center rounded-full bg-white/95 text-2xl leading-none text-brand-900 shadow-lg hover:bg-white';
+---
+
+{
+  shows.map((s) => (
+    <section class={className} aria-roledescription="carrousel" aria-label={s.title || 'Galerie d’images'} data-slideshow={s.mode} data-interval={s.interval}>
+      <div class="container-page">
+        {s.title && <h2 class="mb-6 text-2xl sm:text-3xl">{s.title}</h2>}
+        <div class:list={['relative', s.mode === 'defilement' && 'overflow-hidden rounded-2xl']}>
+          <ul
+            class:list={[
+              'flex',
+              s.mode === 'carrousel'
+                ? '-mx-1 snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth px-1 pb-2 [scrollbar-width:none]'
+                : 'transition-transform duration-700 ease-in-out motion-reduce:transition-none',
+            ]}
+            data-track
+          >
+            {s.slides.map((sl, i) => {
+              const frame = s.mode === 'carrousel' ? 'aspect-[4/3] rounded-2xl' : 'aspect-[16/10] sm:aspect-[21/9]';
+              const image =
+                sl.type === 'image' ? (
+                  <img src={sl.src} alt={sl.alt} loading={i === 0 || (s.mode === 'carrousel' && i < 3) ? 'eager' : 'lazy'} class:list={['h-full w-full object-cover', frame]} />
+                ) : sl.type === 'video' ? (
+                  <video src={sl.src} class:list={['h-full w-full bg-brand-950 object-cover', frame]} muted autoplay loop playsinline preload="metadata" aria-label={sl.alt || undefined} />
+                ) : (
+                  <div class:list={['pointer-events-none relative overflow-hidden bg-brand-950', frame]}>
+                    <iframe src={sl.src} title={sl.alt || 'Vidéo AfriSime'} allow="autoplay; encrypted-media" loading="lazy" tabindex="-1" class="absolute inset-0 size-full scale-[1.35]" />
+                  </div>
+                );
+              return (
+                <li
+                  class:list={['relative shrink-0', s.mode === 'carrousel' ? 'w-[85%] snap-start sm:w-[calc(50%-0.5rem)] lg:w-[calc(33.333%-0.667rem)]' : 'w-full']}
+                  aria-roledescription="diapositive"
+                  aria-label={`${i + 1} sur ${s.slides.length}`}
+                  aria-hidden={s.mode === 'defilement' && i > 0 ? 'true' : undefined}
+                >
+                  {sl.href ? <a href={sl.href} class="block">{image}</a> : image}
+                  {sl.caption && (
+                    <p class:list={['pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-4 pb-4 pt-10 text-sm font-semibold text-white sm:text-base', s.mode === 'carrousel' ? 'rounded-b-2xl' : 'pb-10 sm:px-8']}>
+                      {sl.caption}
+                    </p>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+          {s.slides.length > 1 && (
+            <>
+              <button type="button" class:list={[arrow, s.mode === 'carrousel' ? 'left-0 -translate-x-1/3' : 'left-3']} data-prev aria-label="Image précédente">‹</button>
+              <button type="button" class:list={[arrow, s.mode === 'carrousel' ? 'right-0 translate-x-1/3' : 'right-3']} data-next aria-label="Image suivante">›</button>
+            </>
+          )}
+          {s.mode === 'defilement' && s.slides.length > 1 && (
+            <div class="absolute inset-x-0 bottom-3 flex justify-center gap-2">
+              {s.slides.map((_, i) => (
+                <button
+                  type="button"
+                  class:list={['size-2.5 rounded-full ring-1 ring-black/20 transition', i === 0 ? 'bg-white' : 'bg-white/50']}
+                  data-dot={i}
+                  aria-label={`Image ${i + 1}`}
+                  aria-current={i === 0 ? 'true' : undefined}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  ))
+}
+
+<script>
+  // Avance seule toutes les N secondes : pause au survol, au focus et quand l'onglet est caché ;
+  // pas de défilement automatique si le visiteur a demandé de limiter les animations.
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  document.querySelectorAll<HTMLElement>('[data-slideshow]').forEach((root) => {
+    const track = root.querySelector<HTMLElement>('[data-track]')!;
+    const slides = [...track.children] as HTMLElement[];
+    if (slides.length < 2) return;
+    const carousel = root.dataset.slideshow === 'carrousel';
+    const delay = Math.max(2, Number(root.dataset.interval) || 5) * 1000;
+    const dots = [...root.querySelectorAll<HTMLButtonElement>('[data-dot]')];
+    let index = 0;
+    let paused = false;
+
+    // Carrousel : défilement horizontal natif ; « suivant » avance d'une image, et revient au début en fin de liste.
+    const first = () => slides.reduce((best, s, i) => (Math.abs(s.offsetLeft - slides[0].offsetLeft - track.scrollLeft) < Math.abs(slides[best].offsetLeft - slides[0].offsetLeft - track.scrollLeft) ? i : best), 0);
+    const scrollToSlide = (i: number) => track.scrollTo({ left: slides[i].offsetLeft - slides[0].offsetLeft });
+    const atEnd = () => track.scrollLeft + track.clientWidth >= track.scrollWidth - 4;
+
+    // Défilement : une image à la fois.
+    const show = (i: number) => {
+      index = (i + slides.length) % slides.length;
+      track.style.transform = `translateX(-${index * 100}%)`;
+      slides.forEach((s, n) => (n === index ? s.removeAttribute('aria-hidden') : s.setAttribute('aria-hidden', 'true')));
+      dots.forEach((d, n) => {
+        d.classList.toggle('bg-white', n === index);
+        d.classList.toggle('bg-white/50', n !== index);
+        if (n === index) d.setAttribute('aria-current', 'true');
+        else d.removeAttribute('aria-current');
+      });
+    };
+
+    const next = () => (carousel ? (atEnd() ? scrollToSlide(0) : scrollToSlide(Math.min(first() + 1, slides.length - 1))) : show(index + 1));
+    const prev = () => (carousel ? scrollToSlide(Math.max(first() - 1, 0)) : show(index - 1));
+
+    root.querySelector('[data-next]')?.addEventListener('click', next);
+    root.querySelector('[data-prev]')?.addEventListener('click', prev);
+    dots.forEach((d) => d.addEventListener('click', () => show(Number(d.dataset.dot))));
+    for (const [event, value] of [['mouseenter', true], ['mouseleave', false], ['focusin', true], ['focusout', false]] as const) {
+      root.addEventListener(event, () => (paused = value));
+    }
+    if (!reduced) setInterval(() => !paused && !document.hidden && next(), delay);
+  });
+</script>

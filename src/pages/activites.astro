@@ -1,6 +1,7 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import PageHero from '../components/PageHero.astro';
+import Slideshow from '../components/Slideshow.astro';
 import Icon, { type IconName } from '../components/ui/Icon.astro';
 import { getPageTexts, splitLines } from '../lib/page-texts';
 
@@ -17,7 +18,8 @@ const activities = t.activities.map((a, i) => ({ ...a, ...layout[i] }));
 ---
 
 <Layout title="Nos activités" description={t.seoDescription}>
-  <PageHero eyebrow={t.heroEyebrow} title={t.heroTitle} intro={t.heroText} breadcrumbs={[{ label: 'Activités' }]} />
+  <PageHero eyebrow={t.heroEyebrow} title={t.heroTitle} intro={t.heroText} breadcrumbs={[{ label: 'Activités' }]} media="entete-activites" />
+  <Slideshow placement="activites" class="pt-10 sm:pt-14" />
   <section class="section">
     <div class="container-page space-y-6">
       {

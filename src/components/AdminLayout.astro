@@ -23,6 +23,7 @@ const nav = [
   { label: 'FAQ', href: '/admin/faq', show: can(me.role, { content: ['update'] }) },
   { label: "Offres d'emploi", href: '/admin/offres-emploi', show: can(me.role, { content: ['update'] }) },
   { label: 'Médias', href: '/admin/medias', show: can(me.role, { content: ['update'] }) || can(me.role, { catalog: ['update'] }) },
+  { label: 'Diaporamas', href: '/admin/diaporamas', show: can(me.role, { content: ['update'] }) },
   { label: 'Textes du site', href: '/admin/textes', show: can(me.role, { settings: ['update'] }) || can(me.role, { content: ['publish'] }) },
   { label: 'SEO & menus', href: '/admin/seo', show: can(me.role, { seo: ['update'] }) },
   { label: 'Paramètres', href: '/admin/parametres', show: can(me.role, { settings: ['update'] }) || can(me.role, { catalog: ['update'] }) || can(me.role, { content: ['publish'] }) },

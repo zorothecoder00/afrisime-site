@@ -8,6 +8,7 @@ import { listArticles, showcaseSource } from '../lib/content';
 import { activeCampaigns } from '../lib/promotions';
 import { imageUrl } from '../lib/media';
 import { getSettings } from '../lib/settings';
+import Slideshow from '../components/Slideshow.astro';
 import { getPageTexts } from '../lib/page-texts';
 
 // Vidéos vitrines (back-office › Paramètres › Vidéos vitrines) : lecture automatique, muette, non cliquable.
@@ -161,6 +162,8 @@ const b2bSegments = t.b2bSegments.map((r, i) => ({ ...r, icon: segmentIcons[i] }
       </div>
     </div>
   </section>
+
+  <Slideshow placement="accueil" class="py-10 sm:py-12" />
 
   <!-- Catégories -->
   <section class="section bg-brand-950">
