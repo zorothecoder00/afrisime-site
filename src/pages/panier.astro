@@ -5,6 +5,7 @@
 import Layout from '../layouts/Layout.astro';
 import Breadcrumbs from '../components/ui/Breadcrumbs.astro';
 import Icon from '../components/ui/Icon.astro';
+import { cardTint } from '../lib/tints';
 ---
 
 <Layout title="Mon panier" noindex>
@@ -19,7 +20,7 @@ import Icon from '../components/ui/Icon.astro';
     </div>
 
     <!-- Panier vide -->
-    <div class="mt-5 rounded-2xl bg-white p-10 text-center ring-1 ring-line" data-state="empty" hidden>
+    <div class:list={['mt-5 rounded-2xl border p-10 text-center', cardTint(0)]} data-state="empty" hidden>
       <Icon name="cart" size={48} class="mx-auto text-muted" />
       <h1 class="mt-4 text-xl">Votre panier est vide</h1>
       <p class="mt-2 text-sm text-muted">Parcourez nos rayons et ajoutez vos produits du quotidien.</p>
@@ -29,7 +30,7 @@ import Icon from '../components/ui/Icon.astro';
     <!-- Panier rempli -->
     <div class="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_360px]" data-state="filled" hidden>
       <div class="min-w-0 space-y-3">
-        <div class="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-white px-4 py-3 ring-1 ring-line">
+        <div class:list={['flex flex-wrap items-center justify-between gap-3 rounded-2xl border px-4 py-3', cardTint(1)]}>
           <h1 class="text-xl font-bold !text-ink">Panier (<span data-count>0</span>)</h1>
           <div class="flex items-center gap-4 text-sm">
             <label class="flex cursor-pointer items-center gap-2 font-semibold">
@@ -51,7 +52,7 @@ import Icon from '../components/ui/Icon.astro';
 
       <!-- Récapitulatif -->
       <aside class="h-fit space-y-3 lg:sticky lg:top-24" aria-labelledby="titre-recap">
-        <section class="rounded-2xl bg-white p-5 ring-1 ring-line">
+        <section class:list={['rounded-2xl border p-5', cardTint(0)]}>
           <h2 id="titre-recap" class="text-lg font-bold !text-ink">Récapitulatif de la commande</h2>
           <dl class="mt-4 space-y-2.5 text-sm" aria-busy="false" data-totals>
             <div class="flex justify-between"><dt>Articles (<span data-selected-count>0</span>)</dt><dd class="font-semibold" data-subtotal></dd></div>
@@ -85,7 +86,7 @@ import Icon from '../components/ui/Icon.astro';
           </details>
         </section>
 
-        <section class="rounded-2xl bg-white p-5 text-sm ring-1 ring-line" aria-labelledby="titre-protections">
+        <section class:list={['rounded-2xl border p-5 text-sm', cardTint(3)]} aria-labelledby="titre-protections">
           <h2 id="titre-protections" class="font-bold !text-ink">Protections AfriSime</h2>
           <ul class="mt-3 space-y-2 text-muted">
             <li class="flex gap-2"><Icon name="shield" size={16} class="mt-0.5 shrink-0 text-brand-600" />Paiement sécurisé, jamais d'accès à vos données bancaires</li>
@@ -114,8 +115,8 @@ import Icon from '../components/ui/Icon.astro';
   </div>
 
   <template id="group-template">
-    <section class="overflow-hidden rounded-2xl bg-white ring-1 ring-line">
-      <header class="flex items-center gap-3 border-b border-line px-4 py-3">
+    <section class="overflow-hidden rounded-2xl border">
+      <header class="flex items-center gap-3 border-b border-black/10 px-4 py-3">
         <input type="checkbox" class="size-4 accent-brand-700" data-select-group />
         <Icon name="store" size={18} class="text-brand-600" />
         <h2 class="text-sm font-extrabold !text-ink" data-group-name></h2>
@@ -153,6 +154,7 @@ import Icon from '../components/ui/Icon.astro';
   import { cart, type CartItem } from '../scripts/cart';
   import { fetchQuote, getPromo, setPromo, type QuoteResponse } from '../scripts/quote';
   import { formatPrice } from '../lib/format';
+  import { cardTint } from '../lib/tints';
   import { track } from '../scripts/analytics';
 
   const $ = <T extends HTMLElement>(sel: string) => document.querySelector<T>(sel)!;
@@ -213,8 +215,9 @@ import Icon from '../components/ui/Icon.astro';
       groups.set(name, [...(groups.get(name) ?? []), item]);
     }
     list.replaceChildren(
-      ...[...groups].map(([name, groupItems]) => {
+      ...[...groups].map(([name, groupItems], index) => {
         const section = groupTemplate.content.firstElementChild!.cloneNode(true) as HTMLElement;
+        section.classList.add(...cardTint(index).split(' ')); // une teinte par groupe (marque)
         section.querySelector('[data-group-name]')!.textContent = name;
         const check = section.querySelector<HTMLInputElement>('[data-select-group]')!;
         const selected = groupItems.filter(isSelected).length;
