@@ -79,21 +79,49 @@ const ok = Astro.url.searchParams.get('ok');
 
   <section class:list={['card p-5', cardTint(0)]} aria-labelledby="titre-menu">
     <h2 id="titre-menu" class="text-xl">Menu principal</h2>
-    <p class="hint">Sous-menus : un lien par ligne, au format <code>Libellé | /lien</code>. Laissez une ligne vide pour la retirer.</p>
-    <form method="post" class="mt-4">
+    <p class="hint">Chaque entrée du menu peut avoir des sous-liens, affichés au survol (et dans le menu mobile). Adresse du site : commence par <code>/</code> (ex. <code>/afrisime#valeurs</code>) ; autre site : <code>https://…</code>.</p>
+    <form method="post" class="mt-4" data-menu-form>
       <input type="hidden" name="action" value="menu" />
-      <div class="space-y-3" data-rows="menu">
+      <div class="space-y-4" data-rows="menu">
         {
-          menu.map((item, i) => (
-            <div class="grid gap-2 rounded-xl border border-line p-3 sm:grid-cols-[1fr_1fr_2fr_auto]" data-row>
-              <label class="block"><span class="label">Libellé</span><input name={`menu[${i}][label]`} value={item.label} class="input !py-2" /></label>
-              <label class="block"><span class="label">Lien</span><input name={`menu[${i}][href]`} value={item.href} class="input !py-2" /></label>
-              <label class="block"><span class="label">Sous-menus</span><textarea name={`menu[${i}][children]`} rows="2" class="input !py-2 text-xs">{(item as NavItem).children?.map((c) => `${c.label} | ${c.href}`).join('\n') ?? ''}</textarea></label>
-              <button type="button" class="btn btn-ghost btn-sm self-end text-danger" data-remove-row>Retirer</button>
-            </div>
-          ))
+          menu.map((item, i) => {
+            const children = (item as NavItem).children ?? [];
+            return (
+              <div class="rounded-xl border border-black/10 bg-white/70 p-4" data-row>
+                <div class="grid items-end gap-3 sm:grid-cols-[1fr_1.4fr_auto]">
+                  <label class="block"><span class="label">Libellé du menu</span><input name={`menu[${i}][label]`} value={item.label} maxlength="40" placeholder="Ex. : Boutique" class="input !py-2 font-semibold" /></label>
+                  <label class="block"><span class="label">Lien</span><input name={`menu[${i}][href]`} value={item.href} placeholder="/boutique" class="input !py-2" /></label>
+                  <button type="button" class="btn btn-ghost btn-sm text-danger" data-remove-row>Retirer l'entrée</button>
+                </div>
+
+                <div class="mt-4 border-l-2 border-brand-200 pl-4">
+                  <p class="text-xs font-bold uppercase tracking-wider text-muted">Sous-liens <span class="font-normal normal-case tracking-normal">(facultatif)</span></p>
+                  <ul class="mt-2 space-y-2" data-children>
+                    {children.map((c) => (
+                      <li class="grid gap-2 sm:grid-cols-[1fr_1.4fr_auto]" data-child-row>
+                        <input value={c.label} maxlength="60" placeholder="Libellé" aria-label="Libellé du sous-lien" class="input !py-1.5 text-sm" data-child-label />
+                        <input value={c.href} placeholder="/adresse" aria-label="Lien du sous-lien" class="input !py-1.5 text-sm" data-child-href />
+                        <button type="button" class="btn btn-ghost btn-sm text-danger" data-remove-child aria-label="Retirer ce sous-lien">✕</button>
+                      </li>
+                    ))}
+                  </ul>
+                  <button type="button" class="mt-2 text-sm font-semibold text-brand-700 hover:underline" data-add-child>+ Ajouter un sous-lien</button>
+                </div>
+
+                {/* Valeur envoyée au serveur (« Libellé | /lien » par ligne), recomposée à l'enregistrement. */}
+                <textarea name={`menu[${i}][children]`} hidden>{children.map((c) => `${c.label} | ${c.href}`).join('\n')}</textarea>
+              </div>
+            );
+          })
         }
       </div>
+      <template data-child-template>
+        <li class="grid gap-2 sm:grid-cols-[1fr_1.4fr_auto]" data-child-row>
+          <input maxlength="60" placeholder="Libellé" aria-label="Libellé du sous-lien" class="input !py-1.5 text-sm" data-child-label />
+          <input placeholder="/adresse" aria-label="Lien du sous-lien" class="input !py-1.5 text-sm" data-child-href />
+          <button type="button" class="btn btn-ghost btn-sm text-danger" data-remove-child aria-label="Retirer ce sous-lien">✕</button>
+        </li>
+      </template>
       <div class="mt-3 flex gap-2">
         <button type="button" class="btn btn-secondary btn-sm" data-add-row="menu">+ Ajouter un lien</button>
         <button class="btn btn-primary btn-sm">Enregistrer le menu</button>
@@ -160,4 +188,40 @@ const ok = Astro.url.searchParams.get('ok');
 <script>
   import { initAdminForms } from '../../scripts/admin';
   initAdminForms();
+
+  // Sous-liens du menu : une ligne (libellé + lien) par sous-lien, recomposées en « Libellé | /lien »
+  // dans le champ caché de chaque entrée au moment d'enregistrer.
+  const form = document.querySelector<HTMLFormElement>('[data-menu-form]');
+  if (form) {
+    const template = form.querySelector<HTMLTemplateElement>('[data-child-template]')!;
+
+    form.addEventListener('click', (event) => {
+      const target = event.target as HTMLElement;
+      const add = target.closest('[data-add-child]');
+      if (add) {
+        const list = add.closest('[data-row]')!.querySelector('[data-children]')!;
+        const row = template.content.firstElementChild!.cloneNode(true) as HTMLElement;
+        list.appendChild(row);
+        row.querySelector('input')?.focus();
+      }
+      target.closest('[data-remove-child]')?.closest('[data-child-row]')?.remove();
+    });
+
+    // Nouvelle entrée (copie de la dernière) : elle démarre sans sous-liens.
+    form.querySelector('[data-add-row="menu"]')?.addEventListener('click', () => {
+      const rows = form.querySelectorAll('[data-rows="menu"] > [data-row]');
+      rows[rows.length - 1]?.querySelector('[data-children]')?.replaceChildren();
+    });
+
+    form.addEventListener('submit', () => {
+      form.querySelectorAll<HTMLElement>('[data-rows="menu"] > [data-row]').forEach((row) => {
+        const lines = [...row.querySelectorAll('[data-child-row]')].flatMap((child) => {
+          const label = child.querySelector<HTMLInputElement>('[data-child-label]')!.value.trim().replace(/\|/g, '/');
+          const href = child.querySelector<HTMLInputElement>('[data-child-href]')!.value.trim();
+          return label && href ? [`${label} | ${href}`] : [];
+        });
+        row.querySelector<HTMLTextAreaElement>('textarea[name$="[children]"]')!.value = lines.join('\n');
+      });
+    });
+  }
 </script>
