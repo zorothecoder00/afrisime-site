@@ -238,3 +238,22 @@ export async function notifyLeadReceived(lead: Lead) {
   }
   await Promise.all(tasks);
 }
+
+/** Alerte de sécurité (§15) : envoyée aux destinataires choisis par src/lib/security.ts. */
+export async function notifySecurityAlert(to: string[], alert: { title: string; lines: string[]; target?: string }) {
+  await Promise.all(
+    to.map((email) =>
+      sendEmail({
+        to: email,
+        template: 'alerte-securite',
+        target: alert.target,
+        subject: `[Sécurité] ${alert.title}`,
+        html: layout(
+          alert.title,
+          `${alert.lines.map((l) => `<p>${escape(l)}</p>`).join('')}<p style="font-size:13px;color:#56665f">Si cette action n’est pas attendue, bloquez le compte concerné depuis le back-office et changez les mots de passe.</p>${button(`${siteUrl()}/admin/journal`, 'Ouvrir le journal')}`,
+        ),
+        text: `${alert.title}\n${alert.lines.join('\n')}\nJournal : ${siteUrl()}/admin/journal`,
+      }),
+    ),
+  );
+}

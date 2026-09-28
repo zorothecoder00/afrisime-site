@@ -1,6 +1,7 @@
 // Journal d'activité : traçabilité des actions sensibles (cahier des charges §10).
 import { auditLog } from '../db/schema';
 import { db } from './db';
+import { alertOnAudit } from './security';
 
 export async function audit(entry: {
   actorId?: string | null;
@@ -15,4 +16,5 @@ export async function audit(entry: {
     // Le journal ne doit jamais bloquer l'action elle-même.
     console.error('[audit]', err);
   }
+  await alertOnAudit(entry).catch((err) => console.error('[sécurité]', err));
 }

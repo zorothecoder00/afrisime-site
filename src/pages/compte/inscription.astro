@@ -8,7 +8,7 @@ if (Astro.locals.user) return Astro.redirect('/compte');
 ---
 
 <AuthShell title="Créer un compte" intro="Suivez vos commandes et recommandez en quelques clics. La commande sans compte reste possible.">
-  <form class="space-y-4" data-signup novalidate>
+  <form method="post" class="space-y-4" data-signup novalidate>
     <p data-form-status hidden tabindex="-1"></p>
 
     <fieldset>

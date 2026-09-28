@@ -4,7 +4,7 @@ import AdminLayout from '../../components/AdminLayout.astro';
 import { renderMarkdown } from '../../lib/markdown';
 import guide from '../../../docs/guide-administrateur.md?raw';
 
-const html = renderMarkdown(guide.replace(/^# .*\n/, ''));
+const html = renderMarkdown(guide.replace(/^# .*\r?\n/, ''));
 ---
 
 <AdminLayout title="Guide de l'administrateur">

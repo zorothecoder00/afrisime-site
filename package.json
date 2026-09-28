@@ -20,7 +20,9 @@
     "db:studio": "drizzle-kit studio",
     "content:import": "tsx scripts/import-content.ts",
     "admin:create": "tsx scripts/create-admin.ts",
-    "admin:create:prod": "tsx --env-file=.env.production.bak scripts/create-admin.ts"
+    "admin:create:prod": "tsx --env-file=.env.production.bak scripts/create-admin.ts",
+    "admin:reset-2fa": "tsx scripts/reset-2fa.ts",
+    "admin:reset-2fa:prod": "tsx --env-file=.env.production.bak scripts/reset-2fa.ts"
   },
   "dependencies": {
     "@astrojs/vercel": "^11.0.11",

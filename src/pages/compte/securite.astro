@@ -34,7 +34,7 @@ const mandatory = staff && !user.twoFactorEnabled;
               <strong class="text-brand-700">Activée.</strong> Un code de votre application d'authentification vous est demandé à chaque connexion.
             </p>
             {!staff && (
-              <form class="mt-4 space-y-4" data-disable-2fa novalidate>
+              <form method="post" class="mt-4 space-y-4" data-disable-2fa novalidate>
                 <p data-form-status hidden tabindex="-1" />
                 <Field name="password" label="Mot de passe actuel" type="password" required autocomplete="current-password" />
                 <button type="submit" class="btn btn-secondary">Désactiver</button>
@@ -47,7 +47,7 @@ const mandatory = staff && !user.twoFactorEnabled;
               Protégez votre compte avec un code temporaire généré par une application comme Google Authenticator, Microsoft Authenticator ou
               2FAS.
             </p>
-            <form class="mt-4 space-y-4" data-enable-2fa novalidate>
+            <form method="post" class="mt-4 space-y-4" data-enable-2fa novalidate>
               <p data-form-status hidden tabindex="-1" />
               <Field name="password" label="Mot de passe actuel" type="password" required autocomplete="current-password" />
               <button type="submit" class="btn btn-primary">Activer</button>
@@ -68,7 +68,7 @@ const mandatory = staff && !user.twoFactorEnabled;
                   <ul class="mt-1 grid grid-cols-2 gap-1 font-mono text-sm" data-backup-codes />
                 </div>
               </div>
-              <form class="space-y-4" data-confirm-2fa data-next={staff ? '/admin' : '/compte?securite=1'} novalidate>
+              <form method="post" class="space-y-4" data-confirm-2fa data-next={staff ? '/admin' : '/compte?securite=1'} novalidate>
                 <p data-form-status hidden tabindex="-1" />
                 <Field name="code" label="Code à 6 chiffres" required autocomplete="one-time-code" inputmode="numeric" />
                 <button type="submit" class="btn btn-primary">Terminer l'activation</button>
@@ -81,7 +81,7 @@ const mandatory = staff && !user.twoFactorEnabled;
 
     <section class="card p-6" aria-labelledby="titre-mdp">
       <h2 id="titre-mdp" class="text-xl">Changer de mot de passe</h2>
-      <form class="mt-4 space-y-4" data-change-password novalidate>
+      <form method="post" class="mt-4 space-y-4" data-change-password novalidate>
         <p data-form-status hidden tabindex="-1"></p>
         <Field name="current" label="Mot de passe actuel" type="password" required autocomplete="current-password" />
         <Field name="password" label="Nouveau mot de passe" type="password" required autocomplete="new-password" hint="10 caractères minimum." />

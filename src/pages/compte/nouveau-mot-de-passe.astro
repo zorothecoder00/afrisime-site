@@ -17,7 +17,7 @@ const invalid = !token || Astro.url.searchParams.has('error');
         <a href="/compte/mot-de-passe-oublie" class="btn btn-primary mt-6 w-full">Demander un nouveau lien</a>
       </div>
     ) : (
-      <form class="space-y-4" data-reset data-token={token} novalidate>
+      <form method="post" class="space-y-4" data-reset data-token={token} novalidate>
         <p data-form-status hidden tabindex="-1" />
         <Field name="password" label="Nouveau mot de passe" type="password" required autocomplete="new-password" hint="10 caractères minimum." />
         <Field name="confirm" label="Confirmez le mot de passe" type="password" required autocomplete="new-password" />

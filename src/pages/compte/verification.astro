@@ -6,7 +6,7 @@ export const prerender = false;
 ---
 
 <AuthShell title="Vérification en deux étapes" intro="Saisissez le code à 6 chiffres affiché dans votre application d'authentification.">
-  <form class="space-y-4" data-verify novalidate>
+  <form method="post" class="space-y-4" data-verify novalidate>
     <p data-form-status hidden tabindex="-1"></p>
     <div data-mode="totp">
       <Field name="code" label="Code à 6 chiffres" required autocomplete="one-time-code" inputmode="numeric" />

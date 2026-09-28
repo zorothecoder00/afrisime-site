@@ -78,4 +78,6 @@ export function bindForm(form: HTMLFormElement, handler: (data: FormData) => Pro
       }
     }
   });
+  // Formulaire pris en charge par le script (utilisé par les tests de bout en bout).
+  form.dataset.ready = '';
 }

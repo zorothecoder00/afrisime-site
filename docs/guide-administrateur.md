@@ -99,3 +99,23 @@ Ventes, panier moyen, meilleures ventes, **paniers abandonnés** (clients à rel
 - Déconnectez-vous sur un ordinateur partagé.
 - Un départ dans l'équipe : le super administrateur **bloque** le compte ou lui retire son rôle (Clients & équipe), ce qui ferme ses sessions.
 - Consultez le Journal en cas de doute sur une modification.
+
+### Alertes de sécurité
+
+L'équipe reçoit un e-mail « [Sécurité] … » (adresse `STAFF_NOTIFY_EMAIL`, à défaut tous les super administrateurs) quand :
+
+- un rôle est modifié, un compte de l'équipe est créé ou un compte est bloqué ;
+- 5 mots de passe erronés sont saisis en 15 minutes sur un compte de l'équipe ;
+- 3 codes de double authentification sont refusés en 15 minutes sur un compte de l'équipe (le mot de passe a donc été trouvé : changez-le).
+
+Si l'action n'est pas attendue : bloquez le compte dans Clients & équipe, puis vérifiez le Journal (actions `connexion-echouee`, `double-auth-echouee`).
+
+### Téléphone perdu et codes de secours perdus
+
+Aucun écran du site ne permet de retirer la double authentification. Une personne ayant accès à la base lance :
+
+```
+npm run admin:reset-2fa -- email@exemple.com
+```
+
+(`admin:reset-2fa:prod` pour la production.) La commande demande confirmation, supprime la clé, oublie les appareils de confiance, ferme les sessions et inscrit l'action au Journal. À la connexion suivante, la personne réactive la double authentification avec une nouvelle clé. Vérifiez son identité avant de lancer la commande.

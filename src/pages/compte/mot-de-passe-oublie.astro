@@ -6,7 +6,7 @@ export const prerender = false;
 ---
 
 <AuthShell title="Mot de passe oublié" intro="Indiquez votre adresse e-mail : nous vous enverrons un lien pour choisir un nouveau mot de passe.">
-  <form class="space-y-4" data-forgot novalidate>
+  <form method="post" class="space-y-4" data-forgot novalidate>
     <p data-form-status hidden tabindex="-1"></p>
     <Field name="email" label="Adresse e-mail" type="email" required autocomplete="email" inputmode="email" />
     <button type="submit" class="btn btn-primary w-full">Envoyer le lien</button>

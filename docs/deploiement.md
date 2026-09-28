@@ -24,7 +24,7 @@ Créer la branche Neon de staging : Neon › Branches › New branch (depuis `ma
 | `PAYMENT_PROVIDER` | pour le paiement en ligne | `fedapay` (ou `simulation` en développement uniquement) |
 | `FEDAPAY_SECRET_KEY`, `FEDAPAY_ENV` | avec FedaPay | clé secrète ; `sandbox` ou `live` |
 | `EMAIL_PROVIDER`, `EMAIL_API_KEY`, `EMAIL_FROM` | pour les e-mails | `resend` ou `brevo` ; `EMAIL_FROM` = `AfriSime <commandes@votre-domaine>` (domaine vérifié chez le prestataire) |
-| `STAFF_NOTIFY_EMAIL` | non | reçoit une alerte à chaque commande et demande |
+| `STAFF_NOTIFY_EMAIL` | non | reçoit une alerte à chaque commande et demande, et les alertes de sécurité (à défaut : les super administrateurs) |
 | `NOTIFY_WEBHOOK_URL`, `NOTIFY_WEBHOOK_SECRET` | pour SMS / WhatsApp | passerelle qui reçoit `{ channel, to, message }` (signature HMAC-SHA256 dans `X-AfriSime-Signature`) |
 | `ERP_API_URL`, `ERP_API_TOKEN` | si ERP | envoi des commandes confirmées (`POST /orders`) |
 | `CRM_API_URL`, `CRM_API_TOKEN` | si CRM | envoi des leads (`POST /leads`) |

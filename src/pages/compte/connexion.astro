@@ -9,7 +9,7 @@ if (Astro.locals.user) return Astro.redirect('/compte');
 ---
 
 <AuthShell title="Connexion" intro="Retrouvez vos commandes, vos adresses et vos devis.">
-  <form class="space-y-4" data-login novalidate>
+  <form method="post" class="space-y-4" data-login novalidate>
     {Astro.url.searchParams.has('reinitialise') && <p class="alert alert-success">Mot de passe modifié. Connectez-vous avec le nouveau.</p>}
     <p data-form-status hidden tabindex="-1"></p>
     <Field name="email" label="Adresse e-mail" type="email" required autocomplete="email" inputmode="email" />
