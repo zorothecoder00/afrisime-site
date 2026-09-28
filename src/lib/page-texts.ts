@@ -1,5 +1,5 @@
 // Textes des pages modifiables depuis le back-office (Textes du site) : accueil, pied de page,
-// Qui sommes-nous, contact. Chaque page est une ligne `texts.<page>` de la table `settings`.
+// Qui sommes-nous, contact, activités, B2B, carrières, investir, partenaires. Chaque page est une ligne `texts.<page>` de la table `settings`.
 // Un champ laissé vide reprend le texte par défaut défini ici ; les listes à puces gardent
 // leur nombre d'éléments (chacun a son icône), les listes « une ligne par élément » sont libres.
 import { eq } from 'drizzle-orm';
@@ -126,7 +126,138 @@ export const DEFAULT_TEXTS = {
     success: 'Merci ! Votre message est bien envoyé. Nous vous répondons sous 24 h ouvrées.',
     mapUrl: 'https://www.openstreetmap.org/export/embed.html?bbox=1.18%2C6.11%2C1.27%2C6.17&layer=mapnik',
   },
+  activites: {
+    heroEyebrow: 'Nos activités',
+    heroTitle: 'Un distributeur, plusieurs métiers',
+    heroText: 'Du sachet de sel au camion complet, AfriSime sert chaque client avec le format, le prix et le service qui lui conviennent.',
+    activities: [
+      {
+        title: 'Gros & demi-gros',
+        text: 'Pour les revendeurs, boutiques et grossistes : des volumes importants à prix dégressifs, du carton au camion complet.',
+        points: 'Sacs, cartons, bidons, palettes\nPrix volume et remises de fidélité\nLivraison programmée',
+        cta: 'Demander un prix de gros',
+      },
+      {
+        title: 'Détail',
+        text: 'Pour les ménages : les produits du quotidien en petits formats, en boutique, en ligne ou par WhatsApp.',
+        points: 'Boutique en ligne\nRetrait gratuit au dépôt\nLivraison à domicile',
+        cta: 'Faire mes courses',
+      },
+      {
+        title: 'Restaurants & hôtellerie',
+        text: 'Un approvisionnement régulier et fiable pour les cuisines professionnelles.',
+        points: 'Formats professionnels\nLivraison hebdomadaire\nFacturation mensuelle',
+        cta: 'Voir les solutions B2B',
+      },
+      {
+        title: 'Entreprises & institutions',
+        text: "Cantines, ONG, écoles, administrations : réponse aux appels d'offres et contrats cadres.",
+        points: 'Dossiers administratifs complets\nContrats annuels\nInterlocuteur dédié',
+        cta: 'Contacter un commercial',
+      },
+      {
+        title: 'Logistique & distribution',
+        text: "Entrepôts à Lomé et flotte de livraison pour servir le Grand Lomé et l'intérieur du pays.",
+        points: 'Stockage ventilé et sécurisé\nTournées optimisées\nSuivi des livraisons',
+        cta: 'Devenir partenaire logistique',
+      },
+    ],
+  },
+  b2b: {
+    heroEyebrow: 'Solutions B2B',
+    heroTitle: "L'approvisionnement des professionnels, simplifié",
+    heroText: 'Commerçants, revendeurs, restaurants, entreprises : AfriSime vous livre en volume, au prix juste, avec un interlocuteur dédié.',
+    ctaQuote: 'Demander un devis',
+    ctaCall: 'Appeler un commercial',
+    segments: [
+      { title: 'Commerçants & boutiques', text: 'Réassort rapide pour boutiques de quartier, superettes et kiosques.', points: 'Prix demi-gros dès 5 cartons\nLivraison en 24 h\nCommande par WhatsApp' },
+      { title: 'Revendeurs & grossistes', text: 'Volumes importants, prix dégressifs et livraison programmée.', points: 'Grille tarifaire volume\nCamion complet ou groupage\nCrédit fournisseur sur dossier' },
+      { title: 'Restaurants, hôtels & traiteurs', text: 'Un approvisionnement régulier pour ne jamais manquer.', points: 'Livraison hebdomadaire\nFacturation mensuelle\nFormats professionnels' },
+      { title: 'Entreprises & institutions', text: "Cantines, ONG, écoles, administrations : contrats cadres et appels d'offres.", points: 'Contrat cadre annuel\nDocuments administratifs\nInterlocuteur dédié' },
+    ],
+    stepsTitle: 'Comment ça marche',
+    steps: [
+      { title: 'Votre demande', text: 'Produits, volumes et fréquence souhaités.' },
+      { title: 'Qualification', text: 'Un commercial vous rappelle sous 24 h ouvrées.' },
+      { title: 'Devis', text: 'Une offre de prix adaptée à vos volumes.' },
+      { title: 'Commande & livraison', text: 'Livraison programmée et suivi de vos commandes.' },
+    ],
+    formEyebrow: 'Demande de devis',
+    formTitle: 'Parlez-nous de vos besoins',
+    formText: 'Réponse sous 24 h ouvrées. Plus votre demande est précise, plus notre offre sera juste.',
+    directTitle: 'Vous préférez échanger directement ?',
+    whatsappLabel: 'WhatsApp commercial',
+    sectors: ['Boutique / commerce', 'Revendeur / grossiste', 'Restaurant / hôtel / traiteur', 'Entreprise', 'Institution / ONG / école', 'Autre'],
+    frequencies: ['Ponctuelle', 'Hebdomadaire', 'Bimensuelle', 'Mensuelle'],
+    budgets: ['Moins de 500 000 FCFA', '500 000 – 2 000 000 FCFA', '2 – 10 millions FCFA', 'Plus de 10 millions FCFA'],
+    consent: "J'accepte qu'AfriSime utilise ces informations pour me recontacter au sujet de ma demande.",
+    submit: 'Envoyer ma demande de devis',
+    success: 'Merci ! Votre demande de devis est enregistrée. Un commercial vous rappelle sous 24 h ouvrées.',
+  },
+  carrieres: {
+    heroEyebrow: 'Carrières',
+    heroTitle: "Rejoignez l'équipe AfriSime",
+    heroText: 'Logistique, vente, e-commerce, finance : construisons ensemble la distribution alimentaire de demain.',
+    jobsTitle: 'Offres ouvertes',
+    noJobs: 'Aucune offre ouverte pour le moment. Vous pouvez nous adresser une candidature spontanée.',
+    cultureTitle: 'Notre culture',
+    culture: ["Formation à l'embauche et tout au long du parcours", 'Évolution interne privilégiée', "Esprit d'équipe et exigence du service client"],
+    formTitle: 'Candidature',
+    formText: 'Pour une offre ou en candidature spontanée. Nous vous demanderons votre CV si votre profil est retenu.',
+    spontaneous: 'Candidature spontanée',
+    consent: "J'accepte qu'AfriSime conserve ma candidature pendant 12 mois.",
+    submit: 'Envoyer ma candidature',
+    success: 'Merci pour votre candidature ! Nous revenons vers vous si votre profil correspond.',
+  },
+  investir: {
+    heroEyebrow: 'Investisseurs & institutions',
+    heroTitle: 'Investir dans la distribution de demain',
+    heroText: 'AfriSime construit un réseau de distribution alimentaire moderne, connecté et à fort impact local.',
+    pillars: [
+      { title: 'Un marché essentiel', text: "L'alimentation représente la première dépense des ménages togolais, avec une demande stable et croissante." },
+      { title: 'Un modèle multicanal', text: 'Gros, détail, B2B et e-commerce : des revenus diversifiés et une clientèle large.' },
+      { title: 'Des outils modernes', text: 'ERP interne, plateforme e-commerce et données de vente pour piloter la croissance.' },
+      { title: 'Un impact local', text: 'Des filières agricoles structurées et des emplois créés dans la logistique et la vente.' },
+    ],
+    formTitle: 'Relations investisseurs',
+    formText: 'Pour recevoir notre présentation ou organiser un échange avec la direction, laissez-nous vos coordonnées.',
+    consent: "J'accepte qu'AfriSime utilise ces informations pour me recontacter.",
+    submit: 'Envoyer',
+    success: 'Merci. La direction vous recontactera rapidement.',
+  },
+  partenaires: {
+    heroEyebrow: 'Partenaires',
+    heroTitle: 'Grandissons ensemble',
+    heroText: 'AfriSime travaille avec des producteurs locaux, des importateurs et des partenaires commerciaux pour rendre les bons produits accessibles partout au Togo.',
+    offers: [
+      { title: 'Devenir fournisseur', text: 'Producteurs, transformateurs, importateurs : référencez vos produits dans notre réseau de distribution.' },
+      { title: 'Dépôt-vente', text: 'Confiez-nous vos produits : nous les stockons, les vendons et vous reversons les ventes.' },
+      { title: 'Partenaire commercial', text: 'Distributeurs, agents, points relais : développons ensemble de nouvelles zones.' },
+      { title: 'Grossiste partenaire', text: 'Approvisionnez-vous en volume avec des conditions dédiées et une logistique partagée.' },
+    ],
+    formEyebrow: 'Formulaire de qualification',
+    formTitle: 'Proposez votre partenariat',
+    formText: 'Notre équipe achats étudie chaque proposition et vous répond sous 5 jours ouvrés.',
+    criteriaTitle: 'Ce que nous regardons',
+    criteria: [
+      'Produits conformes aux normes sanitaires en vigueur',
+      'Capacité de production régulière',
+      'Traçabilité et étiquetage clairs',
+      'Prix compétitifs et conditions de paiement transparentes',
+    ],
+    partnershipTypes: ['Fournisseur', 'Dépôt-vente', 'Partenaire commercial', 'Grossiste', 'Autre'],
+    consent: "J'accepte qu'AfriSime utilise ces informations pour étudier ma proposition et me recontacter.",
+    submit: 'Envoyer ma proposition',
+    success: 'Merci ! Votre proposition est transmise à notre équipe achats. Réponse sous 5 jours ouvrés.',
+  },
 };
+
+/** Liste à puces saisie « un élément par ligne » dans un champ d'une carte. */
+export const splitLines = (value: string) =>
+  value
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean);
 
 export type TextPage = keyof typeof DEFAULT_TEXTS;
 export type PageTexts<P extends TextPage> = (typeof DEFAULT_TEXTS)[P];
@@ -151,8 +282,25 @@ const titled = (key: string, label: string): TextField => ({
     { key: 'text', label: 'Texte', max: 200 },
   ],
 });
+/** Cartes avec titre, texte et puces (une par ligne), et éventuellement un bouton. */
+const cards = (key: string, label: string, withCta = false): TextField => ({
+  key,
+  label,
+  kind: 'items',
+  fields: [
+    { key: 'title', label: 'Titre', max: 80 },
+    { key: 'text', label: 'Texte', max: 300 },
+    { key: 'points', label: 'Points (un par ligne)', max: 400 },
+    ...(withCta ? [{ key: 'cta', label: 'Bouton', max: 50 }] : []),
+  ],
+});
 const PARAGRAPHS = 'Laissez une ligne vide entre deux paragraphes.';
 const ONE_PER_LINE = 'Un élément par ligne.';
+const hero = { title: 'En-tête', fields: [text('heroEyebrow', 'Surtitre'), text('heroTitle', 'Titre', 120), area('heroText', 'Texte', 400)] };
+const leadForm = (fields: TextField[] = []) => ({
+  title: 'Formulaire',
+  fields: [...fields, area('consent', 'Case de consentement', 300), text('submit', 'Bouton', 60), area('success', 'Message après envoi', 300)],
+});
 
 export const TEXT_PAGES: Record<TextPage, { label: string; path: string; sections: { title: string; fields: TextField[] }[] }> = {
   accueil: {
@@ -277,6 +425,68 @@ export const TEXT_PAGES: Record<TextPage, { label: string; path: string; section
           area('success', 'Message après envoi', 300),
         ],
       },
+    ],
+  },
+  activites: {
+    label: 'Activités',
+    path: '/activites',
+    sections: [hero, { title: 'Métiers', fields: [cards('activities', 'Activités', true)] }],
+  },
+  b2b: {
+    label: 'Solutions B2B',
+    path: '/b2b',
+    sections: [
+      { ...hero, fields: [...hero.fields, text('ctaQuote', 'Bouton devis', 40), text('ctaCall', 'Bouton appel', 40)] },
+      { title: 'Publics', fields: [cards('segments', 'Publics')] },
+      { title: 'Comment ça marche', fields: [text('stepsTitle', 'Titre'), titled('steps', 'Étapes')] },
+      leadForm([
+        text('formEyebrow', 'Surtitre'),
+        text('formTitle', 'Titre', 120),
+        area('formText', 'Texte', 300),
+        text('directTitle', 'Titre de l’encadré contact', 120, 'Numéro de téléphone et WhatsApp : Paramètres › Identité et coordonnées.'),
+        text('whatsappLabel', 'Libellé WhatsApp', 60),
+        { key: 'sectors', label: 'Choix « Secteur »', kind: 'lines', max: 80, hint: ONE_PER_LINE },
+        { key: 'frequencies', label: 'Choix « Fréquence »', kind: 'lines', max: 80, hint: ONE_PER_LINE },
+        { key: 'budgets', label: 'Choix « Volume mensuel estimé »', kind: 'lines', max: 80, hint: ONE_PER_LINE },
+      ]),
+    ],
+  },
+  carrieres: {
+    label: 'Carrières',
+    path: '/carrieres',
+    sections: [
+      hero,
+      {
+        title: 'Offres et culture',
+        fields: [
+          text('jobsTitle', 'Titre des offres', 80, 'Les offres elles-mêmes se gèrent dans la rubrique Offres d’emploi.'),
+          area('noJobs', 'Message quand aucune offre n’est ouverte', 300),
+          text('cultureTitle', 'Titre de l’encadré culture', 80),
+          { key: 'culture', label: 'Culture', kind: 'lines', max: 120, hint: ONE_PER_LINE },
+        ],
+      },
+      leadForm([text('formTitle', 'Titre', 80), area('formText', 'Texte', 300), text('spontaneous', 'Choix « candidature spontanée »', 60)]),
+    ],
+  },
+  investir: {
+    label: 'Investir',
+    path: '/investir',
+    sections: [hero, { title: 'Arguments', fields: [titled('pillars', 'Arguments')] }, leadForm([text('formTitle', 'Titre', 80), area('formText', 'Texte', 300)])],
+  },
+  partenaires: {
+    label: 'Partenaires',
+    path: '/partenaires',
+    sections: [
+      hero,
+      { title: 'Types de partenariat', fields: [titled('offers', 'Partenariats')] },
+      leadForm([
+        text('formEyebrow', 'Surtitre'),
+        text('formTitle', 'Titre', 120),
+        area('formText', 'Texte', 300),
+        text('criteriaTitle', 'Titre des critères', 80),
+        { key: 'criteria', label: 'Critères', kind: 'lines', max: 160, hint: ONE_PER_LINE },
+        { key: 'partnershipTypes', label: 'Choix « Type de partenariat »', kind: 'lines', max: 60, hint: ONE_PER_LINE },
+      ]),
     ],
   },
 };

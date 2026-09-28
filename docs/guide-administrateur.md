@@ -82,7 +82,9 @@ Si l'ERP est branché, il met à jour prix, statuts et stocks tout seul (webhook
 - **FAQ** : questions par rubrique, ordre, publication.
 - **SEO & menus** : menu principal (liens et sous-menus), **redirections 301** (ancienne adresse › nouvelle), identifiant **Google Tag Manager** (mesure d'audience, chargée seulement après accord du visiteur) et code de vérification **Search Console**. Déclarez `/sitemap.xml` dans Search Console.
 
-- **Textes du site** (super administrateur, administrateur web) : titres et textes de l'**accueil** (bandeau principal, arguments, rubriques, appel final), du **pied de page** (présentation sous le logo, newsletter), de **Qui sommes-nous** (chiffres clés, histoire, vision, mission, valeurs, gouvernance, engagements) et de **Contact** (en-tête, libellés, sujets du formulaire, carte). Un champ vide reprend le texte d'origine ; « Rétablir les textes d'origine » annule toutes les modifications d'une page. Visible sur le site d'ici une minute.
+- **Offres d'emploi** : postes affichés sur la page Carrières (intitulé, lieu, contrat, description, ordre, publication). Chaque offre publiée est proposée dans le formulaire de candidature ; sans offre, la page propose la candidature spontanée.
+
+- **Textes du site** (super administrateur, administrateur web) : titres et textes de l'**accueil** (bandeau principal, arguments, rubriques, appel final), du **pied de page** (présentation sous le logo, newsletter), de **Qui sommes-nous** (chiffres clés, histoire, vision, mission, valeurs, gouvernance, engagements), de **Contact** (en-tête, libellés, sujets du formulaire, carte), des **Activités**, des **Solutions B2B** (publics, étapes, choix du formulaire de devis), de **Carrières**, d'**Investir** et de **Partenaires** (types de partenariat, critères, choix du formulaire). Un champ vide reprend le texte d'origine ; « Rétablir les textes d'origine » annule toutes les modifications d'une page. Visible sur le site d'ici une minute.
 
 ## 9. Paramètres
 

@@ -2,58 +2,22 @@
 import Layout from '../layouts/Layout.astro';
 import PageHero from '../components/PageHero.astro';
 import Icon, { type IconName } from '../components/ui/Icon.astro';
+import { getPageTexts, splitLines } from '../lib/page-texts';
 
-const activities: { id: string; icon: IconName; title: string; text: string; points: string[]; cta: { label: string; href: string } }[] = [
-  {
-    id: 'gros',
-    icon: 'box',
-    title: 'Gros & demi-gros',
-    text: 'Pour les revendeurs, boutiques et grossistes : des volumes importants à prix dégressifs, du carton au camion complet.',
-    points: ['Sacs, cartons, bidons, palettes', 'Prix volume et remises de fidélité', 'Livraison programmée'],
-    cta: { label: 'Demander un prix de gros', href: '/b2b#devis' },
-  },
-  {
-    id: 'detail',
-    icon: 'cart',
-    title: 'Détail',
-    text: 'Pour les ménages : les produits du quotidien en petits formats, en boutique, en ligne ou par WhatsApp.',
-    points: ['Boutique en ligne', 'Retrait gratuit au dépôt', 'Livraison à domicile'],
-    cta: { label: 'Faire mes courses', href: '/boutique' },
-  },
-  {
-    id: 'b2b',
-    icon: 'chef',
-    title: 'Restaurants & hôtellerie',
-    text: 'Un approvisionnement régulier et fiable pour les cuisines professionnelles.',
-    points: ['Formats professionnels', 'Livraison hebdomadaire', 'Facturation mensuelle'],
-    cta: { label: 'Voir les solutions B2B', href: '/b2b#restaurants' },
-  },
-  {
-    id: 'institutions',
-    icon: 'building',
-    title: 'Entreprises & institutions',
-    text: 'Cantines, ONG, écoles, administrations : réponse aux appels d\'offres et contrats cadres.',
-    points: ['Dossiers administratifs complets', 'Contrats annuels', 'Interlocuteur dédié'],
-    cta: { label: 'Contacter un commercial', href: '/b2b#entreprises' },
-  },
-  {
-    id: 'logistique',
-    icon: 'truck',
-    title: 'Logistique & distribution',
-    text: 'Entrepôts à Lomé et flotte de livraison pour servir le Grand Lomé et l\'intérieur du pays.',
-    points: ['Stockage ventilé et sécurisé', 'Tournées optimisées', 'Suivi des livraisons'],
-    cta: { label: 'Devenir partenaire logistique', href: '/partenaires#commercial' },
-  },
+// Textes modifiables dans le back-office (Textes du site › Activités). Ancres, icônes et liens restent fixes.
+const t = await getPageTexts('activites');
+const layout: { id: string; icon: IconName; href: string }[] = [
+  { id: 'gros', icon: 'box', href: '/b2b#devis' },
+  { id: 'detail', icon: 'cart', href: '/boutique' },
+  { id: 'b2b', icon: 'chef', href: '/b2b#restaurants' },
+  { id: 'institutions', icon: 'building', href: '/b2b#entreprises' },
+  { id: 'logistique', icon: 'truck', href: '/partenaires#commercial' },
 ];
+const activities = t.activities.map((a, i) => ({ ...a, ...layout[i] }));
 ---
 
 <Layout title="Nos activités" description="Gros, demi-gros, détail, B2B, entreprises et institutions, logistique : découvrez les métiers d'AfriSime.">
-  <PageHero
-    eyebrow="Nos activités"
-    title="Un distributeur, plusieurs métiers"
-    intro="Du sachet de sel au camion complet, AfriSime sert chaque client avec le format, le prix et le service qui lui conviennent."
-    breadcrumbs={[{ label: 'Activités' }]}
-  />
+  <PageHero eyebrow={t.heroEyebrow} title={t.heroTitle} intro={t.heroText} breadcrumbs={[{ label: 'Activités' }]} />
   <section class="section">
     <div class="container-page space-y-6">
       {
@@ -66,10 +30,10 @@ const activities: { id: string; icon: IconName; title: string; text: string; poi
               <h2 class="text-2xl">{a.title}</h2>
               <p class="mt-2 max-w-2xl text-muted">{a.text}</p>
               <ul class="mt-4 flex flex-wrap gap-2">
-                {a.points.map((p) => <li class="rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-800">{p}</li>)}
+                {splitLines(a.points).map((p) => <li class="rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-800">{p}</li>)}
               </ul>
             </div>
-            <a href={a.cta.href} class="btn btn-secondary">{a.cta.label}</a>
+            <a href={a.href} class="btn btn-secondary">{a.cta}</a>
           </article>
         ))
       }

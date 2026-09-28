@@ -33,6 +33,7 @@ const ADMIN_PAGES = [
   '/admin/promotions',
   '/admin/contenus',
   '/admin/faq',
+  '/admin/offres-emploi',
   '/admin/medias',
   '/admin/textes',
   '/admin/seo',
@@ -113,4 +114,24 @@ test('REC-09 back-office : double authentification, alerte de sécurité, toutes
   await page.locator('input[name="heroTitle"]').fill(original);
   await page.getByRole('button', { name: /Enregistrer les textes/ }).click();
   await expect(page.locator('.alert-success')).toBeVisible();
+
+  // Offres d'emploi : une offre publiée apparaît sur Carrières et dans le formulaire, puis est supprimée.
+  const job = `Poste E2E ${Date.now()}`;
+  await page.goto('/admin/offres-emploi');
+  const create = page.locator('form', { has: page.getByRole('button', { name: "Ajouter l'offre" }) });
+  await create.locator('input[name="title"]').fill(job);
+  await create.locator('input[name="place"]').fill('Lomé');
+  await create.getByRole('button', { name: "Ajouter l'offre" }).click();
+  await expect(page.locator('.alert-success')).toBeVisible();
+  await page.goto('/carrieres');
+  await expect(page.getByRole('heading', { name: job })).toBeVisible();
+  await expect(page.locator('select[name="poste"] option', { hasText: job })).toHaveCount(1);
+
+  await page.goto('/admin/offres-emploi');
+  const item = page.locator('details', { hasText: job });
+  await item.locator('summary').click();
+  page.once('dialog', (d) => d.accept());
+  await item.getByRole('button', { name: 'Supprimer' }).click();
+  await expect(page.locator('.alert-success')).toBeVisible();
+  await expect(page.locator('details', { hasText: job })).toHaveCount(0);
 });

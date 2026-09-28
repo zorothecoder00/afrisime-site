@@ -1,5 +1,6 @@
 ---
-// Textes du site : titres et textes de l'accueil, du pied de page, de Qui sommes-nous et du contact.
+// Textes du site : titres et textes des pages publiques (accueil, pied de page, Qui sommes-nous,
+// contact, activités, B2B, carrières, investir, partenaires).
 // Modifiables par le super administrateur et l'administrateur web (publication de contenus).
 import AdminLayout from '../../components/AdminLayout.astro';
 import Tabs from '../../components/admin/Tabs.astro';
@@ -76,7 +77,7 @@ const rowsFor = (v: string) => Math.min(12, Math.max(2, Math.ceil(v.length / 90)
                         <label class="block">
                           <span class="label !text-xs">{sub.label}</span>
                           {sub.max > 100 ? (
-                            <textarea name={`${field.key}.${i}.${sub.key}`} rows="2" maxlength={sub.max} class="input" placeholder={asItems(defaults[field.key])[i]?.[sub.key]}>{item[sub.key]}</textarea>
+                            <textarea name={`${field.key}.${i}.${sub.key}`} rows={sub.max > 300 ? 4 : 2} maxlength={sub.max} class="input" placeholder={asItems(defaults[field.key])[i]?.[sub.key]}>{item[sub.key]}</textarea>
                           ) : (
                             <input name={`${field.key}.${i}.${sub.key}`} value={item[sub.key]} maxlength={sub.max} class="input !py-2" placeholder={asItems(defaults[field.key])[i]?.[sub.key]} />
                           )}
