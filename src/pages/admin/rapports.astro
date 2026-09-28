@@ -2,6 +2,7 @@
 // Rapports (§16) : ventes, paniers abandonnés, leads et temps de réponse, recherches.
 // Trafic, sources et conversion globale : dans l'outil d'analytics branché via Tag Manager.
 import AdminLayout from '../../components/AdminLayout.astro';
+import { cardTint } from '../../lib/tints';
 import { deny } from '../../lib/admin';
 import { getCatalog } from '../../lib/catalog';
 import { formatDate, formatDateTime, formatPrice, LEAD_STATUS_LABELS, LEAD_TYPE_LABELS } from '../../lib/format';
@@ -61,12 +62,12 @@ const catalogStats = {
             ['En attente de paiement', String(commerce.awaitingPayment)],
             ['Annulées', `${commerce.cancelled} (${commerce.orders ? Math.round((commerce.cancelled / commerce.orders) * 100) : 0} %)`],
             ['Avec code promo', String(commerce.withPromo)],
-          ].map(([label, value]) => (
-            <li class="card p-4"><p class="text-sm text-muted">{label}</p><p class="mt-1 text-xl font-extrabold text-brand-900">{value}</p></li>
+          ].map(([label, value], i) => (
+            <li class:list={['card p-4', cardTint(i)]}><p class="text-sm text-ink/70">{label}</p><p class="mt-1 text-xl font-extrabold text-brand-900">{value}</p></li>
           ))}
         </ul>
         <div class="mt-4 grid gap-4 lg:grid-cols-2">
-          <div class="card overflow-x-auto p-4">
+          <div class:list={['card overflow-x-auto p-4', cardTint(0)]}>
             <h3 class="text-base">Meilleures ventes</h3>
             <table class="mt-2 w-full text-sm">
               <thead class="text-left text-muted"><tr><th class="py-1">Article</th><th class="text-right">Qté</th><th class="text-right">CA</th></tr></thead>
@@ -76,7 +77,7 @@ const catalogStats = {
               </tbody>
             </table>
           </div>
-          <div class="card overflow-x-auto p-4">
+          <div class:list={['card overflow-x-auto p-4', cardTint(1)]}>
             <h3 class="text-base">Par jour</h3>
             <table class="mt-2 w-full text-sm">
               <thead class="text-left text-muted"><tr><th class="py-1">Jour</th><th class="text-right">Commandes</th><th class="text-right">CA</th></tr></thead>
@@ -85,11 +86,11 @@ const catalogStats = {
               </tbody>
             </table>
           </div>
-          <div class="card p-4">
+          <div class:list={['card p-4', cardTint(2)]}>
             <h3 class="text-base">Par mode de livraison</h3>
             <ul class="mt-2 divide-y divide-line text-sm">{commerce.byZone.map((z) => <li class="flex justify-between py-1.5"><span>{zoneLabel(z.zone)}</span><strong>{z.orders}</strong></li>)}</ul>
           </div>
-          <div class="card p-4">
+          <div class:list={['card p-4', cardTint(3)]}>
             <h3 class="text-base">Synchronisation</h3>
             <ul class="mt-2 space-y-1 text-sm">
               <li>Commandes confirmées non transmises à l'ERP : <strong>{unsynced.orders}</strong></li>
@@ -106,7 +107,7 @@ const catalogStats = {
       <section class="mt-10" aria-labelledby="t-paniers">
         <h2 id="t-paniers" class="text-xl">Paniers abandonnés ({carts.length})</h2>
         <p class="text-sm text-muted">Clients connectés dont le panier n'a pas bougé depuis {ABANDONED_AFTER_HOURS} h, sans commande depuis. À relancer par le service client.</p>
-        <div class="card mt-3 overflow-x-auto">
+        <div class:list={['card mt-3 overflow-x-auto', cardTint(4)]}>
           <table class="w-full min-w-[600px] text-left text-sm">
             <thead class="border-b border-line bg-canvas text-muted"><tr><th class="px-4 py-2">Client</th><th class="px-4 py-2">Articles</th><th class="px-4 py-2">Valeur</th><th class="px-4 py-2">Dernière activité</th></tr></thead>
             <tbody class="divide-y divide-line">
@@ -131,15 +132,15 @@ const catalogStats = {
       <section class="mt-10" aria-labelledby="t-leads">
         <h2 id="t-leads" class="text-xl">Leads et service</h2>
         <div class="mt-3 grid gap-4 md:grid-cols-3">
-          <div class="card p-4">
+          <div class:list={['card p-4', cardTint(5)]}>
             <h3 class="text-base">Par type</h3>
             <ul class="mt-2 divide-y divide-line text-sm">{leadsData.byType.map((t) => <li class="flex justify-between py-1.5"><span>{LEAD_TYPE_LABELS[t.type as keyof typeof LEAD_TYPE_LABELS] ?? t.type}</span><strong>{t.total}</strong></li>)}</ul>
           </div>
-          <div class="card p-4">
+          <div class:list={['card p-4', cardTint(6)]}>
             <h3 class="text-base">Suivi commercial</h3>
             <ul class="mt-2 divide-y divide-line text-sm">{leadsData.byStatus.map((t) => <li class="flex justify-between py-1.5"><span>{LEAD_STATUS_LABELS[t.status]}</span><strong>{t.total}</strong></li>)}</ul>
           </div>
-          <div class="card p-4">
+          <div class:list={['card p-4', cardTint(7)]}>
             <h3 class="text-base">Temps de première réponse</h3>
             <p class="mt-2 text-2xl font-extrabold text-brand-900">{leadsData.responseHours === null ? '—' : leadsData.responseHours < 48 ? `${leadsData.responseHours.toFixed(1)} h` : `${(leadsData.responseHours / 24).toFixed(1)} j`}</p>
             <p class="text-sm text-muted">Moyenne sur {leadsData.answered} demande(s) traitée(s) : délai avant la première action de l'équipe.</p>
@@ -152,11 +153,11 @@ const catalogStats = {
   <section class="mt-10" aria-labelledby="t-recherche">
     <h2 id="t-recherche" class="text-xl">Recherches ({search.total})</h2>
     <div class="mt-3 grid gap-4 md:grid-cols-2">
-      <div class="card p-4">
+      <div class:list={['card p-4', cardTint(8)]}>
         <h3 class="text-base">Les plus fréquentes</h3>
         <ul class="mt-2 divide-y divide-line text-sm">{search.top.map((s) => <li class="flex justify-between py-1.5"><span>{s.query}</span><strong>{s.total}</strong></li>)}</ul>
       </div>
-      <div class="card p-4">
+      <div class:list={['card p-4', cardTint(9)]}>
         <h3 class="text-base">Sans résultat</h3>
         <p class="hint">Produits demandés que le catalogue n'a pas : pistes de référencement.</p>
         <ul class="mt-2 divide-y divide-line text-sm">{search.zero.length === 0 ? <li class="py-1.5 text-muted">Aucune.</li> : search.zero.map((s) => <li class="flex justify-between py-1.5"><span>{s.query}</span><strong>{s.total}</strong></li>)}</ul>
@@ -172,7 +173,7 @@ const catalogStats = {
         ['Masqués', catalogStats.hidden],
         ['Indisponibles', catalogStats.unavailable],
         ['Sans photo', catalogStats.noPhoto],
-      ].map(([label, value]) => <li class="card p-4"><p class="text-sm text-muted">{label}</p><p class="mt-1 text-xl font-extrabold text-brand-900">{value}</p></li>)}
+      ].map(([label, value], i) => <li class:list={['card p-4', cardTint(i)]}><p class="text-sm text-ink/70">{label}</p><p class="mt-1 text-xl font-extrabold text-brand-900">{value}</p></li>)}
     </ul>
   </section>
 </AdminLayout>
