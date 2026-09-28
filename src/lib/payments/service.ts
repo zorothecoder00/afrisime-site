@@ -13,7 +13,7 @@ import { getPaymentProvider, providerById, type PaymentState } from './providers
 type OrderRow = typeof orders.$inferSelect;
 type PaymentRow = typeof payments.$inferSelect;
 
-export const ONLINE_METHODS = ['mobile-money', 'carte'];
+export { ONLINE_METHODS } from '../settings';
 
 export class PaymentError extends Error {}
 

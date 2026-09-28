@@ -2,53 +2,14 @@
 import Icon from './ui/Icon.astro';
 import Logo from './ui/Logo.astro';
 import { contactLinks, getSettings } from '../lib/settings';
-import { getPageTexts } from '../lib/page-texts';
+import { getPageTexts, parseLinks } from '../lib/page-texts';
 
 const { contact, social, identity } = await getSettings();
 const links = contactLinks(contact);
-// Textes modifiables dans le back-office (Textes du site › Pied de page).
+// Textes et liens modifiables dans le back-office (Textes du site › En-tête et pied de page).
 const t = await getPageTexts('pied');
-
-const columns = [
-  {
-    title: 'Boutique',
-    links: [
-      { label: 'Tout le catalogue', href: '/boutique' },
-      { label: 'Promotions', href: '/boutique?badge=promotion' },
-      { label: 'Nouveautés', href: '/boutique?tri=nouveautes' },
-      { label: 'Produits locaux', href: '/boutique?categorie=produits-locaux' },
-      { label: 'Mon panier', href: '/panier' },
-      { label: 'Suivre ma commande', href: '/suivi' },
-    ],
-  },
-  {
-    title: 'Professionnels',
-    links: [
-      { label: 'Solutions B2B', href: '/b2b' },
-      { label: 'Demander un devis', href: '/b2b#devis' },
-      { label: 'Devenir fournisseur', href: '/partenaires#formulaire' },
-      { label: 'Investir', href: '/investir' },
-    ],
-  },
-  {
-    title: 'AfriSime',
-    links: [
-      { label: 'Qui sommes-nous', href: '/afrisime' },
-      { label: 'Nos activités', href: '/activites' },
-      { label: 'Média', href: '/media' },
-      { label: 'Carrières', href: '/carrieres' },
-      { label: 'FAQ', href: '/faq' },
-    ],
-  },
-];
-
-const legal = [
-  { label: 'Mentions légales', href: '/legal/mentions-legales' },
-  { label: 'CGV', href: '/legal/cgv' },
-  { label: 'Livraison & retours', href: '/legal/livraison-retours' },
-  { label: 'Confidentialité', href: '/legal/confidentialite' },
-  { label: 'Cookies', href: '/legal/cookies' },
-];
+const columns = t.columns.map((c) => ({ title: c.title, links: parseLinks(c.links) }));
+const legal = parseLinks(t.legalLinks);
 ---
 
 <footer class="mt-auto bg-brand-950 text-brand-100">
@@ -117,7 +78,7 @@ const legal = [
       <p>© {new Date().getFullYear()} {identity.name}. {t.copyright}</p>
       <ul class="flex flex-wrap gap-x-5 gap-y-2">
         {legal.map((l) => <li><a href={l.href} class="hover:text-white">{l.label}</a></li>)}
-        <li><button type="button" class="hover:text-white" data-open-consent>Gérer les cookies</button></li>
+        <li><button type="button" class="hover:text-white" data-open-consent>{t.cookiesLabel}</button></li>
       </ul>
     </div>
   </div>

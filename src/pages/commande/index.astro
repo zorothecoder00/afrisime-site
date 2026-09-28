@@ -7,15 +7,12 @@ import Layout from '../../layouts/Layout.astro';
 import Field from '../../components/ui/Field.astro';
 import Icon, { type IconName } from '../../components/ui/Icon.astro';
 import { formatPrice } from '../../lib/format';
-import { onlinePaymentAvailable } from '../../lib/payments/service';
-import { activeZones, enabledPaymentMethods, getSettings } from '../../lib/settings';
+import { activeZones, checkoutPaymentMethods, getSettings } from '../../lib/settings';
 
 const settings = await getSettings();
 const zones = activeZones(settings);
-const online = onlinePaymentAvailable();
-const methods = enabledPaymentMethods(settings).map((m) =>
-  m.id !== 'livraison' && !online ? { ...m, description: 'Un conseiller vous envoie le lien de paiement après la commande.' } : m,
-);
+// Sans prestataire de paiement configuré, Mobile Money et carte ne sont pas proposés.
+const methods = checkoutPaymentMethods(settings);
 const methodIcon: Record<string, IconName> = { 'mobile-money': 'phone', carte: 'shield', livraison: 'truck' };
 const step = 'grid size-7 shrink-0 place-items-center rounded-full bg-brand-900 text-sm font-extrabold text-white';
 const block = 'rounded-2xl bg-white p-5 ring-1 ring-line sm:p-6';
@@ -107,7 +104,7 @@ const block = 'rounded-2xl bg-white p-5 ring-1 ring-line sm:p-6';
               {
                 methods.map((m, i) => (
                   <label class="flex cursor-pointer items-center gap-3 rounded-xl border-2 border-line p-3.5 transition hover:border-brand-600 has-[:checked]:border-brand-700 has-[:checked]:bg-brand-50">
-                    <input type="radio" name="paymentMethod" value={m.id} class="size-4 accent-brand-700" />
+                    <input type="radio" name="paymentMethod" value={m.id} checked={methods.length === 1} class="size-4 accent-brand-700" />
                     <span class="grid size-10 shrink-0 place-items-center rounded-lg bg-canvas text-brand-700">
                       <Icon name={methodIcon[m.id] ?? 'shield'} size={20} />
                     </span>

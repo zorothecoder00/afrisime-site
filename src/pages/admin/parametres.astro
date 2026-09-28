@@ -207,6 +207,7 @@ const ok = Astro.url.searchParams.get('ok');
         <label class="mt-4 block max-w-xs"><span class="label">Seuil de livraison offerte (FCFA)</span><input name="freeThreshold" value={s.delivery.freeThreshold} inputmode="numeric" class="input !py-2" /></label>
 
         <h2 class="mt-8 text-xl">Moyens de paiement</h2>
+        {!provider && <p class="alert alert-info mt-3 text-sm">Paiement en ligne non configuré (clé FedaPay manquante) : Mobile Money et carte bancaire sont masqués sur la page de commande, même cochés « Actif ». Seul le paiement à la livraison est proposé.</p>}
         <div class="mt-3 space-y-3">
           {s.payments.methods.map((m) => (
             <div class="grid gap-2 rounded-xl border border-line p-3 sm:grid-cols-[auto_1fr_2fr] sm:items-end">

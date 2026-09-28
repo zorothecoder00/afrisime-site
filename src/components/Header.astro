@@ -3,8 +3,11 @@ import Icon from './ui/Icon.astro';
 import Logo from './ui/Logo.astro';
 import { activeCampaigns } from '../lib/promotions';
 import { contactLinks, getSettings } from '../lib/settings';
+import { getPageTexts } from '../lib/page-texts';
 
 const { navigation: NAV, contact } = await getSettings();
+// Libellés des boutons pro : Textes du site › En-tête et pied de page.
+const t = await getPageTexts('pied');
 const links = contactLinks(contact);
 const [banner] = await activeCampaigns('bandeau');
 const path = Astro.url.pathname;
@@ -82,7 +85,7 @@ const isActive = (href: string) => {
 
     <div class="ml-auto flex shrink-0 items-center gap-1 sm:gap-2 lg:ml-0">
       <a href="/admin" class="btn btn-primary btn-sm" data-staff-link hidden>← Back-office</a>
-      <a href="/b2b" class="btn btn-accent btn-sm hidden sm:inline-flex lg:hidden xl:inline-flex">Espace pro · Devis</a>
+      <a href="/b2b" class="btn btn-accent btn-sm hidden sm:inline-flex lg:hidden xl:inline-flex">{t.headerPro}</a>
       <a href="/compte" class="btn btn-ghost btn-sm" aria-label="Mon compte">
         <Icon name="user" size={22} />
       </a>
@@ -123,7 +126,7 @@ const isActive = (href: string) => {
       }
       <li class="py-1"><a href="/faq" class="block py-2.5 font-bold text-brand-900">FAQ</a></li>
       <li class="flex flex-col gap-2 py-4">
-        <a href="/b2b" class="btn btn-accent">Espace pro · Demander un devis</a>
+        <a href="/b2b" class="btn btn-accent">{t.headerProMobile}</a>
         <a href={links.whatsappHref} class="btn btn-secondary" target="_blank" rel="noopener">
           <Icon name="whatsapp" size={18} />Commander sur WhatsApp
         </a>

@@ -10,7 +10,7 @@ import { getPageTexts } from '../lib/page-texts';
 const [jobs, t] = await Promise.all([listPublishedJobs(), getPageTexts('carrieres')]);
 ---
 
-<Layout title="Carrières" description="Rejoignez AfriSime : offres d'emploi, culture d'entreprise et candidature spontanée.">
+<Layout title="Carrières" description={t.seoDescription}>
   <PageHero eyebrow={t.heroEyebrow} title={t.heroTitle} intro={t.heroText} breadcrumbs={[{ label: 'AfriSime', href: '/afrisime' }, { label: 'Carrières' }]} />
 
   <section class="section">

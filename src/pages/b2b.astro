@@ -20,7 +20,7 @@ const layout: { id: string; icon: IconName }[] = [
 const segments = t.segments.map((s, i) => ({ ...s, ...layout[i] }));
 ---
 
-<Layout title="Solutions B2B" description="Prix de gros, livraisons programmées et commercial dédié pour commerçants, revendeurs, restaurants, entreprises et institutions au Togo.">
+<Layout title="Solutions B2B" description={t.seoDescription}>
   <PageHero eyebrow={t.heroEyebrow} title={t.heroTitle} intro={t.heroText} breadcrumbs={[{ label: 'Solutions B2B' }]}>
     <div class="mt-8 flex flex-col gap-3 sm:flex-row">
       <a href="#devis" class="btn btn-primary">{t.ctaQuote}</a>

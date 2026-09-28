@@ -14,7 +14,7 @@ const t = await getPageTexts('contact');
 const mapSrc = safeMapUrl(t.mapUrl) ?? DEFAULT_TEXTS.contact.mapUrl;
 ---
 
-<Layout title="Contact" description={`Contactez AfriSime à Lomé : ${contact.phone}, WhatsApp, e-mail, formulaire et plan d'accès.`}>
+<Layout title="Contact" description={t.seoDescription}>
   <PageHero eyebrow={t.heroEyebrow} title={t.heroTitle} intro={t.heroText} breadcrumbs={[{ label: 'Contact' }]} />
 
   <section class="section">

@@ -9,7 +9,7 @@ import { getPageTexts } from '../lib/page-texts';
 const t = await getPageTexts('investir');
 ---
 
-<Layout title="Investir" description="Relations investisseurs AfriSime : présentation, modèle économique et contact.">
+<Layout title="Investir" description={t.seoDescription}>
   <PageHero eyebrow={t.heroEyebrow} title={t.heroTitle} intro={t.heroText} breadcrumbs={[{ label: 'AfriSime', href: '/afrisime' }, { label: 'Investir' }]} />
   <section class="section">
     <div class="container-page grid gap-4 md:grid-cols-2">

@@ -5,6 +5,10 @@ import { settings } from '../db/schema';
 import { DELIVERY_ZONES, FREE_DELIVERY_THRESHOLD, NAV, PAYMENT_METHODS, SITE, type DeliveryZone, type NavItem, type PaymentMethod } from '../data/site';
 import { cached, invalidate } from './cache';
 import { db } from './db';
+import { getPaymentProvider } from './payments/providers';
+
+/** Moyens de paiement réglés en ligne chez le prestataire. */
+export const ONLINE_METHODS = ['mobile-money', 'carte'];
 
 export type Settings = {
   identity: {
@@ -112,4 +116,10 @@ export function activeZones(s: Settings) {
 
 export function enabledPaymentMethods(s: Settings) {
   return s.payments.methods.filter((m) => m.enabled);
+}
+
+/** Moyens proposés à la commande : Mobile Money et carte seulement si un prestataire de paiement est configuré. */
+export function checkoutPaymentMethods(s: Settings) {
+  const online = !!getPaymentProvider();
+  return enabledPaymentMethods(s).filter((m) => online || !ONLINE_METHODS.includes(m.id));
 }

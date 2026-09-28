@@ -3,10 +3,12 @@ import { FAQ_GROUPS as groups, listFaq } from '../lib/content';
 import Layout from '../layouts/Layout.astro';
 import PageHero from '../components/PageHero.astro';
 import Icon from '../components/ui/Icon.astro';
+import { getPageTexts } from '../lib/page-texts';
 import { contactLinks, getSettings } from '../lib/settings';
 
-const faq = await listFaq();
-const links = contactLinks((await getSettings()).contact);
+// Questions : rubrique FAQ ; titres et encadré final : Textes du site › FAQ.
+const [faq, settings, t] = await Promise.all([listFaq(), getSettings(), getPageTexts('faq')]);
+const links = contactLinks(settings.contact);
 
 const jsonLd = {
   '@context': 'https://schema.org',
@@ -15,8 +17,8 @@ const jsonLd = {
 };
 ---
 
-<Layout title="FAQ" description="Questions fréquentes sur AfriSime : commande en ligne, paiement, livraison à Lomé et au Togo, achats professionnels." jsonLd={jsonLd}>
-  <PageHero eyebrow="Aide" title="Questions fréquentes" breadcrumbs={[{ label: 'FAQ' }]} />
+<Layout title="FAQ" description={t.seoDescription} jsonLd={jsonLd}>
+  <PageHero eyebrow={t.heroEyebrow} title={t.heroTitle} breadcrumbs={[{ label: 'FAQ' }]} />
 
   <section class="section">
     <div class="container-page grid gap-10 lg:grid-cols-[220px_1fr]">
@@ -47,10 +49,10 @@ const jsonLd = {
           ))
         }
         <div class="rounded-2xl bg-brand-900 p-8 text-white">
-          <h2 class="text-2xl !text-white">Vous n'avez pas trouvé votre réponse ?</h2>
+          <h2 class="text-2xl !text-white">{t.ctaTitle}</h2>
           <div class="mt-5 flex flex-col gap-2 sm:flex-row">
-            <a href="/contact" class="btn btn-accent">Nous écrire</a>
-            <a href={links.whatsappHref} target="_blank" rel="noopener" class="btn border border-white/40 text-white hover:bg-white/10"><Icon name="whatsapp" size={18} />WhatsApp</a>
+            <a href="/contact" class="btn btn-accent">{t.ctaContact}</a>
+            <a href={links.whatsappHref} target="_blank" rel="noopener" class="btn border border-white/40 text-white hover:bg-white/10"><Icon name="whatsapp" size={18} />{t.ctaWhatsapp}</a>
           </div>
         </div>
       </div>

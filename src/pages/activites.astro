@@ -16,7 +16,7 @@ const layout: { id: string; icon: IconName; href: string }[] = [
 const activities = t.activities.map((a, i) => ({ ...a, ...layout[i] }));
 ---
 
-<Layout title="Nos activités" description="Gros, demi-gros, détail, B2B, entreprises et institutions, logistique : découvrez les métiers d'AfriSime.">
+<Layout title="Nos activités" description={t.seoDescription}>
   <PageHero eyebrow={t.heroEyebrow} title={t.heroTitle} intro={t.heroText} breadcrumbs={[{ label: 'Activités' }]} />
   <section class="section">
     <div class="container-page space-y-6">

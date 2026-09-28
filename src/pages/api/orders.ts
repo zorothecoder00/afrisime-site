@@ -9,7 +9,7 @@ import type { Order } from '../../lib/integrations';
 import { notifyOrderPlaced } from '../../lib/notifications';
 import { findOrderByIdempotencyKey, PromoLimitError, pushOrderToErp, saveOrder } from '../../lib/orders';
 import { ONLINE_METHODS, PaymentError, startPayment } from '../../lib/payments/service';
-import { enabledPaymentMethods, getSettings } from '../../lib/settings';
+import { checkoutPaymentMethods, getSettings } from '../../lib/settings';
 import { isSameOrigin, json, newId, rateLimit } from '../../lib/server';
 import { clean, isValidEmail, isValidPhone } from '../../lib/validation';
 
@@ -44,7 +44,7 @@ export const POST: APIRoute = async ({ request, clientAddress, locals }) => {
     address: clean(body.customer?.address, 300),
   };
   const settings = await getSettings();
-  const payment = enabledPaymentMethods(settings).find((p) => p.id === body.paymentMethod);
+  const payment = checkoutPaymentMethods(settings).find((p) => p.id === body.paymentMethod);
   const q = await quote({ items: body.items, zoneId: body.deliveryZone, promoCode: body.promoCode, user: locals.user });
 
   const errors: Record<string, string> = {};

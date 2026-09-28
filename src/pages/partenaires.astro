@@ -17,7 +17,7 @@ const layout: { id: string; icon: IconName }[] = [
 const offers = t.offers.map((o, i) => ({ ...o, ...layout[i] }));
 ---
 
-<Layout title="Partenaires & fournisseurs" description="Devenez fournisseur, partenaire commercial ou dépôt-vente d'AfriSime, distributeur alimentaire au Togo.">
+<Layout title="Partenaires & fournisseurs" description={t.seoDescription}>
   <PageHero eyebrow={t.heroEyebrow} title={t.heroTitle} intro={t.heroText} breadcrumbs={[{ label: 'Partenaires' }]} />
 
   <section class="section">

@@ -4,6 +4,7 @@
 // leur nombre d'éléments (chacun a son icône), les listes « une ligne par élément » sont libres.
 import { eq } from 'drizzle-orm';
 import { settings } from '../db/schema';
+import { safeHref } from './admin';
 import { cached, invalidate } from './cache';
 import { db } from './db';
 
@@ -65,6 +66,37 @@ export const DEFAULT_TEXTS = {
     newsletterConsent: "J'accepte de recevoir les communications d'AfriSime.",
     newsletterSuccess: 'Merci, vous êtes inscrit à la newsletter.',
     copyright: 'Tous droits réservés.',
+    headerPro: 'Espace pro · Devis',
+    headerProMobile: 'Espace pro · Demander un devis',
+    columns: [
+      {
+        title: 'Boutique',
+        links: [
+          'Tout le catalogue | /boutique',
+          'Promotions | /boutique?badge=promotion',
+          'Nouveautés | /boutique?tri=nouveautes',
+          'Produits locaux | /boutique?categorie=produits-locaux',
+          'Mon panier | /panier',
+          'Suivre ma commande | /suivi',
+        ].join('\n'),
+      },
+      {
+        title: 'Professionnels',
+        links: ['Solutions B2B | /b2b', 'Demander un devis | /b2b#devis', 'Devenir fournisseur | /partenaires#formulaire', 'Investir | /investir'].join('\n'),
+      },
+      {
+        title: 'AfriSime',
+        links: ['Qui sommes-nous | /afrisime', 'Nos activités | /activites', 'Média | /media', 'Carrières | /carrieres', 'FAQ | /faq'].join('\n'),
+      },
+    ],
+    legalLinks: [
+      'Mentions légales | /legal/mentions-legales',
+      'CGV | /legal/cgv',
+      'Livraison & retours | /legal/livraison-retours',
+      'Confidentialité | /legal/confidentialite',
+      'Cookies | /legal/cookies',
+    ],
+    cookiesLabel: 'Gérer les cookies',
   },
   afrisime: {
     heroEyebrow: 'AfriSime',
@@ -84,6 +116,8 @@ export const DEFAULT_TEXTS = {
       "Parti d'un dépôt à Lomé, AfriSime s'est structuré autour de trois métiers : le gros et le demi-gros pour les revendeurs, le détail pour les ménages, et l'approvisionnement des entreprises et institutions.",
     ].join('\n\n'),
     welcomeEyebrow: 'Mot de bienvenue',
+    visionLabel: 'Vision',
+    missionLabel: 'Mission',
     vision: "Devenir la référence de la distribution alimentaire moderne en Afrique de l'Ouest.",
     mission: "Rendre les produits alimentaires de qualité disponibles, accessibles et abordables, du producteur jusqu'au consommateur.",
     valuesEyebrow: 'Nos valeurs',
@@ -109,6 +143,7 @@ export const DEFAULT_TEXTS = {
     ],
     ctaInvest: 'Investir dans AfriSime',
     ctaJoin: 'Nous rejoindre',
+    seoDescription: 'AfriSime, distributeur alimentaire togolais : histoire, vision, mission, valeurs, gouvernance et engagements RSE.',
   },
   contact: {
     heroEyebrow: 'Contact',
@@ -125,8 +160,10 @@ export const DEFAULT_TEXTS = {
     submit: 'Envoyer le message',
     success: 'Merci ! Votre message est bien envoyé. Nous vous répondons sous 24 h ouvrées.',
     mapUrl: 'https://www.openstreetmap.org/export/embed.html?bbox=1.18%2C6.11%2C1.27%2C6.17&layer=mapnik',
+    seoDescription: "Contactez AfriSime à Lomé : téléphone, WhatsApp, e-mail, formulaire et plan d'accès.",
   },
   activites: {
+    seoDescription: "Gros, demi-gros, détail, B2B, entreprises et institutions, logistique : découvrez les métiers d'AfriSime.",
     heroEyebrow: 'Nos activités',
     heroTitle: 'Un distributeur, plusieurs métiers',
     heroText: 'Du sachet de sel au camion complet, AfriSime sert chaque client avec le format, le prix et le service qui lui conviennent.',
@@ -164,6 +201,7 @@ export const DEFAULT_TEXTS = {
     ],
   },
   b2b: {
+    seoDescription: 'Prix de gros, livraisons programmées et commercial dédié pour commerçants, revendeurs, restaurants, entreprises et institutions au Togo.',
     heroEyebrow: 'Solutions B2B',
     heroTitle: "L'approvisionnement des professionnels, simplifié",
     heroText: 'Commerçants, revendeurs, restaurants, entreprises : AfriSime vous livre en volume, au prix juste, avec un interlocuteur dédié.',
@@ -195,6 +233,7 @@ export const DEFAULT_TEXTS = {
     success: 'Merci ! Votre demande de devis est enregistrée. Un commercial vous rappelle sous 24 h ouvrées.',
   },
   carrieres: {
+    seoDescription: "Rejoignez AfriSime : offres d'emploi, culture d'entreprise et candidature spontanée.",
     heroEyebrow: 'Carrières',
     heroTitle: "Rejoignez l'équipe AfriSime",
     heroText: 'Logistique, vente, e-commerce, finance : construisons ensemble la distribution alimentaire de demain.',
@@ -210,6 +249,7 @@ export const DEFAULT_TEXTS = {
     success: 'Merci pour votre candidature ! Nous revenons vers vous si votre profil correspond.',
   },
   investir: {
+    seoDescription: 'Relations investisseurs AfriSime : présentation, modèle économique et contact.',
     heroEyebrow: 'Investisseurs & institutions',
     heroTitle: 'Investir dans la distribution de demain',
     heroText: 'AfriSime construit un réseau de distribution alimentaire moderne, connecté et à fort impact local.',
@@ -226,6 +266,7 @@ export const DEFAULT_TEXTS = {
     success: 'Merci. La direction vous recontactera rapidement.',
   },
   partenaires: {
+    seoDescription: "Devenez fournisseur, partenaire commercial ou dépôt-vente d'AfriSime, distributeur alimentaire au Togo.",
     heroEyebrow: 'Partenaires',
     heroTitle: 'Grandissons ensemble',
     heroText: 'AfriSime travaille avec des producteurs locaux, des importateurs et des partenaires commerciaux pour rendre les bons produits accessibles partout au Togo.',
@@ -250,7 +291,39 @@ export const DEFAULT_TEXTS = {
     submit: 'Envoyer ma proposition',
     success: 'Merci ! Votre proposition est transmise à notre équipe achats. Réponse sous 5 jours ouvrés.',
   },
+  faq: {
+    seoDescription: 'Questions fréquentes sur AfriSime : commande en ligne, paiement, livraison à Lomé et au Togo, achats professionnels.',
+    heroEyebrow: 'Aide',
+    heroTitle: 'Questions fréquentes',
+    ctaTitle: "Vous n'avez pas trouvé votre réponse ?",
+    ctaContact: 'Nous écrire',
+    ctaWhatsapp: 'WhatsApp',
+  },
+  media: {
+    seoDescription: "Actualités, conseils, vidéos, événements et communiqués d'AfriSime.",
+    heroEyebrow: 'Média',
+    heroTitle: 'Actualités & conseils',
+    heroText: 'Nouveautés, conseils pratiques, vidéos, événements et communiqués de presse.',
+    empty: 'Aucune publication pour le moment. Revenez bientôt !',
+  },
+  introuvable: {
+    title: 'Cette page est introuvable',
+    text: 'Le lien est peut-être ancien, ou la page a été déplacée.',
+    searchPlaceholder: 'Rechercher un produit…',
+    searchButton: 'Rechercher',
+    homeButton: "Retour à l'accueil",
+  },
 };
+
+/** Liens saisis « Libellé | adresse », un par ligne. Les adresses non sûres (javascript:…) sont ignorées. */
+export function parseLinks(value: string | string[]) {
+  const lines = Array.isArray(value) ? value : splitLines(value);
+  return lines.flatMap((line) => {
+    const [label, raw = ''] = line.split('|').map((s) => s.trim());
+    const href = safeHref(raw);
+    return label && href ? [{ label, href }] : [];
+  });
+}
 
 /** Liste à puces saisie « un élément par ligne » dans un champ d'une carte. */
 export const splitLines = (value: string) =>
@@ -301,6 +374,11 @@ const leadForm = (fields: TextField[] = []) => ({
   title: 'Formulaire',
   fields: [...fields, area('consent', 'Case de consentement', 300), text('submit', 'Bouton', 60), area('success', 'Message après envoi', 300)],
 });
+const seo = {
+  title: 'Référencement',
+  fields: [area('seoDescription', 'Description pour Google', 300, 'Affichée sous le titre dans les résultats de recherche : 150 à 160 caractères conseillés.')],
+};
+const LINKS = 'Un lien par ligne, au format « Libellé | /adresse » (adresse du site commençant par /, ou lien complet https://…).';
 
 export const TEXT_PAGES: Record<TextPage, { label: string; path: string; sections: { title: string; fields: TextField[] }[] }> = {
   accueil: {
@@ -340,9 +418,24 @@ export const TEXT_PAGES: Record<TextPage, { label: string; path: string; section
     ],
   },
   pied: {
-    label: 'Pied de page',
+    label: 'En-tête et pied de page',
     path: '/',
     sections: [
+      { title: 'En-tête', fields: [text('headerPro', 'Bouton professionnels', 40), text('headerProMobile', 'Bouton professionnels (menu mobile)', 60)] },
+      {
+        title: 'Colonnes de liens',
+        fields: [
+          {
+            key: 'columns',
+            label: 'Colonnes',
+            kind: 'items',
+            fields: [
+              { key: 'title', label: 'Titre', max: 40 },
+              { key: 'links', label: 'Liens (« Libellé | /adresse », un par ligne)', max: 1500 },
+            ],
+          },
+        ],
+      },
       {
         title: 'Sous le logo',
         fields: [area('about', 'Présentation', 300, 'Adresse, téléphone, e-mail et horaires : Paramètres › Identité et coordonnées.')],
@@ -351,7 +444,14 @@ export const TEXT_PAGES: Record<TextPage, { label: string; path: string; section
         title: 'Newsletter',
         fields: [text('newsletterTitle', 'Titre', 40), area('newsletterText', 'Texte', 200), area('newsletterConsent', 'Case de consentement', 200), text('newsletterSuccess', 'Message après inscription', 160)],
       },
-      { title: 'Bas de page', fields: [text('copyright', 'Mention après « © année Nom »', 120)] },
+      {
+        title: 'Bas de page',
+        fields: [
+          text('copyright', 'Mention après « © année Nom »', 120),
+          { key: 'legalLinks', label: 'Liens légaux', kind: 'lines', max: 200, hint: LINKS },
+          text('cookiesLabel', 'Bouton des cookies', 40),
+        ],
+      },
     ],
   },
   afrisime: {
@@ -382,7 +482,10 @@ export const TEXT_PAGES: Record<TextPage, { label: string; path: string; section
           text('welcomeEyebrow', 'Surtitre du mot du dirigeant', 60, 'Titre, nom, photo et message : Paramètres › Mot du dirigeant.'),
         ],
       },
-      { title: 'Vision et mission', fields: [area('vision', 'Vision', 300), area('mission', 'Mission', 300)] },
+      {
+        title: 'Vision et mission',
+        fields: [text('visionLabel', 'Surtitre vision', 40), area('vision', 'Vision', 300), text('missionLabel', 'Surtitre mission', 40), area('mission', 'Mission', 300)],
+      },
       { title: 'Valeurs', fields: [text('valuesEyebrow', 'Surtitre'), text('valuesTitle', 'Titre'), titled('values', 'Valeurs')] },
       {
         title: 'Gouvernance',
@@ -397,6 +500,7 @@ export const TEXT_PAGES: Record<TextPage, { label: string; path: string; section
         title: 'Engagements & RSE',
         fields: [text('commitmentsEyebrow', 'Surtitre'), text('commitmentsTitle', 'Titre'), titled('commitments', 'Engagements'), text('ctaInvest', 'Bouton investir', 40), text('ctaJoin', 'Bouton carrières', 40)],
       },
+      seo,
     ],
   },
   contact: {
@@ -425,12 +529,13 @@ export const TEXT_PAGES: Record<TextPage, { label: string; path: string; section
           area('success', 'Message après envoi', 300),
         ],
       },
+      seo,
     ],
   },
   activites: {
     label: 'Activités',
     path: '/activites',
-    sections: [hero, { title: 'Métiers', fields: [cards('activities', 'Activités', true)] }],
+    sections: [hero, { title: 'Métiers', fields: [cards('activities', 'Activités', true)] }, seo],
   },
   b2b: {
     label: 'Solutions B2B',
@@ -449,6 +554,7 @@ export const TEXT_PAGES: Record<TextPage, { label: string; path: string; section
         { key: 'frequencies', label: 'Choix « Fréquence »', kind: 'lines', max: 80, hint: ONE_PER_LINE },
         { key: 'budgets', label: 'Choix « Volume mensuel estimé »', kind: 'lines', max: 80, hint: ONE_PER_LINE },
       ]),
+      seo,
     ],
   },
   carrieres: {
@@ -466,12 +572,13 @@ export const TEXT_PAGES: Record<TextPage, { label: string; path: string; section
         ],
       },
       leadForm([text('formTitle', 'Titre', 80), area('formText', 'Texte', 300), text('spontaneous', 'Choix « candidature spontanée »', 60)]),
+      seo,
     ],
   },
   investir: {
     label: 'Investir',
     path: '/investir',
-    sections: [hero, { title: 'Arguments', fields: [titled('pillars', 'Arguments')] }, leadForm([text('formTitle', 'Titre', 80), area('formText', 'Texte', 300)])],
+    sections: [hero, { title: 'Arguments', fields: [titled('pillars', 'Arguments')] }, leadForm([text('formTitle', 'Titre', 80), area('formText', 'Texte', 300)]), seo],
   },
   partenaires: {
     label: 'Partenaires',
@@ -487,6 +594,37 @@ export const TEXT_PAGES: Record<TextPage, { label: string; path: string; section
         { key: 'criteria', label: 'Critères', kind: 'lines', max: 160, hint: ONE_PER_LINE },
         { key: 'partnershipTypes', label: 'Choix « Type de partenariat »', kind: 'lines', max: 60, hint: ONE_PER_LINE },
       ]),
+      seo,
+    ],
+  },
+  faq: {
+    label: 'FAQ',
+    path: '/faq',
+    sections: [
+      { title: 'En-tête', fields: [text('heroEyebrow', 'Surtitre'), text('heroTitle', 'Titre', 120, 'Les questions et réponses se gèrent dans la rubrique FAQ.')] },
+      { title: 'Encadré final', fields: [text('ctaTitle', 'Titre', 120), text('ctaContact', 'Bouton contact', 40), text('ctaWhatsapp', 'Bouton WhatsApp', 40)] },
+      seo,
+    ],
+  },
+  media: {
+    label: 'Média',
+    path: '/media',
+    sections: [{ ...hero, fields: [...hero.fields, area('empty', 'Message quand aucun article n’est publié', 200)] }, seo],
+  },
+  introuvable: {
+    label: 'Page introuvable',
+    path: '/page-introuvable',
+    sections: [
+      {
+        title: 'Page 404',
+        fields: [
+          text('title', 'Titre', 120),
+          area('text', 'Texte', 300),
+          text('searchPlaceholder', 'Texte du champ de recherche', 60),
+          text('searchButton', 'Bouton de recherche', 30),
+          text('homeButton', 'Bouton retour', 40),
+        ],
+      },
     ],
   },
 };

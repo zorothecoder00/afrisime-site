@@ -84,13 +84,13 @@ Si l'ERP est branché, il met à jour prix, statuts et stocks tout seul (webhook
 
 - **Offres d'emploi** : postes affichés sur la page Carrières (intitulé, lieu, contrat, description, ordre, publication). Chaque offre publiée est proposée dans le formulaire de candidature ; sans offre, la page propose la candidature spontanée.
 
-- **Textes du site** (super administrateur, administrateur web) : titres et textes de l'**accueil** (bandeau principal, arguments, rubriques, appel final), du **pied de page** (présentation sous le logo, newsletter), de **Qui sommes-nous** (chiffres clés, histoire, vision, mission, valeurs, gouvernance, engagements), de **Contact** (en-tête, libellés, sujets du formulaire, carte), des **Activités**, des **Solutions B2B** (publics, étapes, choix du formulaire de devis), de **Carrières**, d'**Investir** et de **Partenaires** (types de partenariat, critères, choix du formulaire). Un champ vide reprend le texte d'origine ; « Rétablir les textes d'origine » annule toutes les modifications d'une page. Visible sur le site d'ici une minute.
+- **Textes du site** (super administrateur, administrateur web) : titres et textes de l'**accueil** (bandeau principal, arguments, rubriques, appel final), du **pied de page** (présentation sous le logo, newsletter), de **Qui sommes-nous** (chiffres clés, histoire, vision, mission, valeurs, gouvernance, engagements), de **Contact** (en-tête, libellés, sujets du formulaire, carte), des **Activités**, des **Solutions B2B** (publics, étapes, choix du formulaire de devis), de **Carrières**, d'**Investir** et de **Partenaires** (types de partenariat, critères, choix du formulaire), de la **FAQ** et de **Média** (titres, encadrés), de la **page introuvable** (404), ainsi que l'**en-tête et le pied de page** (bouton Espace pro, colonnes de liens au format « Libellé | /adresse », liens légaux). Chaque page publique a aussi sa **description pour Google** (onglet de la page, section Référencement). Un champ vide reprend le texte d'origine ; « Rétablir les textes d'origine » annule toutes les modifications d'une page. Visible sur le site d'ici une minute.
 
 ## 9. Paramètres
 
 - **Identité et coordonnées** (super administrateur) : téléphone, WhatsApp, e-mail, adresse, horaires, réseaux sociaux, message du bandeau.
 - **Livraison** : zones, frais, délais, seuil de livraison offerte.
-- **Moyens de paiement** : activer ou désactiver le paiement à la livraison, Mobile Money, carte.
+- **Moyens de paiement** : activer ou désactiver le paiement à la livraison, Mobile Money, carte. Tant que la clé FedaPay n'est pas configurée, Mobile Money et carte sont masqués à la commande même s'ils sont actifs : seul le paiement à la livraison est proposé.
 - **Intégrations** : état des branchements (paiement, e-mails, SMS, ERP, CRM). Ils se règlent sur l'hébergeur par l'équipe technique (docs/deploiement.md).
 
 ## 10. Rapports

@@ -25,7 +25,7 @@ const valueIcons: IconName[] = ['shield', 'users', 'leaf', 'star'];
 const values = t.values.map((v, i) => ({ ...v, icon: valueIcons[i] }));
 ---
 
-<Layout title="Qui sommes-nous" description="AfriSime, distributeur alimentaire togolais : histoire, vision, mission, valeurs, gouvernance et engagements RSE.">
+<Layout title="Qui sommes-nous" description={t.seoDescription}>
   <PageHero
     eyebrow={t.heroEyebrow}
     title={t.heroTitle}
@@ -95,11 +95,11 @@ const values = t.values.map((v, i) => ({ ...v, icon: valueIcons[i] }));
   <section id="vision" class="section scroll-mt-32 bg-brand-900 text-white">
     <div class="container-page grid gap-6 md:grid-cols-2">
       <div class="rounded-3xl bg-brand-800 p-8">
-        <p class="eyebrow !text-accent-500">Vision</p>
+        <p class="eyebrow !text-accent-500">{t.visionLabel}</p>
         <p class="mt-3 text-2xl font-bold leading-snug">{t.vision}</p>
       </div>
       <div class="rounded-3xl bg-brand-800 p-8">
-        <p class="eyebrow !text-accent-500">Mission</p>
+        <p class="eyebrow !text-accent-500">{t.missionLabel}</p>
         <p class="mt-3 text-2xl font-bold leading-snug">{t.mission}</p>
       </div>
     </div>
