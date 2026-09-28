@@ -8,6 +8,7 @@ import { listArticles, showcaseSource } from '../lib/content';
 import { activeCampaigns } from '../lib/promotions';
 import { imageUrl } from '../lib/media';
 import { getSettings } from '../lib/settings';
+import { getPageTexts } from '../lib/page-texts';
 
 // Vidéos vitrines (back-office › Paramètres › Vidéos vitrines) : lecture automatique, muette, non cliquable.
 const { showcase: showcaseSettings } = await getSettings();
@@ -23,23 +24,15 @@ const popular = [...products].sort((a, b) => b.data.popularity - a.data.populari
 const promos = products.filter((p) => p.data.badges.includes('promotion')).slice(0, 3);
 const articles = (await listArticles(3)).slice(0, 3);
 const [offer] = await activeCampaigns('accueil-offres');
+// Textes modifiables dans le back-office (Textes du site › Accueil).
+const t = await getPageTexts('accueil');
 const countByCategory = (id: string) => products.filter((p) => p.data.category.id === id).length;
 
-const reasons: { icon: IconName; title: string; text: string }[] = [
-  { icon: 'box', title: 'Disponibilité', text: 'Un stock suivi en temps réel sur les produits essentiels.' },
-  { icon: 'pin', title: 'Proximité', text: 'Un dépôt à Lomé et des points de retrait près de chez vous.' },
-  { icon: 'truck', title: 'Livraison', text: 'Sous 24 h à Lomé, et partout au Togo.' },
-  { icon: 'shield', title: 'Qualité', text: 'Produits sélectionnés, stockés dans de bonnes conditions.' },
-  { icon: 'globe', title: 'Diversité', text: 'Produits locaux et importés, du sachet au sac de 100 kg.' },
-  { icon: 'users', title: 'Service', text: 'Un conseiller joignable par téléphone et WhatsApp.' },
-];
+const reasonIcons: IconName[] = ['box', 'pin', 'truck', 'shield', 'globe', 'users'];
+const reasons = t.reasons.map((r, i) => ({ ...r, icon: reasonIcons[i] }));
 
-const b2bSegments: { icon: IconName; title: string; text: string }[] = [
-  { icon: 'store', title: 'Commerçants', text: 'Réassort rapide et prix demi-gros pour boutiques et superettes.' },
-  { icon: 'handshake', title: 'Revendeurs & grossistes', text: 'Volumes, prix dégressifs et livraison programmée.' },
-  { icon: 'chef', title: 'Restaurants & hôtels', text: 'Approvisionnement régulier, facturation mensuelle.' },
-  { icon: 'building', title: 'Entreprises & institutions', text: 'Cantines, ONG, écoles : appels d\'offres et contrats cadres.' },
-];
+const segmentIcons: IconName[] = ['store', 'handshake', 'chef', 'building'];
+const b2bSegments = t.b2bSegments.map((r, i) => ({ ...r, icon: segmentIcons[i] }));
 ---
 
 <Layout>
@@ -48,19 +41,15 @@ const b2bSegments: { icon: IconName; title: string; text: string }[] = [
     <div class="absolute inset-0 opacity-[0.07]" style="background-image: radial-gradient(circle at 1px 1px, white 1px, transparent 0); background-size: 22px 22px;"></div>
     <div class:list={['container-page relative grid items-center gap-10 py-14 sm:py-20', showcase.length > 0 && 'xl:grid-cols-[1.1fr_1fr]']}>
       <div class="max-w-3xl">
-        <p class="eyebrow !text-accent-500">Local · Importé · Gros · Demi-gros · Détail · B2B</p>
-        <h1 class="mt-4 text-4xl !text-white sm:text-6xl">La distribution alimentaire, autrement.</h1>
-        <p class="mt-5 max-w-xl text-lg text-brand-100">
-          Les produits du quotidien au juste prix, livrés chez vous ou dans votre commerce. Pour les ménages comme pour les professionnels.
-        </p>
+        <p class="eyebrow !text-accent-500">{t.heroEyebrow}</p>
+        <h1 class="mt-4 text-4xl !text-white sm:text-6xl">{t.heroTitle}</h1>
+        <p class="mt-5 max-w-xl text-lg text-brand-100">{t.heroText}</p>
         <div class="mt-8 flex flex-col gap-3 sm:flex-row">
-          <a href="/boutique" class="btn btn-accent !px-7 !py-4 !text-base">Découvrir la boutique <Icon name="arrow" size={18} /></a>
-          <a href="/b2b" class="btn !px-7 !py-4 !text-base border border-white/40 text-white hover:bg-white/10">Je suis un professionnel</a>
+          <a href="/boutique" class="btn btn-accent !px-7 !py-4 !text-base">{t.heroCtaShop} <Icon name="arrow" size={18} /></a>
+          <a href="/b2b" class="btn !px-7 !py-4 !text-base border border-white/40 text-white hover:bg-white/10">{t.heroCtaPro}</a>
         </div>
         <ul class="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-sm text-brand-100">
-          <li class="flex items-center gap-2"><Icon name="check" size={16} class="text-accent-500" />Paiement Mobile Money</li>
-          <li class="flex items-center gap-2"><Icon name="check" size={16} class="text-accent-500" />Livraison sous 24 h à Lomé</li>
-          <li class="flex items-center gap-2"><Icon name="check" size={16} class="text-accent-500" />Prix de gros pour les pros</li>
+          {t.heroBadges.map((badge) => <li class="flex items-center gap-2"><Icon name="check" size={16} class="text-accent-500" />{badge}</li>)}
         </ul>
       </div>
 
@@ -114,7 +103,7 @@ const b2bSegments: { icon: IconName; title: string; text: string }[] = [
   <!-- Carrousel des rayons -->
   <section class="border-b border-line bg-white py-10 sm:py-12" aria-roledescription="carrousel" aria-label="Nos rayons en vedette" data-carousel>
     <div class="container-page">
-      <h2 class="text-2xl sm:text-3xl">Faites le tour de nos rayons</h2>
+      <h2 class="text-2xl sm:text-3xl">{t.carouselTitle}</h2>
       <div class="relative mt-6">
         <button
           type="button"
@@ -178,8 +167,8 @@ const b2bSegments: { icon: IconName; title: string; text: string }[] = [
     <div class="container-page">
       <div class="flex items-end justify-between gap-4">
         <div>
-          <p class="eyebrow !text-accent-500">Nos rayons</p>
-          <h2 class="mt-2 text-3xl !text-white">Parcourir par catégorie</h2>
+          <p class="eyebrow !text-accent-500">{t.categoriesEyebrow}</p>
+          <h2 class="mt-2 text-3xl !text-white">{t.categoriesTitle}</h2>
         </div>
         <a href="/boutique" class="hidden font-bold text-accent-500 hover:underline sm:block">Tout le catalogue →</a>
       </div>
@@ -210,8 +199,8 @@ const b2bSegments: { icon: IconName; title: string; text: string }[] = [
     <div class="container-page">
       <div class="flex items-end justify-between gap-4">
         <div>
-          <p class="eyebrow">Les plus demandés</p>
-          <h2 class="mt-2 text-3xl">Produits populaires</h2>
+          <p class="eyebrow">{t.popularEyebrow}</p>
+          <h2 class="mt-2 text-3xl">{t.popularTitle}</h2>
         </div>
         <a href="/boutique?tri=popularite" class="font-bold text-brand-700 hover:underline">Voir tout →</a>
       </div>
@@ -225,10 +214,10 @@ const b2bSegments: { icon: IconName; title: string; text: string }[] = [
   <section class="section bg-accent-100/60">
     <div class="container-page grid gap-8 lg:grid-cols-[1fr_2fr] lg:items-center">
       <div>
-        <p class="eyebrow !text-warning">Offres du moment</p>
-        <h2 class="mt-2 text-3xl">{offer?.title ?? 'Nos promotions'}</h2>
-        <p class="mt-3 text-muted">{offer?.text ?? 'Une sélection de produits à prix réduit, renouvelée chaque mois.'}</p>
-        <a href={offer?.ctaHref || '/boutique?badge=promotion'} class="btn btn-primary mt-6">{offer?.ctaLabel || 'Voir toutes les promotions'}</a>
+        <p class="eyebrow !text-warning">{t.promoEyebrow}</p>
+        <h2 class="mt-2 text-3xl">{offer?.title ?? t.promoTitle}</h2>
+        <p class="mt-3 text-muted">{offer?.text ?? t.promoText}</p>
+        <a href={offer?.ctaHref || '/boutique?badge=promotion'} class="btn btn-primary mt-6">{offer?.ctaLabel || t.promoCta}</a>
         {offer?.imageId && <img src={imageUrl(offer.imageId)} alt="" loading="lazy" class="mt-6 w-full rounded-2xl" />}
       </div>
       <div class="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-4">
@@ -241,8 +230,8 @@ const b2bSegments: { icon: IconName; title: string; text: string }[] = [
   <section class="section">
     <div class="container-page">
       <div class="mx-auto max-w-2xl text-center">
-        <p class="eyebrow">Pourquoi AfriSime</p>
-        <h2 class="mt-2 text-3xl">Un distributeur sur qui compter</h2>
+        <p class="eyebrow">{t.reasonsEyebrow}</p>
+        <h2 class="mt-2 text-3xl">{t.reasonsTitle}</h2>
       </div>
       <ul class="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {
@@ -267,11 +256,11 @@ const b2bSegments: { icon: IconName; title: string; text: string }[] = [
     <div class="container-page">
       <div class="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
         <div class="max-w-2xl">
-          <p class="eyebrow !text-accent-500">Solutions B2B</p>
-          <h2 class="mt-2 text-3xl !text-white sm:text-4xl">Professionnels, approvisionnez-vous en direct</h2>
-          <p class="mt-3 text-brand-200">Prix volume, livraisons programmées et un commercial dédié pour votre activité.</p>
+          <p class="eyebrow !text-accent-500">{t.b2bEyebrow}</p>
+          <h2 class="mt-2 text-3xl !text-white sm:text-4xl">{t.b2bTitle}</h2>
+          <p class="mt-3 text-brand-200">{t.b2bText}</p>
         </div>
-        <a href="/b2b#devis" class="btn btn-accent shrink-0">Demander un devis</a>
+        <a href="/b2b#devis" class="btn btn-accent shrink-0">{t.b2bCta}</a>
       </div>
       <ul class="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {
@@ -290,8 +279,8 @@ const b2bSegments: { icon: IconName; title: string; text: string }[] = [
   <!-- Marques -->
   <section class="section !pb-0">
     <div class="container-page">
-      <p class="eyebrow text-center">Nos marques</p>
-      <h2 class="mt-2 text-center text-3xl">Des marques de confiance</h2>
+      <p class="eyebrow text-center">{t.brandsEyebrow}</p>
+      <h2 class="mt-2 text-center text-3xl">{t.brandsTitle}</h2>
       <ul class="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         {
           brands.map((b) => (
@@ -311,8 +300,8 @@ const b2bSegments: { icon: IconName; title: string; text: string }[] = [
     <div class="container-page">
       <div class="flex items-end justify-between gap-4">
         <div>
-          <p class="eyebrow">Média</p>
-          <h2 class="mt-2 text-3xl">Actualités & conseils</h2>
+          <p class="eyebrow">{t.mediaEyebrow}</p>
+          <h2 class="mt-2 text-3xl">{t.mediaTitle}</h2>
         </div>
         <a href="/media" class="font-bold text-brand-700 hover:underline">Tout voir →</a>
       </div>
@@ -341,18 +330,18 @@ const b2bSegments: { icon: IconName; title: string; text: string }[] = [
     <div class="container-page">
       <div class="grid gap-4 rounded-3xl bg-brand-100 p-8 sm:p-12 lg:grid-cols-3">
         <div class="lg:col-span-3">
-          <h2 class="text-3xl">Comment pouvons-nous vous aider ?</h2>
+          <h2 class="text-3xl">{t.helpTitle}</h2>
         </div>
         <a href="/boutique" class="card flex items-center justify-between gap-4 p-6 hover:border-brand-600">
-          <span><strong class="block text-lg text-brand-900">Commander</strong><span class="text-sm text-muted">Pour la maison</span></span>
+          <span><strong class="block text-lg text-brand-900">{t.helpCards[0].title}</strong><span class="text-sm text-muted">{t.helpCards[0].text}</span></span>
           <Icon name="cart" size={28} class="text-brand-600" />
         </a>
         <a href="/b2b#devis" class="card flex items-center justify-between gap-4 p-6 hover:border-brand-600">
-          <span><strong class="block text-lg text-brand-900">Demander un devis</strong><span class="text-sm text-muted">Pour les professionnels</span></span>
+          <span><strong class="block text-lg text-brand-900">{t.helpCards[1].title}</strong><span class="text-sm text-muted">{t.helpCards[1].text}</span></span>
           <Icon name="chart" size={28} class="text-brand-600" />
         </a>
         <a href="/partenaires" class="card flex items-center justify-between gap-4 p-6 hover:border-brand-600">
-          <span><strong class="block text-lg text-brand-900">Devenir partenaire</strong><span class="text-sm text-muted">Fournisseurs, dépôt-vente</span></span>
+          <span><strong class="block text-lg text-brand-900">{t.helpCards[2].title}</strong><span class="text-sm text-muted">{t.helpCards[2].text}</span></span>
           <Icon name="handshake" size={28} class="text-brand-600" />
         </a>
       </div>

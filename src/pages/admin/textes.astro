@@ -1,0 +1,126 @@
+---
+// Textes du site : titres et textes de l'accueil, du pied de page, de Qui sommes-nous et du contact.
+// Modifiables par le super administrateur et l'administrateur web (publication de contenus).
+import AdminLayout from '../../components/AdminLayout.astro';
+import Tabs from '../../components/admin/Tabs.astro';
+import { str } from '../../lib/admin';
+import { audit } from '../../lib/audit';
+import { DEFAULT_TEXTS, getPageTexts, safeMapUrl, savePageTexts, TEXT_PAGES, textsFromForm, type TextPage } from '../../lib/page-texts';
+import { can } from '../../lib/roles';
+
+export const prerender = false;
+
+const me = Astro.locals.user!;
+if (!can(me.role, { settings: ['update'] }) && !can(me.role, { content: ['publish'] })) return new Response('Accès refusé.', { status: 403 });
+
+const pages = Object.keys(TEXT_PAGES) as TextPage[];
+const requested = Astro.url.searchParams.get('page') as TextPage;
+const page: TextPage = pages.includes(requested) ? requested : 'accueil';
+const def = TEXT_PAGES[page];
+const errors: string[] = [];
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const action = str(form, 'action');
+  if (action === 'reinitialiser') {
+    await savePageTexts(page, null, me.id);
+  } else {
+    const value = textsFromForm(page, form);
+    if (typeof value.mapUrl === 'string' && value.mapUrl && !safeMapUrl(value.mapUrl)) {
+      errors.push('Lien de carte non reconnu : utilisez le lien « intégrer » d’OpenStreetMap ou de Google Maps (https).');
+    }
+    if (!errors.length) await savePageTexts(page, value, me.id);
+  }
+  if (!errors.length) {
+    await audit({ actorId: me.id, action: `textes-${action === 'reinitialiser' ? 'reinitialises' : 'modifies'}`, target: page, ipAddress: Astro.clientAddress });
+    return Astro.redirect(`/admin/textes?page=${page}&ok=${action === 'reinitialiser' ? 'reset' : '1'}`, 303);
+  }
+}
+
+const values = (await getPageTexts(page)) as Record<string, string | string[] | Record<string, string>[]>;
+const defaults = DEFAULT_TEXTS[page] as Record<string, string | string[] | Record<string, string>[]>;
+const ok = Astro.url.searchParams.get('ok');
+const asText = (v: unknown) => (typeof v === 'string' ? v : '');
+const asLines = (v: unknown) => (Array.isArray(v) ? (v as string[]).join('\n') : '');
+const asItems = (v: unknown) => (Array.isArray(v) ? (v as Record<string, string>[]) : []);
+const rowsFor = (v: string) => Math.min(12, Math.max(2, Math.ceil(v.length / 90) + v.split('\n').length - 1));
+---
+
+<AdminLayout title="Textes du site">
+  <Tabs items={pages.map((p) => ({ label: TEXT_PAGES[p].label, href: `/admin/textes?page=${p}` }))} current={`/admin/textes?page=${page}`} />
+
+  {ok === '1' && <p class="alert alert-success mb-4">Textes enregistrés. Visibles sur le site d'ici une minute.</p>}
+  {ok === 'reset' && <p class="alert alert-success mb-4">Textes par défaut rétablis.</p>}
+  {errors.length > 0 && <div class="alert alert-error mb-4" role="alert"><ul class="list-disc pl-5">{errors.map((e) => <li>{e}</li>)}</ul></div>}
+
+  <p class="hint mb-4">
+    Page concernée : <a href={def.path} target="_blank" class="font-semibold underline">{def.label} ↗</a>. Un champ laissé vide reprend le texte d'origine.
+  </p>
+
+  <form method="post" class="space-y-6">
+    <input type="hidden" name="action" value="enregistrer" />
+    {
+      def.sections.map((section) => (
+        <fieldset class="card space-y-4 p-5">
+          <legend class="sr-only">{section.title}</legend>
+          <h2 class="text-xl" aria-hidden="true">{section.title}</h2>
+          {section.fields.map((field) =>
+            field.kind === 'items' ? (
+              <div>
+                <span class="label">{field.label}</span>
+                <ol class="grid gap-3 md:grid-cols-2">
+                  {asItems(values[field.key]).map((item, i) => (
+                    <li class="space-y-2 rounded-xl border border-line p-3">
+                      <span class="text-xs font-bold text-muted">N° {i + 1}</span>
+                      {field.fields.map((sub) => (
+                        <label class="block">
+                          <span class="label !text-xs">{sub.label}</span>
+                          {sub.max > 100 ? (
+                            <textarea name={`${field.key}.${i}.${sub.key}`} rows="2" maxlength={sub.max} class="input" placeholder={asItems(defaults[field.key])[i]?.[sub.key]}>{item[sub.key]}</textarea>
+                          ) : (
+                            <input name={`${field.key}.${i}.${sub.key}`} value={item[sub.key]} maxlength={sub.max} class="input !py-2" placeholder={asItems(defaults[field.key])[i]?.[sub.key]} />
+                          )}
+                        </label>
+                      ))}
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            ) : field.kind === 'lines' ? (
+              <label class="block">
+                <span class="label">{field.label}</span>
+                <textarea name={field.key} rows={Math.max(3, asItems(values[field.key]).length + 1)} class="input">{asLines(values[field.key])}</textarea>
+                {field.hint && <span class="hint block">{field.hint}</span>}
+              </label>
+            ) : field.kind === 'textarea' ? (
+              <label class="block">
+                <span class="label">{field.label}</span>
+                <textarea name={field.key} rows={rowsFor(asText(values[field.key]))} maxlength={field.max} class="input" placeholder={asText(defaults[field.key])}>{asText(values[field.key])}</textarea>
+                {field.hint && <span class="hint block">{field.hint}</span>}
+              </label>
+            ) : (
+              <label class="block">
+                <span class="label">{field.label}</span>
+                <input name={field.key} value={asText(values[field.key])} maxlength={field.max} class="input !py-2" placeholder={asText(defaults[field.key])} />
+                {field.hint && <span class="hint block">{field.hint}</span>}
+              </label>
+            ),
+          )}
+        </fieldset>
+      ))
+    }
+    <div class="sticky bottom-0 z-10 -mx-1 flex flex-wrap items-center gap-3 border-t border-line bg-canvas/95 px-1 py-3 backdrop-blur">
+      <button class="btn btn-primary">Enregistrer les textes « {def.label} »</button>
+    </div>
+  </form>
+
+  <form method="post" class="mt-4">
+    <input type="hidden" name="action" value="reinitialiser" />
+    <button class="btn btn-ghost btn-sm text-danger" data-confirm={`Rétablir tous les textes d'origine de « ${def.label} » ?`}>Rétablir les textes d'origine</button>
+  </form>
+</AdminLayout>
+
+<script>
+  import { initAdminForms } from '../../scripts/admin';
+  initAdminForms();
+</script>

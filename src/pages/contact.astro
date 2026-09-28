@@ -5,34 +5,36 @@ import Field from '../components/ui/Field.astro';
 import FileField from '../components/ui/FileField.astro';
 import Icon from '../components/ui/Icon.astro';
 import { contactLinks, getSettings } from '../lib/settings';
+import { DEFAULT_TEXTS, getPageTexts, safeMapUrl } from '../lib/page-texts';
 const { contact } = await getSettings();
 const links = contactLinks(contact);
 
-const subjects = ['Question sur une commande', 'Recherche d\'un produit', 'Demande professionnelle (B2B)', 'Partenariat / fournisseur', 'Réclamation', 'Presse / média', 'Autre'];
-const mapSrc = `https://www.openstreetmap.org/export/embed.html?bbox=1.18%2C6.11%2C1.27%2C6.17&layer=mapnik`;
+// Textes modifiables dans le back-office (Textes du site › Contact).
+const t = await getPageTexts('contact');
+const mapSrc = safeMapUrl(t.mapUrl) ?? DEFAULT_TEXTS.contact.mapUrl;
 ---
 
 <Layout title="Contact" description={`Contactez AfriSime à Lomé : ${contact.phone}, WhatsApp, e-mail, formulaire et plan d'accès.`}>
-  <PageHero eyebrow="Contact" title="Parlons-en" intro="Une question, une commande, un projet ? Notre équipe vous répond du lundi au samedi." breadcrumbs={[{ label: 'Contact' }]} />
+  <PageHero eyebrow={t.heroEyebrow} title={t.heroTitle} intro={t.heroText} breadcrumbs={[{ label: 'Contact' }]} />
 
   <section class="section">
     <div class="container-page grid gap-10 lg:grid-cols-[1fr_1.4fr]">
       <div class="space-y-4">
         <a href={links.phoneHref} class="card flex items-center gap-4 p-5 hover:border-brand-600">
           <span class="grid size-12 place-items-center rounded-xl bg-brand-100 text-brand-700"><Icon name="phone" /></span>
-          <span><span class="block text-sm text-muted">Téléphone</span><strong class="text-brand-900">{contact.phone}</strong></span>
+          <span><span class="block text-sm text-muted">{t.phoneLabel}</span><strong class="text-brand-900">{contact.phone}</strong></span>
         </a>
         <a href={links.whatsappHref} target="_blank" rel="noopener" class="card flex items-center gap-4 p-5 hover:border-brand-600">
           <span class="grid size-12 place-items-center rounded-xl bg-brand-100 text-brand-700"><Icon name="whatsapp" /></span>
-          <span><span class="block text-sm text-muted">WhatsApp</span><strong class="text-brand-900">Écrivez-nous</strong></span>
+          <span><span class="block text-sm text-muted">{t.whatsappLabel}</span><strong class="text-brand-900">{t.whatsappText}</strong></span>
         </a>
         <a href={`mailto:${contact.email}`} class="card flex items-center gap-4 p-5 hover:border-brand-600">
           <span class="grid size-12 place-items-center rounded-xl bg-brand-100 text-brand-700"><Icon name="mail" /></span>
-          <span><span class="block text-sm text-muted">E-mail</span><strong class="text-brand-900">{contact.email}</strong></span>
+          <span><span class="block text-sm text-muted">{t.emailLabel}</span><strong class="text-brand-900">{contact.email}</strong></span>
         </a>
         <div class="card flex items-center gap-4 p-5">
           <span class="grid size-12 place-items-center rounded-xl bg-brand-100 text-brand-700"><Icon name="pin" /></span>
-          <span><span class="block text-sm text-muted">Dépôt principal</span><strong class="text-brand-900">{contact.address}</strong><span class="block text-sm text-muted">{contact.hours}</span></span>
+          <span><span class="block text-sm text-muted">{t.addressLabel}</span><strong class="text-brand-900">{contact.address}</strong><span class="block text-sm text-muted">{contact.hours}</span></span>
         </div>
         <iframe
           title="Plan d'accès au dépôt AfriSime à Lomé"
@@ -42,8 +44,8 @@ const mapSrc = `https://www.openstreetmap.org/export/embed.html?bbox=1.18%2C6.11
           referrerpolicy="no-referrer"></iframe>
       </div>
 
-      <form data-lead-form class="card grid h-fit gap-4 p-6 sm:grid-cols-2 sm:p-8" data-success-message="Merci ! Votre message est bien envoyé. Nous vous répondons sous 24 h ouvrées." novalidate>
-        <h2 class="text-2xl sm:col-span-2">Écrivez-nous</h2>
+      <form data-lead-form class="card grid h-fit gap-4 p-6 sm:grid-cols-2 sm:p-8" data-success-message={t.success} novalidate>
+        <h2 class="text-2xl sm:col-span-2">{t.formTitle}</h2>
         <input type="hidden" name="type" value="contact" />
         <input type="hidden" name="source" value="page-contact" />
         <div class="hidden" aria-hidden="true"><input name="website" tabindex="-1" autocomplete="off" /></div>
@@ -51,7 +53,7 @@ const mapSrc = `https://www.openstreetmap.org/export/embed.html?bbox=1.18%2C6.11
         <Field name="name" label="Nom complet" required autocomplete="name" />
         <Field name="phone" label="Téléphone" type="tel" required autocomplete="tel" inputmode="tel" />
         <Field name="email" label="E-mail" type="email" autocomplete="email" />
-        <Field name="sujet" label="Sujet" required options={subjects} />
+        <Field name="sujet" label="Sujet" required options={t.subjects} />
         <Field name="commande" label="Numéro de commande" placeholder="AFS-…" hint="Si votre demande concerne une commande." class="sm:col-span-2" />
         <Field name="need" label="Message" required textarea class="sm:col-span-2" />
         <FileField label="Photos ou documents" hint="Utile pour une réclamation (produit abîmé, erreur de livraison). PDF, JPG ou PNG, 5 Mo max." class="sm:col-span-2" />
@@ -59,12 +61,12 @@ const mapSrc = `https://www.openstreetmap.org/export/embed.html?bbox=1.18%2C6.11
         <div class="sm:col-span-2">
           <label class="flex items-start gap-2 text-sm">
             <input type="checkbox" name="consent" class="mt-1 size-4 accent-brand-700" />
-            J'accepte qu'AfriSime utilise ces informations pour répondre à ma demande.
+            {t.consent}
           </label>
           <p class="field-error" data-error-for="consent" hidden></p>
         </div>
         <div class="sm:col-span-2">
-          <button type="submit" class="btn btn-primary w-full !py-4 sm:w-auto">Envoyer le message</button>
+          <button type="submit" class="btn btn-primary w-full !py-4 sm:w-auto">{t.submit}</button>
           <div data-form-status class="mt-4" hidden role="status"></div>
         </div>
       </form>
@@ -77,14 +79,19 @@ const mapSrc = `https://www.openstreetmap.org/export/embed.html?bbox=1.18%2C6.11
   const params = new URLSearchParams(location.search);
   const subject = document.querySelector<HTMLSelectElement>('select[name="sujet"]');
   const message = document.querySelector<HTMLTextAreaElement>('textarea[name="need"]');
-  if (params.get('sujet') === 'produit' && subject) subject.value = "Recherche d'un produit";
+  // Les sujets sont modifiables dans le back-office : on les reconnaît par un mot-clé.
+  const pick = (pattern: RegExp) => {
+    const option = [...(subject?.options ?? [])].find((o) => pattern.test(o.value));
+    if (option && subject) subject.value = option.value;
+  };
+  if (params.get('sujet') === 'produit') pick(/produit/i);
   if (params.get('message') && message) message.value = params.get('message')!.slice(0, 500);
   const order = document.querySelector<HTMLInputElement>('input[name="commande"]');
   if (params.get('commande') && order) order.value = params.get('commande')!.slice(0, 40);
-  if (params.get('sujet') === 'reclamation' && subject) subject.value = 'Réclamation';
+  if (params.get('sujet') === 'reclamation') pick(/r[ée]clamation/i);
   // Une réclamation est suivie par le service client comme un lead de type « reclamation ».
   const type = subject!.form!.querySelector<HTMLInputElement>('input[name="type"]')!;
-  const syncType = () => (type.value = subject?.value === 'Réclamation' ? 'reclamation' : 'contact');
+  const syncType = () => (type.value = /r[ée]clamation/i.test(subject?.value ?? '') ? 'reclamation' : 'contact');
   subject?.addEventListener('change', syncType);
   syncType();
 </script>

@@ -2,10 +2,12 @@
 // Onglets secondaires d'une section du back-office.
 interface Props {
   items: { label: string; href: string }[];
+  /** Onglet actif, quand les onglets se distinguent par un paramètre d'URL (?page=…). */
+  current?: string;
 }
-const { items } = Astro.props;
+const { items, current } = Astro.props;
 const path = Astro.url.pathname.replace(/\/$/, '');
-const active = (href: string) => path === href || (href !== items[0].href && path.startsWith(href));
+const active = (href: string) => (current ? href === current : path === href || (href !== items[0].href && path.startsWith(href)));
 ---
 
 <nav aria-label="Sous-sections" class="mb-6 flex gap-1 overflow-x-auto border-b border-line">

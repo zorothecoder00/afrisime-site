@@ -12,7 +12,7 @@ Ce guide sert de support de formation pour l'équipe qui gère le site. Il est a
 | Rôle | Rubriques |
 | --- | --- |
 | Super administrateur | Tout, dont Clients & équipe (rôles, blocages), Paramètres (identité, coordonnées), Journal |
-| Administrateur web | Contenus (publication), FAQ, Médias, SEO & menus, Rapports |
+| Administrateur web | Contenus (publication), Textes du site, FAQ, Médias, SEO & menus, Rapports |
 | E-commerce manager | Commandes, Catalogue, Promotions, Médias, Paramètres (livraison, paiement), Rapports |
 | Commercial B2B | Leads, validation des comptes pro, Rapports |
 | Service client | Commandes, Leads (contact, réclamations), FAQ |
@@ -81,6 +81,8 @@ Si l'ERP est branché, il met à jour prix, statuts et stocks tout seul (webhook
 - **Médias** : bibliothèque d'images, texte alternatif, code à copier. Une image utilisée ne peut pas être supprimée.
 - **FAQ** : questions par rubrique, ordre, publication.
 - **SEO & menus** : menu principal (liens et sous-menus), **redirections 301** (ancienne adresse › nouvelle), identifiant **Google Tag Manager** (mesure d'audience, chargée seulement après accord du visiteur) et code de vérification **Search Console**. Déclarez `/sitemap.xml` dans Search Console.
+
+- **Textes du site** (super administrateur, administrateur web) : titres et textes de l'**accueil** (bandeau principal, arguments, rubriques, appel final), du **pied de page** (présentation sous le logo, newsletter), de **Qui sommes-nous** (chiffres clés, histoire, vision, mission, valeurs, gouvernance, engagements) et de **Contact** (en-tête, libellés, sujets du formulaire, carte). Un champ vide reprend le texte d'origine ; « Rétablir les textes d'origine » annule toutes les modifications d'une page. Visible sur le site d'ici une minute.
 
 ## 9. Paramètres
 

@@ -34,6 +34,7 @@ const ADMIN_PAGES = [
   '/admin/contenus',
   '/admin/faq',
   '/admin/medias',
+  '/admin/textes',
   '/admin/seo',
   '/admin/parametres',
   '/admin/rapports',
@@ -94,4 +95,22 @@ test('REC-09 back-office : double authentification, alerte de sécurité, toutes
     expect(response?.status(), path).toBe(200);
     await expect(page.locator('main h1'), path).toBeVisible();
   }
+
+  // Textes du site : un titre modifié dans le back-office s'affiche sur l'accueil.
+  await page.goto('/admin/textes?page=accueil');
+  const title = page.locator('input[name="heroTitle"]');
+  const original = await title.inputValue();
+  const changed = `Titre E2E ${Date.now()}`;
+
+  await title.fill(changed);
+  await page.getByRole('button', { name: /Enregistrer les textes/ }).click();
+  await expect(page.locator('.alert-success')).toBeVisible();
+  await page.goto('/');
+  await expect(page.locator('main h1')).toHaveText(changed);
+
+  // Remet le texte d'origine (la base locale peut contenir des textes personnalisés).
+  await page.goto('/admin/textes?page=accueil');
+  await page.locator('input[name="heroTitle"]').fill(original);
+  await page.getByRole('button', { name: /Enregistrer les textes/ }).click();
+  await expect(page.locator('.alert-success')).toBeVisible();
 });
