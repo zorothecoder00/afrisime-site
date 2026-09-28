@@ -1,6 +1,7 @@
 ---
 // Suivi de commande sans compte (cahier des charges §8) : numéro de commande + téléphone.
 import Layout from '../layouts/Layout.astro';
+import { cardTint } from '../lib/tints';
 import PageHero from '../components/PageHero.astro';
 import OrderProgress from '../components/OrderProgress.astro';
 import Field from '../components/ui/Field.astro';
@@ -41,7 +42,7 @@ Astro.response.headers.set('Cache-Control', 'no-store');
   />
 
   <div class="container-page grid max-w-3xl gap-6 py-12">
-    <form method="post" class="card grid gap-4 p-6 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+    <form method="post" class:list={['card grid gap-4 p-6 sm:grid-cols-[1fr_1fr_auto] sm:items-end', cardTint(1)]}>
       <Field name="number" label="Numéro de commande" required placeholder="AFS-20260924-ABC123" value={number} />
       <Field name="phone" label="Téléphone" type="tel" required autocomplete="tel" inputmode="tel" />
       <button type="submit" class="btn btn-primary">Rechercher</button>
@@ -51,7 +52,7 @@ Astro.response.headers.set('Cache-Control', 'no-store');
 
     {
       result && (
-        <section class="card p-6" aria-labelledby="titre-commande">
+        <section class:list={['card p-6', cardTint(0)]} aria-labelledby="titre-commande">
           <div class="flex flex-wrap items-baseline justify-between gap-2">
             <h2 id="titre-commande" class="text-xl">Commande {result.row.number}</h2>
             <p class="text-sm text-muted">Passée le {formatDate(result.row.createdAt)}</p>
