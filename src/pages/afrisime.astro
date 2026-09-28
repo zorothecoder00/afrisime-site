@@ -136,7 +136,7 @@ const values = t.values.map((v, i) => ({ ...v, icon: valueIcons[i] }));
         <p class="mt-4 text-muted">{t.governanceText}</p>
       </div>
       <ul class="grid gap-3 sm:grid-cols-2">
-        {t.governancePoles.map((p) => <li class="card p-4 font-semibold text-brand-900">{p}</li>)}
+        {t.governancePoles.map((p, i) => <li class:list={['card p-4 font-semibold text-brand-900', cardTint(i)]}>{p}</li>)}
       </ul>
     </div>
   </section>
