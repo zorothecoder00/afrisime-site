@@ -9,3 +9,7 @@ const CARD_TINTS = [
 ];
 
 export const cardTint = (index: number) => CARD_TINTS[index % CARD_TINTS.length];
+
+/** Teinte d'un article selon son type (Média, accueil) : actualité verte, conseil bleu, communiqué violet… */
+const ARTICLE_ORDER = ['actualite', 'conseil', 'communique', 'evenement', 'video'];
+export const articleTint = (type: string) => (ARTICLE_ORDER.includes(type) ? cardTint(ARTICLE_ORDER.indexOf(type)) : '');

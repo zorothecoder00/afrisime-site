@@ -10,6 +10,7 @@ import { imageUrl } from '../lib/media';
 import { getSettings } from '../lib/settings';
 import Slideshow from '../components/Slideshow.astro';
 import { getPageTexts } from '../lib/page-texts';
+import { articleTint, cardTint } from '../lib/tints';
 
 // Vidéos vitrines (back-office › Paramètres › Vidéos vitrines) : lecture automatique, muette, non cliquable.
 const { showcase: showcaseSettings } = await getSettings();
@@ -238,9 +239,9 @@ const b2bSegments = t.b2bSegments.map((r, i) => ({ ...r, icon: segmentIcons[i] }
       </div>
       <ul class="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {
-          reasons.map((r) => (
-            <li class="card flex gap-4 p-6">
-              <span class="grid size-12 shrink-0 place-items-center rounded-xl bg-brand-100 text-brand-700">
+          reasons.map((r, i) => (
+            <li class:list={['card flex gap-4 p-6', cardTint(i)]}>
+              <span class="grid size-12 shrink-0 place-items-center rounded-xl bg-white text-brand-700">
                 <Icon name={r.icon} size={24} />
               </span>
               <div>
@@ -267,11 +268,11 @@ const b2bSegments = t.b2bSegments.map((r, i) => ({ ...r, icon: segmentIcons[i] }
       </div>
       <ul class="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {
-          b2bSegments.map((s) => (
-            <li class="rounded-2xl border border-brand-800 bg-brand-900 p-6">
-              <Icon name={s.icon} size={28} class="text-accent-500" />
-              <h3 class="mt-4 text-lg !text-white">{s.title}</h3>
-              <p class="mt-1 text-sm text-brand-200">{s.text}</p>
+          b2bSegments.map((s, i) => (
+            <li class:list={['rounded-2xl border p-6', cardTint(i)]}>
+              <Icon name={s.icon} size={28} class="text-brand-700" />
+              <h3 class="mt-4 text-lg">{s.title}</h3>
+              <p class="mt-1 text-sm text-ink/75">{s.text}</p>
             </li>
           ))
         }
@@ -311,9 +312,9 @@ const b2bSegments = t.b2bSegments.map((r, i) => ({ ...r, icon: segmentIcons[i] }
       <div class="mt-8 grid gap-4 md:grid-cols-3">
         {
           articles.map((a) => (
-            <article class="card flex flex-col p-6">
+            <article class:list={['card flex flex-col p-6', articleTint(a.type)]}>
               <p class="flex items-center gap-2 text-xs font-semibold text-muted">
-                <span class="badge badge-populaire">{ARTICLE_TYPE_LABELS[a.type as keyof typeof ARTICLE_TYPE_LABELS]}</span>
+                <span class="badge bg-white text-brand-800">{ARTICLE_TYPE_LABELS[a.type as keyof typeof ARTICLE_TYPE_LABELS]}</span>
                 <time datetime={a.publishedAt!.toISOString()}>{formatDate(a.publishedAt!)}</time>
               </p>
               <h3 class="mt-3 text-lg leading-snug">
@@ -331,19 +332,19 @@ const b2bSegments = t.b2bSegments.map((r, i) => ({ ...r, icon: segmentIcons[i] }
   <!-- CTA final -->
   <section class="pb-16">
     <div class="container-page">
-      <div class="grid gap-4 rounded-3xl bg-brand-100 p-8 sm:p-12 lg:grid-cols-3">
+      <div class="grid gap-4 rounded-3xl bg-white p-8 ring-1 ring-line sm:p-12 lg:grid-cols-3">
         <div class="lg:col-span-3">
           <h2 class="text-3xl">{t.helpTitle}</h2>
         </div>
-        <a href="/boutique" class="card flex items-center justify-between gap-4 p-6 hover:border-brand-600">
+        <a href="/boutique" class:list={['card flex items-center justify-between gap-4 p-6 hover:!border-brand-600', cardTint(0)]}>
           <span><strong class="block text-lg text-brand-900">{t.helpCards[0].title}</strong><span class="text-sm text-muted">{t.helpCards[0].text}</span></span>
           <Icon name="cart" size={28} class="text-brand-600" />
         </a>
-        <a href="/b2b#devis" class="card flex items-center justify-between gap-4 p-6 hover:border-brand-600">
+        <a href="/b2b#devis" class:list={['card flex items-center justify-between gap-4 p-6 hover:!border-brand-600', cardTint(1)]}>
           <span><strong class="block text-lg text-brand-900">{t.helpCards[1].title}</strong><span class="text-sm text-muted">{t.helpCards[1].text}</span></span>
           <Icon name="chart" size={28} class="text-brand-600" />
         </a>
-        <a href="/partenaires" class="card flex items-center justify-between gap-4 p-6 hover:border-brand-600">
+        <a href="/partenaires" class:list={['card flex items-center justify-between gap-4 p-6 hover:!border-brand-600', cardTint(2)]}>
           <span><strong class="block text-lg text-brand-900">{t.helpCards[2].title}</strong><span class="text-sm text-muted">{t.helpCards[2].text}</span></span>
           <Icon name="handshake" size={28} class="text-brand-600" />
         </a>
