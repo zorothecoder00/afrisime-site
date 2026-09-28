@@ -5,15 +5,17 @@ import { formatDate, formatPrice, ORDER_STATUS_LABELS } from '../../lib/format';
 interface Props {
   rows: (typeof orders.$inferSelect)[];
   empty?: string;
+  /** Fond coloré (page Commandes) ; le tableau de bord garde un fond blanc. */
+  tint?: string;
 }
-const { rows, empty = 'Aucune commande.' } = Astro.props;
+const { rows, empty = 'Aucune commande.', tint } = Astro.props;
 ---
 
 {
   rows.length === 0 ? (
-    <p class="card p-6 text-sm text-muted">{empty}</p>
+    <p class:list={['card p-6 text-sm text-muted', tint]}>{empty}</p>
   ) : (
-    <div class="card overflow-x-auto">
+    <div class:list={['card overflow-x-auto', tint]}>
       <table class="w-full min-w-[680px] text-left text-sm">
         <thead class="border-b border-line bg-canvas text-muted">
           <tr>

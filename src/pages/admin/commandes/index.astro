@@ -1,5 +1,6 @@
 ---
 import AdminLayout from '../../../components/AdminLayout.astro';
+import { cardTint } from '../../../lib/tints';
 import OrdersTable from '../../../components/admin/OrdersTable.astro';
 import Pagination from '../../../components/admin/Pagination.astro';
 import { ORDER_STATUS_LABELS } from '../../../lib/format';
@@ -28,7 +29,7 @@ const { rows, total } = await listOrders({
 ---
 
 <AdminLayout title="Commandes">
-  <form method="get" class="card grid gap-3 p-4 sm:grid-cols-[1fr_220px_auto_auto] sm:items-end">
+  <form method="get" class:list={['card grid gap-3 p-4 sm:grid-cols-[1fr_220px_auto_auto] sm:items-end', cardTint(1)]}>
     <label class="block">
       <span class="label">Recherche</span>
       <input type="search" name="q" value={q} placeholder="Numéro, nom, téléphone, e-mail" class="input" />
@@ -51,7 +52,7 @@ const { rows, total } = await listOrders({
   </form>
 
   <div class="mt-6">
-    <OrdersTable rows={rows} empty="Aucune commande ne correspond à ces critères." />
+    <OrdersTable rows={rows} empty="Aucune commande ne correspond à ces critères." tint={cardTint(0)} />
     <Pagination total={total} page={page} pageSize={PAGE_SIZE} />
   </div>
 </AdminLayout>
