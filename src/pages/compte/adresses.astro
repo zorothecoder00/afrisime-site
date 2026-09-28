@@ -1,5 +1,6 @@
 ---
 import { and, asc, count, desc, eq } from 'drizzle-orm';
+import { cardTint } from '../../lib/tints';
 import Layout from '../../layouts/Layout.astro';
 import AccountNav from '../../components/AccountNav.astro';
 import PageHero from '../../components/PageHero.astro';
@@ -47,11 +48,11 @@ const list = await db.select().from(addresses).where(eq(addresses.userId, me.id)
       <h2 id="titre-liste" class="sr-only">Adresses enregistrées</h2>
       {
         list.length === 0 ? (
-          <p class="card p-8 text-center text-muted">Aucune adresse enregistrée. Ajoutez-en une pour commander plus vite.</p>
+          <p class:list={['card p-8 text-center text-ink/75', cardTint(0)]}>Aucune adresse enregistrée. Ajoutez-en une pour commander plus vite.</p>
         ) : (
           <ul class="grid gap-3 sm:grid-cols-2">
-            {list.map((a) => (
-              <li class="card flex flex-col p-5">
+            {list.map((a, i) => (
+              <li class:list={['card flex flex-col p-5', cardTint(i)]}>
                 <p class="font-bold text-brand-900">
                   {a.label} {a.isDefault && <span class="badge badge-populaire ml-1">Par défaut</span>}
                 </p>
@@ -80,7 +81,7 @@ const list = await db.select().from(addresses).where(eq(addresses.userId, me.id)
         )
       }
     </section>
-    <form method="post" class="card h-fit space-y-4 p-6">
+    <form method="post" class:list={['card h-fit space-y-4 p-6', cardTint(1)]}>
       <h2 class="text-lg">Ajouter une adresse</h2>
       {error && <p class="alert alert-error" role="alert">{error}</p>}
       <input type="hidden" name="action" value="add" />

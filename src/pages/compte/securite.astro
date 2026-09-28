@@ -1,5 +1,6 @@
 ---
 import Layout from '../../layouts/Layout.astro';
+import { cardTint } from '../../lib/tints';
 import PageHero from '../../components/PageHero.astro';
 import AccountNav from '../../components/AccountNav.astro';
 import Field from '../../components/ui/Field.astro';
@@ -25,7 +26,7 @@ const mandatory = staff && !user.twoFactorEnabled;
       )
     }
 
-    <section class="card p-6" aria-labelledby="titre-2fa">
+    <section class:list={['card p-6', cardTint(1)]} aria-labelledby="titre-2fa">
       <h2 id="titre-2fa" class="text-xl">Double authentification</h2>
       {
         user.twoFactorEnabled ? (
@@ -79,7 +80,7 @@ const mandatory = staff && !user.twoFactorEnabled;
       }
     </section>
 
-    <section class="card p-6" aria-labelledby="titre-mdp">
+    <section class:list={['card p-6', cardTint(2)]} aria-labelledby="titre-mdp">
       <h2 id="titre-mdp" class="text-xl">Changer de mot de passe</h2>
       <form method="post" class="mt-4 space-y-4" data-change-password novalidate>
         <p data-form-status hidden tabindex="-1"></p>
