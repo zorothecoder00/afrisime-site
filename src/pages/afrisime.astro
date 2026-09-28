@@ -123,7 +123,7 @@ const values = t.values.map((v, i) => ({ ...v, icon: valueIcons[i] }));
       <p class="eyebrow">{t.valuesEyebrow}</p>
       <h2 class="mt-2 text-3xl">{t.valuesTitle}</h2>
       <ul class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {values.map((v) => <li class="card p-6"><Icon name={v.icon} size={28} class="text-brand-600" /><h3 class="mt-4 text-lg">{v.title}</h3><p class="mt-1 text-sm text-muted">{v.text}</p></li>)}
+        {values.map((v, i) => <li class:list={['card p-6', cardTint(i)]}><Icon name={v.icon} size={28} class="text-brand-600" /><h3 class="mt-4 text-lg">{v.title}</h3><p class="mt-1 text-sm text-muted">{v.text}</p></li>)}
       </ul>
     </div>
   </section>

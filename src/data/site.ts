@@ -33,6 +33,7 @@ export const NAV: NavItem[] = [
     label: 'AfriSime',
     href: '/afrisime',
     children: [
+      { label: 'Mot du dirigeant', href: '/afrisime#mot-du-dirigeant' },
       { label: 'Notre histoire', href: '/afrisime#histoire' },
       { label: 'Vision & mission', href: '/afrisime#vision' },
       { label: 'Valeurs', href: '/afrisime#valeurs' },
