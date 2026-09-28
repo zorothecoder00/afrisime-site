@@ -68,7 +68,7 @@ const mandatory = staff && !user.twoFactorEnabled;
                   <ul class="mt-1 grid grid-cols-2 gap-1 font-mono text-sm" data-backup-codes />
                 </div>
               </div>
-              <form class="space-y-4" data-confirm-2fa novalidate>
+              <form class="space-y-4" data-confirm-2fa data-next={staff ? '/admin' : '/compte?securite=1'} novalidate>
                 <p data-form-status hidden tabindex="-1" />
                 <Field name="code" label="Code à 6 chiffres" required autocomplete="one-time-code" inputmode="numeric" />
                 <button type="submit" class="btn btn-primary">Terminer l'activation</button>
@@ -118,7 +118,8 @@ const mandatory = staff && !user.twoFactorEnabled;
     bindForm(confirmForm, async (data) => {
       const { error } = await authClient.twoFactor.verifyTotp({ code: String(data.get('code') ?? '').replace(/\s/g, '') });
       if (error) return errorMessage(error);
-      location.href = '/compte?securite=1';
+      // L'équipe entre directement dans le back-office une fois la double authentification activée.
+      location.href = confirmForm.dataset.next ?? '/compte?securite=1';
     });
   }
 

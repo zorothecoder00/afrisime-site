@@ -1,6 +1,6 @@
 // Statistiques du back-office (§16 Analytics & KPI) calculées depuis la base :
 // commerce, paniers abandonnés, leads et temps de réponse, recherches, catalogue.
-import { and, count, desc, eq, gte, ne, sql } from 'drizzle-orm';
+import { and, count, desc, eq, gte, lt, ne, sql } from 'drizzle-orm';
 import { carts, leadEvents, leads, orderLines, orders, searchLog, user } from '../db/schema';
 import { getCatalog } from './catalog';
 import { db } from './db';
@@ -71,7 +71,7 @@ export async function abandonedCarts(limit = 50) {
     .where(
       and(
         sql`jsonb_array_length(${carts.items}) > 0`,
-        sql`${carts.updatedAt} < ${cutoff}`,
+        lt(carts.updatedAt, cutoff),
         sql`not exists (select 1 from ${orders} where ${orders.userId} = ${carts.userId} and ${orders.createdAt} > ${carts.updatedAt})`,
       ),
     )
