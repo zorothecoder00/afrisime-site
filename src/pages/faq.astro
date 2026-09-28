@@ -4,6 +4,7 @@ import Layout from '../layouts/Layout.astro';
 import PageHero from '../components/PageHero.astro';
 import Icon from '../components/ui/Icon.astro';
 import { getPageTexts } from '../lib/page-texts';
+import { cardTint } from '../lib/tints';
 import { contactLinks, getSettings } from '../lib/settings';
 
 // Questions : rubrique FAQ ; titres et encadré final : Textes du site › FAQ.
@@ -24,19 +25,19 @@ const jsonLd = {
     <div class="container-page grid gap-10 lg:grid-cols-[220px_1fr]">
       <nav aria-label="Rubriques de la FAQ" class="lg:sticky lg:top-40 lg:h-fit">
         <ul class="flex flex-wrap gap-2 lg:flex-col">
-          {groups.map((g) => <li><a href={`#${g.id}`} class="btn btn-ghost btn-sm">{g.title}</a></li>)}
+          {groups.map((g, gi) => <li><a href={`#${g.id}`} class:list={['btn btn-sm border', cardTint(gi)]}>{g.title}</a></li>)}
         </ul>
       </nav>
       <div class="space-y-12">
         {
-          groups.map((g) => (
+          groups.map((g, gi) => (
             <section id={g.id} class="scroll-mt-40">
               <h2 class="text-2xl">{g.title}</h2>
               <div class="mt-4 space-y-3">
                 {faq
                   .filter((q) => q.group === g.id)
                   .map((q) => (
-                    <details class="card group p-5">
+                    <details class:list={['card group p-5', cardTint(gi)]}>
                       <summary class="flex cursor-pointer list-none items-center justify-between gap-4 font-bold text-brand-900">
                         {q.question}
                         <Icon name="down" size={18} class="shrink-0 transition group-open:rotate-180" />
