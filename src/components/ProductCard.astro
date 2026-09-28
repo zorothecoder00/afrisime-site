@@ -11,8 +11,10 @@ interface Props {
   product: Product;
   category: Category;
   brand: Brand;
+  /** Fond coloré de la carte (boutique : une teinte par catégorie). */
+  tint?: string;
 }
-const { product, category, brand } = Astro.props;
+const { product, category, brand, tint } = Astro.props;
 const p = product.data;
 const href = productUrl(product);
 const variant = lowestVariant(product);
@@ -37,7 +39,7 @@ const statusColor = {
 const buyable = canBuyOnline(product);
 ---
 
-<article class="group relative flex h-full flex-col rounded-2xl bg-white p-2.5 ring-1 sm:p-3 ring-line/70 transition hover:shadow-lg hover:ring-brand-200">
+<article class:list={['group relative flex h-full flex-col rounded-2xl bg-white p-2.5 ring-1 sm:p-3 ring-line/70 transition hover:shadow-lg hover:ring-brand-200', tint && `border ${tint}`]}>
   <!-- Photo -->
   <div class="relative overflow-hidden rounded-xl bg-canvas">
     <ProductImage

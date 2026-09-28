@@ -5,6 +5,7 @@
 // (côté navigateur) et reflétés dans l'URL, donc partageables.
 import Layout from '../../layouts/Layout.astro';
 import ProductCard from '../../components/ProductCard.astro';
+import { cardTint } from '../../lib/tints';
 import Breadcrumbs from '../../components/ui/Breadcrumbs.astro';
 import Icon, { type IconName } from '../../components/ui/Icon.astro';
 import { getCatalog, lowestVariant } from '../../lib/catalog';
@@ -231,7 +232,7 @@ const legend = 'text-sm font-extrabold text-ink';
                 data-popularity={p.data.popularity}
                 data-created={p.data.createdAt.getTime()}
               >
-                <ProductCard product={p} category={cat} brand={brand} />
+                <ProductCard product={p} category={cat} brand={brand} tint={cardTint(Math.max(0, categories.findIndex((c) => c.id === cat.id)))} />
               </li>
             );
           })
