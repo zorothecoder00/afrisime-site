@@ -36,6 +36,48 @@ const values = t.values.map((v, i) => ({ ...v, icon: valueIcons[i] }));
     media="entete-afrisime"
   />
 
+  {
+    welcome.enabled && welcome.message.trim() && (
+      <section id="mot-du-dirigeant" class="section scroll-mt-32 !pb-0" aria-labelledby="mot-du-dirigeant-titre">
+        <figure class="container-page">
+          <div class="relative overflow-hidden rounded-3xl bg-brand-50 ring-1 ring-brand-100 lg:grid lg:grid-cols-[320px_1fr]">
+            <div class="relative flex items-center justify-center bg-brand-900 p-8 lg:p-10">
+              <div class="absolute inset-0 opacity-[0.08]" style="background-image: radial-gradient(circle at 1px 1px, white 1px, transparent 0); background-size: 18px 18px;" />
+              {welcome.photoId ? (
+                <img
+                  src={imageUrl(welcome.photoId)}
+                  alt={`Portrait de ${welcome.name}`}
+                  class="relative aspect-[4/5] w-56 rounded-2xl object-cover shadow-xl lg:w-full"
+                />
+              ) : (
+                <span class="relative grid aspect-square w-40 place-items-center rounded-full bg-accent-500 text-5xl font-extrabold text-brand-950 shadow-xl" aria-hidden="true">
+                  {initials}
+                </span>
+              )}
+            </div>
+            <div class="relative p-8 sm:p-12">
+              <span class="pointer-events-none absolute right-6 top-2 font-serif text-[9rem] leading-none text-brand-200 select-none" aria-hidden="true">
+                “
+              </span>
+              <p class="eyebrow">{t.welcomeEyebrow}</p>
+              <h2 id="mot-du-dirigeant-titre" class="relative mt-2 text-3xl">{welcome.title}</h2>
+              <blockquote class="relative mt-6 space-y-4 text-lg leading-relaxed text-ink">
+                {paragraphs.map((p) => <p>{p}</p>)}
+              </blockquote>
+              <figcaption class="mt-8 flex items-center gap-4 border-t border-brand-200 pt-6">
+                <span class="h-10 w-1 rounded-full bg-accent-500" aria-hidden="true" />
+                <span>
+                  <span class="block text-lg font-extrabold text-brand-900">{welcome.name}</span>
+                  <span class="text-sm text-muted">{welcome.role}</span>
+                </span>
+              </figcaption>
+            </div>
+          </div>
+        </figure>
+      </section>
+    )
+  }
+
   <section class="border-b border-line bg-white">
     <dl class="container-page grid grid-cols-2 gap-4 py-10 md:grid-cols-4">
       {
@@ -59,47 +101,6 @@ const values = t.values.map((v, i) => ({ ...v, icon: valueIcons[i] }));
         {history.map((p) => <p>{p}</p>)}
       </div>
     </div>
-
-    {
-      welcome.enabled && welcome.message.trim() && (
-        <figure class="container-page mt-14" aria-labelledby="mot-du-dirigeant">
-          <div class="relative overflow-hidden rounded-3xl bg-brand-50 ring-1 ring-brand-100 lg:grid lg:grid-cols-[320px_1fr]">
-            <div class="relative flex items-center justify-center bg-brand-900 p-8 lg:p-10">
-              <div class="absolute inset-0 opacity-[0.08]" style="background-image: radial-gradient(circle at 1px 1px, white 1px, transparent 0); background-size: 18px 18px;" />
-              {welcome.photoId ? (
-                <img
-                  src={imageUrl(welcome.photoId)}
-                  alt={`Portrait de ${welcome.name}`}
-                  loading="lazy"
-                  class="relative aspect-[4/5] w-56 rounded-2xl object-cover shadow-xl lg:w-full"
-                />
-              ) : (
-                <span class="relative grid aspect-square w-40 place-items-center rounded-full bg-accent-500 text-5xl font-extrabold text-brand-950 shadow-xl" aria-hidden="true">
-                  {initials}
-                </span>
-              )}
-            </div>
-            <div class="relative p-8 sm:p-12">
-              <span class="pointer-events-none absolute right-6 top-2 font-serif text-[9rem] leading-none text-brand-200 select-none" aria-hidden="true">
-                “
-              </span>
-              <p class="eyebrow">{t.welcomeEyebrow}</p>
-              <h2 id="mot-du-dirigeant" class="relative mt-2 text-3xl">{welcome.title}</h2>
-              <blockquote class="relative mt-6 space-y-4 text-lg leading-relaxed text-ink">
-                {paragraphs.map((p) => <p>{p}</p>)}
-              </blockquote>
-              <figcaption class="mt-8 flex items-center gap-4 border-t border-brand-200 pt-6">
-                <span class="h-10 w-1 rounded-full bg-accent-500" aria-hidden="true" />
-                <span>
-                  <span class="block text-lg font-extrabold text-brand-900">{welcome.name}</span>
-                  <span class="text-sm text-muted">{welcome.role}</span>
-                </span>
-              </figcaption>
-            </div>
-          </div>
-        </figure>
-      )
-    }
   </section>
 
   <Slideshow placement="afrisime" class="section !pt-0" />

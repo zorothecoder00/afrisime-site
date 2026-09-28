@@ -460,6 +460,10 @@ export const TEXT_PAGES: Record<TextPage, { label: string; path: string; section
     sections: [
       { title: 'En-tête', fields: [text('heroEyebrow', 'Surtitre'), text('heroTitle', 'Titre', 120), area('heroText', 'Texte', 400)] },
       {
+        title: 'Mot du dirigeant (en haut de la page)',
+        fields: [text('welcomeEyebrow', 'Surtitre', 60, 'Titre, nom, fonction, photo et message : Paramètres › Mot du dirigeant.')],
+      },
+      {
         title: 'Chiffres clés',
         fields: [
           {
@@ -479,7 +483,6 @@ export const TEXT_PAGES: Record<TextPage, { label: string; path: string; section
           text('historyEyebrow', 'Surtitre'),
           text('historyTitle', 'Titre', 120),
           area('historyText', 'Texte', 3000, PARAGRAPHS),
-          text('welcomeEyebrow', 'Surtitre du mot du dirigeant', 60, 'Titre, nom, photo et message : Paramètres › Mot du dirigeant.'),
         ],
       },
       {
