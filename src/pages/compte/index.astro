@@ -144,11 +144,13 @@ const orderUrl = (o: (typeof orders)[number]) => `/commande/confirmation?n=${enc
   import { authClient } from '../../lib/auth-client';
   import { cart } from '../../scripts/cart';
   import { fetchQuote } from '../../scripts/quote';
+  import { forgetStaff } from '../../scripts/staff';
 
   document.querySelector('[data-logout]')?.addEventListener('click', async () => {
     await authClient.signOut();
     // Le panier reste sauvegardé sur le compte, mais disparaît de cet appareil (appareil partagé).
     cart.forget();
+    forgetStaff();
     location.href = '/';
   });
 

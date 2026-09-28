@@ -81,6 +81,7 @@ const isActive = (href: string) => {
     </nav>
 
     <div class="ml-auto flex shrink-0 items-center gap-1 sm:gap-2 lg:ml-0">
+      <a href="/admin" class="btn btn-primary btn-sm" data-staff-link hidden>← Back-office</a>
       <a href="/b2b" class="btn btn-accent btn-sm hidden sm:inline-flex lg:hidden xl:inline-flex">Espace pro · Devis</a>
       <a href="/compte" class="btn btn-ghost btn-sm" aria-label="Mon compte">
         <Icon name="user" size={22} />
@@ -132,6 +133,9 @@ const isActive = (href: string) => {
 </header>
 
 <script>
+  import { showStaffLinks } from '../scripts/staff';
+  showStaffLinks();
+
   const toggle = document.querySelector<HTMLButtonElement>('[data-menu-toggle]');
   const menu = document.getElementById('menu-mobile');
   toggle?.addEventListener('click', () => {

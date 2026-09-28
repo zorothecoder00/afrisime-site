@@ -35,10 +35,13 @@ const isActive = (href: string) => (href === '/admin' ? path === '/admin' || pat
   <div class="border-b border-line bg-brand-950 text-white">
     <div class="container-page flex flex-wrap items-center justify-between gap-3 pt-5">
       <p class="text-xs font-bold uppercase tracking-[0.14em] text-brand-200">Back-office AfriSime</p>
-      <p class="text-sm text-brand-100">
-        {me.name} · {ROLE_LABELS[me.role as RoleName]} · <a href="/admin/aide" class="underline hover:text-white">Aide</a> ·
-        <a href="/" class="underline hover:text-white">Voir le site</a>
-      </p>
+      <div class="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl border border-white/15 bg-white/10 px-4 py-2 text-sm text-brand-100">
+        <span><span class="font-semibold text-white">{me.name}</span> · {ROLE_LABELS[me.role as RoleName]}</span>
+        <span class="hidden h-4 w-px bg-white/25 sm:block" aria-hidden="true"></span>
+        <a href="/admin/aide" class="font-semibold underline-offset-4 hover:text-white hover:underline">Aide</a>
+        <span class="hidden h-4 w-px bg-white/25 sm:block" aria-hidden="true"></span>
+        <a href="/" class="font-semibold underline-offset-4 hover:text-white hover:underline">Voir le site ↗</a>
+      </div>
     </div>
     <nav aria-label="Navigation du back-office" class="container-page mt-3 flex flex-wrap gap-1.5 pb-3">
       {
@@ -72,3 +75,8 @@ const isActive = (href: string) => (href === '/admin' ? path === '/admin' || pat
     </div>
   </div>
 </Layout>
+
+<script>
+  import { rememberStaff } from '../scripts/staff';
+  rememberStaff();
+</script>
