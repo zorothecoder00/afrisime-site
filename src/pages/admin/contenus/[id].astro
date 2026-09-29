@@ -28,7 +28,7 @@ const locked = !!row && (row.status === 'publie' || row.status === 'archive') &&
 const editable = canEdit && !locked;
 
 const TYPES = [...ARTICLE_TYPES, 'page'] as const;
-const typeLabel = (t: string) => (t === 'page' ? 'Page (légale ou informative)' : ARTICLE_TYPE_LABELS[t as keyof typeof ARTICLE_TYPE_LABELS]);
+const typeLabel = (t: string) => (t === 'page' ? 'Page légale' : ARTICLE_TYPE_LABELS[t as keyof typeof ARTICLE_TYPE_LABELS]);
 let errors: string[] = [];
 let draft: Partial<Content> = row ?? { type: Astro.url.searchParams.get('type') === 'page' ? 'page' : 'actualite', status: 'brouillon', authorName: 'Équipe AfriSime' };
 
@@ -128,7 +128,7 @@ const publicUrl = draft.type === 'page' ? `/legal/${draft.slug}` : `/media/${dra
 const scheduled = draft.status === 'publie' && draft.publishedAt && draft.publishedAt > new Date();
 ---
 
-<AdminLayout title={isNew ? 'Nouveau contenu' : (row?.title ?? 'Contenu')} back={{ label: 'Contenus', href: `/admin/contenus${draft.type === 'page' ? '?type=page' : ''}` }}>
+<AdminLayout title={isNew ? 'Nouveau contenu' : (row?.title ?? 'Contenu')} back={{ label: draft.type === 'page' ? 'Pages légales' : 'Contenus', href: `/admin/contenus${draft.type === 'page' ? '?type=page' : ''}` }}>
   {ok && <p class="alert alert-success mb-4">{ok}</p>}
   {errors.length > 0 && <div class="alert alert-error mb-4" role="alert"><ul class="list-disc pl-5">{errors.map((e) => <li>{e}</li>)}</ul></div>}
   {locked && <p class="alert alert-info mb-4">Ce contenu est en ligne : seul un administrateur web peut le modifier ou le retirer.</p>}

@@ -1,6 +1,6 @@
 ---
 // Contenus : articles de la section Média (actualités, conseils, vidéos, événements, communiqués)
-// et pages (CGV, mentions légales…). Cycle : brouillon → à valider → publié / programmé → archivé.
+// et pages légales (CGV, mentions légales…). Cycle : brouillon → à valider → publié / programmé → archivé.
 import { and, desc, eq, ne, type SQL } from 'drizzle-orm';
 import { cardTint } from '../../../lib/tints';
 import AdminLayout from '../../../components/AdminLayout.astro';
@@ -22,16 +22,40 @@ const statut = Astro.url.searchParams.get('statut') ?? '';
 const where: SQL[] = [pages ? eq(contents.type, 'page') : ne(contents.type, 'page')];
 if (statut) where.push(eq(contents.status, statut as keyof typeof CONTENT_STATUS_LABELS));
 const list = await db.select().from(contents).where(and(...where)).orderBy(desc(contents.updatedAt)).limit(200);
-const typeLabel = (t: string) => (t === 'page' ? 'Page' : (ARTICLE_TYPE_LABELS[t as keyof typeof ARTICLE_TYPE_LABELS] ?? t));
+const typeLabel = (t: string) => (t === 'page' ? 'Page légale' : (ARTICLE_TYPE_LABELS[t as keyof typeof ARTICLE_TYPE_LABELS] ?? t));
 const tone = { brouillon: 'badge-sur-commande', 'a-valider': 'badge-promotion', publie: 'badge-populaire', archive: 'badge-rupture' } as const;
 ---
 
 <AdminLayout title="Contenus">
   <Tabs
-    items={[{ label: 'Articles & médias', href: '/admin/contenus' }, { label: 'Pages', href: '/admin/contenus?type=page' }]}
+    items={[{ label: 'Articles & médias', href: '/admin/contenus' }, { label: 'Pages légales', href: '/admin/contenus?type=page' }]}
     current={pages ? '/admin/contenus?type=page' : '/admin/contenus'}
   />
   {Astro.url.searchParams.get('ok') === 'supprime' && <p class="alert alert-success mb-4">Contenu supprimé.</p>}
+
+  <div class:list={['card mb-5 space-y-2 p-4 text-sm', cardTint(3)]}>
+    {
+      pages ? (
+        <p>
+          Les <strong>pages légales</strong> sont les textes réglementaires du site : CGV, mentions légales, confidentialité, livraison & retours, cookies. Elles
+          s'affichent à l'adresse <code>/legal/…</code>, via les liens en bas de toutes les pages.
+        </p>
+      ) : (
+        <p>
+          Les <strong>articles</strong> alimentent la page <a href="/media" target="_blank" class="font-semibold underline">Média ↗</a> : actualités, conseils, vidéos
+          (lien YouTube ou Vimeo), événements et communiqués. Chaque article a sa page <code>/media/…</code> ; les trois derniers apparaissent aussi sur l'accueil.
+        </p>
+      )
+    }
+    <p>
+      Circuit de publication : <strong>Brouillon</strong> (invisible) › <strong>À valider</strong> (soumis par un éditeur) › <strong>Publié</strong> (par
+      l'administrateur web ; avec une date future, la publication est programmée) › <strong>Archivé</strong> (retiré du site, conservé).
+    </p>
+    <p class="text-muted">
+      Les textes des pages principales (Accueil, Qui sommes-nous, B2B, Partenaires, Programmes…) ne se modifient pas ici mais dans
+      <a href="/admin/textes" class="font-semibold underline">Textes du site</a>.
+    </p>
+  </div>
 
   <div class="flex flex-wrap items-end justify-between gap-3">
     <form method="get" class="flex items-end gap-2">
@@ -45,7 +69,7 @@ const tone = { brouillon: 'badge-sur-commande', 'a-valider': 'badge-promotion', 
       </label>
       <button class="btn btn-secondary btn-sm">Filtrer</button>
     </form>
-    {canEdit && <a href={`/admin/contenus/nouveau${pages ? '?type=page' : ''}`} class="btn btn-primary btn-sm">+ {pages ? 'Nouvelle page' : 'Nouveau contenu'}</a>}
+    {canEdit && <a href={`/admin/contenus/nouveau${pages ? '?type=page' : ''}`} class="btn btn-primary btn-sm">+ {pages ? 'Nouvelle page légale' : 'Nouvel article'}</a>}
   </div>
 
   <div class:list={['card mt-4 overflow-x-auto', cardTint(0)]}>

@@ -66,5 +66,5 @@ Production (Neon) : les valeurs sont dans `.env.production.bak` (local, jamais c
 ## Avant la mise en ligne
 
 - Définir `SITE_URL` (domaine définitif) et toutes les variables de `docs/deploiement.md` dans Vercel.
-- Remplacer les contenus d'exemple depuis le back-office : coordonnées (Paramètres), produits et photos (Catalogue), textes légaux (Contenus › Pages, à faire valider par un juriste).
+- Remplacer les contenus d'exemple depuis le back-office : coordonnées (Paramètres), produits et photos (Catalogue), textes légaux (Contenus › Pages légales, à faire valider par un juriste).
 - Brancher le paiement (FedaPay) et un prestataire d'e-mails (Resend ou Brevo) : sans e-mails, les liens de réinitialisation de mot de passe et les confirmations ne partent pas (état visible dans Paramètres › Intégrations).

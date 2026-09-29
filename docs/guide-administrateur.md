@@ -79,7 +79,7 @@ Si l'ERP est branché, il met à jour prix, statuts et stocks tout seul (webhook
 
 ## 7. Publier des contenus
 
-**Contenus** gère les articles de la section Média (actualités, conseils, vidéos, événements, communiqués) et les **pages** (CGV, mentions légales, confidentialité, livraison & retours, cookies).
+**Contenus** gère les articles de la section Média (actualités, conseils, vidéos, événements, communiqués) (onglet **Articles & médias**) et les **pages légales** (onglet **Pages légales** : CGV, mentions légales, confidentialité, livraison & retours, cookies). Les textes des pages principales (accueil, Qui sommes-nous, B2B…) se modifient dans **Textes du site**, pas ici.
 
 1. **Nouveau contenu** : type, titre, chapeau, texte. Le texte utilise une mise en forme simple (Markdown) : `## Intertitre`, `**gras**`, `- liste`, `[lien](https://…)`. Pour une image, copiez son « Code Markdown » depuis Médias.
 2. **Vidéo** : collez le lien YouTube ou Vimeo. **Événement** : date et lieu.
