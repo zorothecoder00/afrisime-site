@@ -1,6 +1,6 @@
 # Plan de sauvegarde et de restauration
 
-Toutes les données du site sont dans PostgreSQL (Neon) : comptes, commandes, leads, catalogue, contenus, médias (images et documents), paramètres. Le code est dans Git. Il n'y a rien d'autre à sauvegarder.
+Toutes les données du site sont dans PostgreSQL (Neon) : comptes, commandes, leads, catalogue, contenus, programmes et projets, médias (images et documents), paramètres. Le code est dans Git. Il n'y a rien d'autre à sauvegarder.
 
 ## 1. Sauvegardes automatiques (Neon)
 
@@ -26,6 +26,17 @@ Conserver : 4 sauvegardes hebdomadaires + 12 mensuelles. Responsable : équipe t
 2. Vérifier les données sur cette branche (connexion en lecture, ou déploiement Preview pointant dessus).
 3. Récupérer uniquement les lignes perdues (export/import de la table concernée), ou, en cas de dégât global, faire de cette branche la branche principale (Neon › Set as primary) puis mettre à jour `DATABASE_URL` si l'hôte change.
 
+Certaines rubriques du back-office sont enregistrées chacune dans **une seule ligne** de la table `settings` : les programmes et projets (clé `projects`), les offres d'emploi (`jobs`), les diaporamas (`slideshows`), les textes d'une page (`texts.<page>`, ex. `texts.programmes`). Pour annuler une mauvaise manipulation dans l'une d'elles, restaurer cette ligne depuis la branche de récupération, sans toucher au reste :
+
+```sql
+-- sur la branche de récupération : copier la valeur
+SELECT value FROM settings WHERE key = 'projects';
+-- sur la base principale : la remettre
+UPDATE settings SET value = '<valeur copiée>'::jsonb, updated_at = now() WHERE key = 'projects';
+```
+
+Les images des fiches sont dans la table `media` ; une image supprimée entre-temps se restaure de la même façon (ligne de `media` correspondant à l'`imageId`). Le site relit ces données en moins d'une minute.
+
 ### Perte totale ou changement d'hébergeur
 
 ```sh
@@ -42,7 +53,8 @@ Puis mettre à jour `DATABASE_URL` sur Vercel et redéployer. Les migrations dé
 - connexion au back-office ;
 - une commande récente et son historique ;
 - une fiche produit avec ses photos ;
-- un article publié.
+- un article publié ;
+- la page Programmes & Projets (fiches publiées et leurs images).
 
 Noter la date et le résultat du test dans le registre d'exploitation. Supprimer ensuite la base de test (elle contient des données personnelles).
 
