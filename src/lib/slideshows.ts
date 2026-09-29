@@ -22,6 +22,7 @@ export const SLIDESHOW_PLACEMENTS = [
   { id: 'activites', label: 'Activités — sous l’en-tête', path: '/activites', hero: false },
   { id: 'b2b', label: 'Solutions B2B — sous les publics', path: '/b2b', hero: false },
   { id: 'partenaires', label: 'Partenaires — sous les types de partenariat', path: '/partenaires', hero: false },
+  { id: 'programmes', label: 'Programmes & Projets — sous les programmes et projets', path: '/programmes', hero: false },
   { id: 'carrieres', label: 'Carrières — sous l’en-tête', path: '/carrieres', hero: false },
   { id: 'investir', label: 'Investir — sous les arguments', path: '/investir', hero: false },
 ] as const;

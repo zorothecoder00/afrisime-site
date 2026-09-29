@@ -1,6 +1,7 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import PageHero from '../components/PageHero.astro';
+import Slideshow from '../components/Slideshow.astro';
 import { imageUrl } from '../lib/media';
 import { getPageTexts } from '../lib/page-texts';
 import { listPublishedProjects, type ProjectKind } from '../lib/projects';
@@ -64,4 +65,6 @@ const statusBadge = { 'a-venir': 'badge-nouveau', 'en-cours': 'badge-populaire',
       );
     })
   }
+
+  <Slideshow placement="programmes" class="section" />
 </Layout>
