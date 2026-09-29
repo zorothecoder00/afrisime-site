@@ -64,6 +64,15 @@ Puis connecter le dépôt GitHub à Vercel (framework Astro détecté automatiqu
 
 Revenir en arrière : Vercel › Deployments › « Promote to Production » sur le déploiement précédent (les migrations étant additives, l'ancien code reste compatible).
 
+### Nouvelle page publique (exemple : Programmes & Projets)
+
+La page Programmes & Projets (`/programmes`) ne demande **ni migration ni variable d'environnement** : ses fiches et ses textes sont enregistrés dans la table `settings` (clés `projects` et `texts.programmes`), créées au premier enregistrement depuis le back-office. Après son déploiement en production, vérifier :
+
+1. **Menu principal** : l'onglet « Programmes et Projets » vient des valeurs par défaut (`src/data/site.ts`). Si le menu a déjà été enregistré dans *SEO & menus*, c'est cette version qui s'affiche : y ajouter le lien `/programmes` (entre Solutions B2B et Partenaires).
+2. **Pied de page** : même principe pour la colonne AfriSime (*Textes du site › En-tête et pied de page*) : ajouter la ligne `Programmes & Projets | /programmes` si les liens ont été enregistrés.
+3. **Contenu** : créer les fiches dans *Programmes & projets* ; en option, un diaporama (*Diaporamas*, emplacements « Programmes & Projets ») et une question dans la rubrique FAQ « Programmes & projets » (masquée tant qu'elle est vide).
+4. **Référencement** : la page est dans `/sitemap.xml` ; rien à faire dans Search Console si le sitemap y est déjà déclaré.
+
 ## Tâche planifiée
 
 `vercel.json` déclare un cron quotidien (3 h UTC) sur `/api/cron/sync` : revérification des paiements en attente, renvoi à l'ERP/CRM, annulation des commandes impayées depuis 72 h, purge des compteurs. Sur l'offre Vercel Pro, la fréquence peut être augmentée (ex. `*/15 * * * *`).
