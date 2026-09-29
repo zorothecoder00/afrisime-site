@@ -8,7 +8,7 @@ import ProductCard from '../../components/ProductCard.astro';
 import { cardTint } from '../../lib/tints';
 import Breadcrumbs from '../../components/ui/Breadcrumbs.astro';
 import Icon, { type IconName } from '../../components/ui/Icon.astro';
-import { getCatalog, lowestVariant } from '../../lib/catalog';
+import { categoryFamily, categoryTree, getCatalog, lowestVariant, topCategories } from '../../lib/catalog';
 import { STATUS_LABELS } from '../../lib/format';
 
 const { products, categories, brands, categoryOf, brandOf } = await getCatalog();
@@ -54,7 +54,7 @@ const legend = 'text-sm font-extrabold text-ink';
           <button type="button" class="chip" data-category-chip="" aria-pressed="true">Tous les rayons</button>
         </li>
         {
-          categories.map((c) => (
+          topCategories(categories).map((c) => (
             <li>
               <button type="button" class="chip" data-category-chip={c.id} aria-pressed="false">
                 <span class="grid size-5 place-items-center rounded-full text-white" style={`background:${c.data.color}`}>
@@ -81,12 +81,12 @@ const legend = 'text-sm font-extrabold text-ink';
             <legend class={legend}>Catégories</legend>
             <ul class="mt-3 space-y-2">
               {
-                categories.map((c) => (
-                  <li>
+                categoryTree(categories).map((c) => (
+                  <li class:list={[c.data.parentId && 'pl-5']}>
                     <label class="flex items-center gap-2 text-sm">
                       <input type="checkbox" name="categorie" value={c.id} class="size-4 accent-brand-700" />
                       <span class="flex-1">{c.data.name}</span>
-                      <span class="text-xs text-muted">{countBy((p) => p.data.category.id === c.id)}</span>
+                      <span class="text-xs text-muted">{countBy((p) => categoryFamily(categories, c.id).includes(p.data.category.id))}</span>
                     </label>
                   </li>
                 ))
@@ -222,7 +222,7 @@ const legend = 'text-sm font-extrabold text-ink';
                 data-product
                 data-search={`${p.data.name} ${brand.data.name} ${cat.data.name} ${p.data.sku} ${p.data.summary} ${p.data.variants.map((v) => v.label).join(' ')}`}
                 data-name={p.data.name}
-                data-categorie={cat.id}
+                data-categorie={[cat.id, cat.data.parentId].filter(Boolean).join(' ')}
                 data-marque={brand.id}
                 data-price={lowestVariant(p).price}
                 data-dispo={p.data.status}
@@ -232,7 +232,7 @@ const legend = 'text-sm font-extrabold text-ink';
                 data-popularity={p.data.popularity}
                 data-created={p.data.createdAt.getTime()}
               >
-                <ProductCard product={p} category={cat} brand={brand} tint={cardTint(Math.max(0, categories.findIndex((c) => c.id === cat.id)))} />
+                <ProductCard product={p} category={cat} brand={brand} tint={cardTint(Math.max(0, categories.findIndex((c) => c.id === (cat.data.parentId ?? cat.id))))} />
               </li>
             );
           })

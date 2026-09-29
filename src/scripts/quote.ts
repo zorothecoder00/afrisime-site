@@ -23,6 +23,10 @@ export type QuoteResponse = {
   totals: { subtotal: number; discount: number; delivery: number; total: number };
   promo: { code: string | null; applied: boolean; message: string } | null;
   pro: boolean;
+  /** Types de prix proposés pour ce panier (ex. prix à crédit). */
+  priceTypes: { id: string; label: string; description: string; validation: boolean }[];
+  priceType: { id: string; label: string; validation: boolean } | null;
+  priceTypeUnavailable: boolean;
   freeThreshold: number;
 };
 
@@ -45,7 +49,7 @@ export function setPromo(code: string) {
   }
 }
 
-export async function fetchQuote(items: CartItem[], options: { promoCode?: string; zoneId?: string } = {}): Promise<QuoteResponse | null> {
+export async function fetchQuote(items: CartItem[], options: { promoCode?: string; zoneId?: string; priceType?: string } = {}): Promise<QuoteResponse | null> {
   try {
     const res = await fetch('/api/checkout/quote', {
       method: 'POST',
@@ -54,6 +58,7 @@ export async function fetchQuote(items: CartItem[], options: { promoCode?: strin
         items: items.map(({ productId, variantId, quantity }) => ({ productId, variantId, quantity })),
         promoCode: options.promoCode,
         zoneId: options.zoneId,
+        priceType: options.priceType || undefined,
       }),
     });
     return res.ok ? ((await res.json()) as QuoteResponse) : null;

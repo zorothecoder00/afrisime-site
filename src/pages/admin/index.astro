@@ -28,7 +28,8 @@ const [orderStats, leadStats, userStats, recentOrders, recentLeads] = await Prom
         .select({
           today: sql<number>`count(*) filter (where ${today})`.mapWith(Number),
           revenueToday: sql<number>`coalesce(sum(${orders.total}) filter (where ${today} and ${orders.status} <> 'annulee'), 0)`.mapWith(Number),
-          notSynced: sql<number>`count(*) filter (where ${orders.erpSyncedAt} is null and ${orders.status} not in ('en-attente-paiement', 'annulee'))`.mapWith(Number),
+          notSynced: sql<number>`count(*) filter (where ${orders.erpSyncedAt} is null and ${orders.status} not in ('en-attente-paiement', 'a-valider', 'annulee'))`.mapWith(Number),
+          toValidate: sql<number>`count(*) filter (where ${orders.status} = 'a-valider')`.mapWith(Number),
         })
         .from(orders)
         .then((r) => r[0])
@@ -61,6 +62,7 @@ const [toReview, prosPending, abandoned, month, catalogCounts] = await Promise.a
 const stats = [
   orderStats && { label: "Commandes aujourd'hui", value: String(orderStats.today), href: '/admin/commandes' },
   orderStats && { label: "Chiffre d'affaires du jour", value: formatPrice(orderStats.revenueToday) },
+  orderStats && orderStats.toValidate > 0 && { label: 'Commandes à valider (crédit…)', value: String(orderStats.toValidate), href: '/admin/commandes?statut=a-valider' },
   month && { label: 'Ventes sur 30 jours', value: formatPrice(month.revenue), href: '/admin/rapports' },
   month && { label: 'Panier moyen (30 j)', value: formatPrice(month.averageBasket), href: '/admin/rapports' },
   abandoned !== null && { label: 'Paniers abandonnés', value: String(abandoned), href: '/admin/rapports#t-paniers' },

@@ -14,13 +14,16 @@ export const POST: APIRoute = async ({ request, locals, clientAddress }) => {
   } catch {
     return json({ error: 'Requête invalide.' }, 400);
   }
-  const result = await quote({ items: body.items, zoneId: body.zoneId, promoCode: body.promoCode, user: locals.user });
+  const result = await quote({ items: body.items, zoneId: body.zoneId, promoCode: body.promoCode, priceType: body.priceType, user: locals.user });
   return json({
     lines: result.lines,
     problems: result.problems,
     totals: result.totals,
     promo: result.promo,
     pro: result.pro,
+    priceTypes: result.priceTypes,
+    priceType: result.priceType,
+    priceTypeUnavailable: result.priceTypeUnavailable,
     freeThreshold: result.freeThreshold,
   });
 };

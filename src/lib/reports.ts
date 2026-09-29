@@ -126,7 +126,7 @@ export async function unsyncedCounts() {
     db
       .select({ total: count() })
       .from(orders)
-      .where(and(sql`${orders.erpSyncedAt} is null`, sql`${orders.status} not in ('en-attente-paiement', 'annulee')`)),
+      .where(and(sql`${orders.erpSyncedAt} is null`, sql`${orders.status} not in ('en-attente-paiement', 'a-valider', 'annulee')`)),
     db.select({ total: count() }).from(leads).where(sql`${leads.crmSyncedAt} is null`),
   ]);
   return { orders: o.total, leads: l.total };

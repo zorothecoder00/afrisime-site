@@ -9,7 +9,16 @@ export type ImageRef = { id: string; alt: string; width: number | null; height: 
 
 export type Category = {
   id: string;
-  data: { name: string; description: string; icon: string; color: string; order: number; image: ImageRef | null };
+  data: {
+    name: string;
+    description: string;
+    icon: string;
+    color: string;
+    order: number;
+    image: ImageRef | null;
+    /** Catégorie parente (un seul niveau de sous-catégories) ; null pour un rayon principal. */
+    parentId: string | null;
+  };
 };
 
 export type Brand = { id: string; data: { name: string; description: string; logo: ImageRef | null } };
@@ -82,7 +91,15 @@ async function loadCatalog(includeUnpublished: boolean) {
 
   const categoryList: Category[] = categoryRows.map((c) => ({
     id: c.id,
-    data: { name: c.name, description: c.description, icon: c.icon, color: c.color, order: c.position, image: (c.imageId && images.get(c.imageId)) || null },
+    data: {
+      name: c.name,
+      description: c.description,
+      icon: c.icon,
+      color: c.color,
+      order: c.position,
+      image: (c.imageId && images.get(c.imageId)) || null,
+      parentId: c.parentId,
+    },
   }));
   const brandList: Brand[] = brandRows.map((b) => ({
     id: b.id,
@@ -124,7 +141,7 @@ export async function getCatalog(options: { includeUnpublished?: boolean } = {})
   const { products, categories, brands } = await cached(`catalog:${all}`, 30_000, () => loadCatalog(all));
   const categoryById = new Map(categories.map((c) => [c.id, c]));
   const brandById = new Map(brands.map((b) => [b.id, b]));
-  const fallbackCategory: Category = { id: '', data: { name: '—', description: '', icon: 'box', color: '#56665f', order: 0, image: null } };
+  const fallbackCategory: Category = { id: '', data: { name: '—', description: '', icon: 'box', color: '#56665f', order: 0, image: null, parentId: null } };
   const fallbackBrand: Brand = { id: '', data: { name: '—', description: '', logo: null } };
   return {
     products,
@@ -133,6 +150,34 @@ export async function getCatalog(options: { includeUnpublished?: boolean } = {})
     categoryOf: (p: Product) => categoryById.get(p.data.category.id) ?? fallbackCategory,
     brandOf: (p: Product) => brandById.get(p.data.brand.id) ?? fallbackBrand,
   };
+}
+
+/** Rayons principaux (sans parent), dans l'ordre d'affichage. */
+export function topCategories(categories: Category[]) {
+  const ids = new Set(categories.map((c) => c.id));
+  // Une catégorie dont le parent a disparu est traitée comme un rayon principal.
+  return categories.filter((c) => !c.data.parentId || !ids.has(c.data.parentId));
+}
+
+/** Sous-catégories d'une catégorie. */
+export function childCategories(categories: Category[], parentId: string) {
+  return categories.filter((c) => c.data.parentId === parentId && c.id !== parentId);
+}
+
+/** La catégorie et ses sous-catégories : un produit d'une sous-catégorie apparaît aussi dans son rayon. */
+export function categoryFamily(categories: Category[], id: string) {
+  return [id, ...childCategories(categories, id).map((c) => c.id)];
+}
+
+/** Nom affiché dans les listes du back-office : « Rayon › Sous-catégorie ». */
+export function categoryPath(categories: Category[], c: Category) {
+  const parent = c.data.parentId ? categories.find((x) => x.id === c.data.parentId) : undefined;
+  return parent ? `${parent.data.name} › ${c.data.name}` : c.data.name;
+}
+
+/** Catégories triées pour une liste : chaque rayon suivi de ses sous-catégories. */
+export function categoryTree(categories: Category[]) {
+  return topCategories(categories).flatMap((top) => [top, ...childCategories(categories, top.id)]);
 }
 
 export function invalidateCatalog() {

@@ -2,9 +2,9 @@
 // Catalogue › Produits : liste, recherche et filtres.
 import AdminLayout from '../../../components/AdminLayout.astro';
 import { cardTint } from '../../../lib/tints';
-import Tabs from '../../../components/admin/Tabs.astro';
+import CatalogTabs from '../../../components/admin/CatalogTabs.astro';
 import { deny } from '../../../lib/admin';
-import { getCatalog, lowestVariant } from '../../../lib/catalog';
+import { categoryFamily, categoryPath, categoryTree, getCatalog, lowestVariant } from '../../../lib/catalog';
 import { formatPrice, STATUS_LABELS } from '../../../lib/format';
 import { imageUrl } from '../../../lib/media';
 import { can } from '../../../lib/roles';
@@ -21,9 +21,11 @@ const statut = Astro.url.searchParams.get('statut') ?? '';
 const visibilite = Astro.url.searchParams.get('visibilite') ?? '';
 
 const { products, categories, categoryOf, brandOf } = await getCatalog({ includeUnpublished: true });
+// Un rayon principal inclut ses sous-catégories.
+const family = categoryFamily(categories, categorie);
 const list = products
   .map((p) => ({ p, score: q ? searchScore(q, `${p.data.name} ${p.data.sku} ${brandOf(p).data.name}`) : 1 }))
-  .filter(({ p, score }) => score > 0 && (!categorie || p.data.category.id === categorie) && (!statut || p.data.status === statut))
+  .filter(({ p, score }) => score > 0 && (!categorie || family.includes(p.data.category.id)) && (!statut || p.data.status === statut))
   .filter(({ p }) => !visibilite || (visibilite === 'publie') === p.data.published)
   .sort((a, b) => b.score - a.score || a.p.data.name.localeCompare(b.p.data.name))
   .map(({ p }) => p);
@@ -31,7 +33,7 @@ const ok = Astro.url.searchParams.get('ok');
 ---
 
 <AdminLayout title="Catalogue">
-  <Tabs items={[{ label: 'Produits', href: '/admin/catalogue' }, { label: 'Catégories', href: '/admin/catalogue/categories' }, { label: 'Marques', href: '/admin/catalogue/marques' }]} />
+  <CatalogTabs />
   {ok === 'supprime' && <p class="alert alert-success mb-4">Produit supprimé.</p>}
 
   <div class="flex flex-wrap items-end justify-between gap-3">
@@ -41,7 +43,7 @@ const ok = Astro.url.searchParams.get('ok');
         <span class="label">Catégorie</span>
         <select name="categorie" class="input !py-2">
           <option value="">Toutes</option>
-          {categories.map((c) => <option value={c.id} selected={c.id === categorie}>{c.data.name}</option>)}
+          {categoryTree(categories).map((c) => <option value={c.id} selected={c.id === categorie}>{categoryPath(categories, c)}</option>)}
         </select>
       </label>
       <label class="block">
@@ -94,7 +96,7 @@ const ok = Astro.url.searchParams.get('ok');
                   {!p.data.published && <span class="badge badge-rupture">Masqué</span>}
                 </div>
               </td>
-              <td class="px-4 py-3">{categoryOf(p).data.name}</td>
+              <td class="px-4 py-3">{categoryPath(categories, categoryOf(p))}</td>
               <td class="px-4 py-3">{STATUS_LABELS[p.data.status]}</td>
               <td class="px-4 py-3">{p.data.stock ?? '—'}</td>
               <td class="px-4 py-3 text-right font-semibold">{formatPrice(lowestVariant(p).price)}</td>

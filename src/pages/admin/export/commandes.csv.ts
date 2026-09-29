@@ -22,7 +22,7 @@ export const GET: APIRoute = async ({ locals, url, clientAddress }) => {
     .from(orders)
     .where(gte(orders.createdAt, new Date(Date.now() - days * 86_400_000)))
     .orderBy(desc(orders.createdAt));
-  const header = ['Numéro', 'Date', 'Statut', 'Client', 'Téléphone', 'E-mail', 'Ville', 'Livraison', 'Paiement', 'Payée le', 'Code promo', 'Sous-total', 'Remise', 'Frais de livraison', 'Total', 'Transmise ERP'];
+  const header = ['Numéro', 'Date', 'Statut', 'Client', 'Téléphone', 'E-mail', 'Ville', 'Livraison', 'Paiement', 'Type de prix', 'Payée le', 'Code promo', 'Sous-total', 'Remise', 'Frais de livraison', 'Total', 'Transmise ERP'];
   const lines = rows.map((o) =>
     [
       o.number,
@@ -34,6 +34,7 @@ export const GET: APIRoute = async ({ locals, url, clientAddress }) => {
       o.customer.city,
       o.deliveryZone,
       o.paymentMethod,
+      o.priceTypeLabel ?? '',
       o.paidAt?.toISOString() ?? '',
       o.promoCode ?? '',
       o.subtotal,

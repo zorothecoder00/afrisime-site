@@ -13,7 +13,7 @@ import { apiRateLimit, leads, orders, searchLog } from '../../../db/schema';
 import { audit } from '../../../lib/audit';
 import { db } from '../../../lib/db';
 import { sendLeadToCrm, type Lead } from '../../../lib/integrations';
-import { afterStatusChange, pushOrderToErp, setOrderStatus } from '../../../lib/orders';
+import { afterStatusChange, NOT_DUE_STATUSES, pushOrderToErp, setOrderStatus } from '../../../lib/orders';
 import { ONLINE_METHODS, refreshStalePayments } from '../../../lib/payments/service';
 import { json } from '../../../lib/server';
 
@@ -37,7 +37,7 @@ export const GET: APIRoute = async ({ request }) => {
   const erpPending = await db
     .select()
     .from(orders)
-    .where(and(isNull(orders.erpSyncedAt), notInArray(orders.status, ['en-attente-paiement', 'annulee'])))
+    .where(and(isNull(orders.erpSyncedAt), notInArray(orders.status, NOT_DUE_STATUSES)))
     .limit(BATCH);
   let erpSent = 0;
   for (const row of erpPending) if (await pushOrderToErp(row)) erpSent++;

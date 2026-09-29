@@ -2,7 +2,7 @@
 import Layout from '../layouts/Layout.astro';
 import ProductCard from '../components/ProductCard.astro';
 import Icon, { type IconName } from '../components/ui/Icon.astro';
-import { getCatalog } from '../lib/catalog';
+import { categoryFamily, getCatalog, topCategories } from '../lib/catalog';
 import { ARTICLE_TYPE_LABELS, formatDate } from '../lib/format';
 import { listArticles, showcaseSource } from '../lib/content';
 import { activeCampaigns } from '../lib/promotions';
@@ -21,14 +21,16 @@ const showcase = showcaseSettings.enabled
     })
   : [];
 
-const { products, categories, brands, categoryOf, brandOf } = await getCatalog();
+const { products, categories: allCategories, brands, categoryOf, brandOf } = await getCatalog();
+// Rayons principaux seulement ; leurs sous-catégories sont comptées avec eux.
+const categories = topCategories(allCategories);
 const popular = [...products].sort((a, b) => b.data.popularity - a.data.popularity).slice(0, 8);
 const promos = products.filter((p) => p.data.badges.includes('promotion')).slice(0, 3);
 const articles = (await listArticles(3)).slice(0, 3);
 const [offer] = await activeCampaigns('accueil-offres');
 // Textes modifiables dans le back-office (Textes du site › Accueil).
 const t = await getPageTexts('accueil');
-const countByCategory = (id: string) => products.filter((p) => p.data.category.id === id).length;
+const countByCategory = (id: string) => products.filter((p) => categoryFamily(allCategories, id).includes(p.data.category.id)).length;
 
 const reasonIcons: IconName[] = ['box', 'pin', 'truck', 'shield', 'globe', 'users'];
 const reasons = t.reasons.map((r, i) => ({ ...r, icon: reasonIcons[i] }));

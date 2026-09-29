@@ -13,6 +13,9 @@ import { checkoutPaymentMethods, getSettings } from '../../lib/settings';
 import { isSameOrigin, json, newId, rateLimit } from '../../lib/server';
 import { clean, isValidEmail, isValidPhone } from '../../lib/validation';
 
+/** Moyen de paiement enregistré pour une commande à valider : conditions convenues avec l'équipe. */
+const VALIDATION_PAYMENT = { id: 'a-convenir' } as const;
+
 function confirmationUrl(number: string, token: string) {
   return `/commande/confirmation?n=${encodeURIComponent(number)}&t=${token}`;
 }
@@ -44,8 +47,10 @@ export const POST: APIRoute = async ({ request, clientAddress, locals }) => {
     address: clean(body.customer?.address, 300),
   };
   const settings = await getSettings();
-  const payment = checkoutPaymentMethods(settings).find((p) => p.id === body.paymentMethod);
-  const q = await quote({ items: body.items, zoneId: body.deliveryZone, promoCode: body.promoCode, user: locals.user });
+  const q = await quote({ items: body.items, zoneId: body.deliveryZone, promoCode: body.promoCode, priceType: clean(body.priceType, 40), user: locals.user });
+  // Type de prix « à valider » (ex. crédit) : pas de paiement maintenant, l'équipe recontacte le client.
+  const needsValidation = !!q.priceType?.validation;
+  const payment = needsValidation ? VALIDATION_PAYMENT : checkoutPaymentMethods(settings).find((p) => p.id === body.paymentMethod);
 
   const errors: Record<string, string> = {};
   if (customer.name.length < 2) errors.name = 'Indiquez votre nom complet.';
@@ -58,15 +63,17 @@ export const POST: APIRoute = async ({ request, clientAddress, locals }) => {
   if (q.invalid || q.problems.length) errors.items = q.problems[0] ?? 'Un article du panier est invalide. Actualisez votre panier.';
   else if (!q.lines.length) errors.items = 'Votre panier est vide.';
   if (q.promo && !q.promo.applied) errors.promoCode = q.promo.message;
+  if (q.priceTypeUnavailable) errors.priceType = 'Ce type de prix n’est plus proposé pour votre panier. Choisissez à nouveau.';
   if (Object.keys(errors).length) return json({ error: 'Certains champs sont à corriger.', errors }, 422);
 
   const draft: Order = {
     number: newId('AFS'),
-    status: payment!.id === 'livraison' ? 'confirmee' : 'en-attente-paiement',
+    status: needsValidation ? 'a-valider' : payment!.id === 'livraison' ? 'confirmee' : 'en-attente-paiement',
     customer,
     lines: q.lines.map(({ sku, productId, variantId, name, unitPrice, quantity }) => ({ sku, productId, variantId, name, unitPrice, quantity })),
     deliveryZone: q.zone!.id,
     paymentMethod: payment!.id,
+    priceType: q.priceType ? { id: q.priceType.id, label: q.priceType.label } : null,
     totals: q.totals,
     createdAt: new Date().toISOString(),
   };

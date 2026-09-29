@@ -11,6 +11,7 @@ import ProductImage from '../../components/ui/ProductImage.astro';
 import { canBuyOnline, cartPayload, getCatalog, lowestVariant, productUrl, type Product } from '../../lib/catalog';
 import { BADGE_LABELS, STATUS_LABELS, formatPrice } from '../../lib/format';
 import { imageUrl } from '../../lib/media';
+import { listPriceTypes, typedPrice } from '../../lib/price-types';
 import { findRedirect } from '../../lib/redirects';
 import { activeZones, contactLinks, getSettings } from '../../lib/settings';
 import { SITE } from '../../data/site';
@@ -33,6 +34,12 @@ const defaultVariant = lowestVariant(product);
 const buyable = canBuyOnline(product);
 const isDevis = p.status === 'devis';
 const hasProPrices = p.variants.some((v) => v.proPrice && v.proPrice < v.price);
+// Types de prix (ex. crédit) : ceux ouverts à tous sont dans la page (identique pour tous, cache CDN),
+// les autres sont chargés pour le client connecté (/api/pro-prices).
+const priceTypes = (await listPriceTypes()).filter((t) => t.active && p.variants.some((v) => typedPrice(v, t.id)));
+const publicTypePrices = (v: (typeof p.variants)[number]) =>
+  priceTypes.filter((t) => t.audience === 'tous').flatMap((t) => (typedPrice(v, t.id) ? [{ label: t.label, price: typedPrice(v, t.id)!, description: t.description }] : []));
+const hasRestrictedTypes = priceTypes.some((t) => t.audience !== 'tous');
 const zones = activeZones(settings);
 const cheapestDelivery = zones.filter((z) => z.fee > 0).sort((a, b) => a.fee - b.fee)[0];
 const pickup = zones.find((z) => z.id === 'retrait');
@@ -216,7 +223,7 @@ for (const f of p.features) {
       </p>
       <p class="mt-3 text-[15px] text-muted">{p.summary}</p>
 
-      <form class="mt-5" data-product-form data-product-id={product.id} onsubmit="return false">
+      <form class="mt-5" data-product-form data-product-id={product.id} data-restricted-types={hasRestrictedTypes ? '' : undefined} onsubmit="return false">
         <!-- Prix par format (équivalent des paliers de prix Alibaba) -->
         <div class="rounded-2xl bg-accent-100/60 p-4">
           {
@@ -256,6 +263,12 @@ for (const f of p.features) {
                     <span>Votre prix professionnel : <strong data-pro-price-value /></span>
                   </p>
                 )}
+                {priceTypes.length > 0 && (
+                  <div class="mt-3 space-y-1.5" data-type-prices hidden>
+                    <ul class="space-y-1.5" data-type-prices-list />
+                    <p class="text-xs text-muted">Choisissez ce prix à l'étape de la commande.</p>
+                  </div>
+                )}
               </>
             )
           }
@@ -279,6 +292,7 @@ for (const f of p.features) {
                     class="peer sr-only"
                     data-price={v.price}
                     data-compare={v.compareAtPrice ?? ''}
+                    data-type-prices={JSON.stringify(publicTypePrices(v))}
                     data-weight={v.weightKg}
                     data-label={v.label}
                   />
@@ -474,6 +488,10 @@ for (const f of p.features) {
   const qty = document.getElementById('quantite') as HTMLInputElement | null;
   const productId = form.dataset.productId!;
   let proPrices: Record<string, number> | null = null;
+  type TypePrice = { label: string; price: number; description: string };
+  // Types de prix réservés (clients connectés, comptes pro), chargés à part.
+  let restrictedTypes: Record<string, TypePrice[]> = {};
+  const typesBox = document.querySelector<HTMLElement>('[data-type-prices]');
 
   const selectedVariant = () => form.querySelector<HTMLInputElement>('input[name="variante"]:checked')!;
 
@@ -482,6 +500,24 @@ for (const f of p.features) {
     const price = proPrices?.[selectedVariant().value];
     proEl.hidden = !price;
     if (price) proEl.querySelector('[data-pro-price-value]')!.textContent = formatPrice(price);
+  }
+
+  function renderTypePrices() {
+    if (!typesBox) return;
+    const input = selectedVariant();
+    const list: TypePrice[] = [...JSON.parse(input.dataset.typePrices || '[]'), ...(restrictedTypes[input.value] ?? [])];
+    typesBox.hidden = list.length === 0;
+    typesBox.querySelector('[data-type-prices-list]')!.replaceChildren(
+      ...list.map((t) => {
+        const li = document.createElement('li');
+        li.className = 'rounded-lg bg-white/80 px-3 py-2 text-sm ring-1 ring-line';
+        const line = Object.assign(document.createElement('span'), { className: 'flex flex-wrap items-baseline justify-between gap-2' });
+        line.append(Object.assign(document.createElement('span'), { className: 'font-semibold', textContent: t.label }), Object.assign(document.createElement('strong'), { className: 'text-brand-900', textContent: formatPrice(t.price) }));
+        li.append(line);
+        if (t.description) li.append(Object.assign(document.createElement('span'), { className: 'mt-0.5 block text-xs text-muted', textContent: t.description }));
+        return li;
+      }),
+    );
   }
 
   // Le palier de prix du format choisi est mis en avant.
@@ -501,6 +537,7 @@ for (const f of p.features) {
       t.classList.toggle('ring-brand-700', on);
     });
     renderProPrice();
+    renderTypePrices();
   }
 
   form.addEventListener('change', (e) => {
@@ -523,12 +560,14 @@ for (const f of p.features) {
   try {
     visitor = sessionStorage.getItem(SYNC_STATE_KEY) === 'visiteur';
   } catch {}
-  if (proEl && !visitor) {
+  if ((proEl || form.hasAttribute('data-restricted-types')) && !visitor) {
     fetch(`/api/pro-prices?ids=${encodeURIComponent(productId)}`)
       .then((res) => (res.ok ? res.json() : null))
-      .then((data: { prices: Record<string, Record<string, number>> } | null) => {
+      .then((data: { prices: Record<string, Record<string, number>>; types?: Record<string, Record<string, TypePrice[]>> } | null) => {
         proPrices = data?.prices[productId] ?? null;
+        restrictedTypes = data?.types?.[productId] ?? {};
         renderProPrice();
+        renderTypePrices();
       })
       .catch(() => {});
   }

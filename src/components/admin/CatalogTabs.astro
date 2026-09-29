@@ -1,0 +1,15 @@
+---
+// Onglets de la section Catalogue du back-office.
+import Tabs from './Tabs.astro';
+import { can } from '../../lib/roles';
+
+const role = Astro.locals.user?.role;
+const items = [
+  { label: 'Produits', href: '/admin/catalogue' },
+  { label: 'Catégories', href: '/admin/catalogue/categories' },
+  { label: 'Marques', href: '/admin/catalogue/marques' },
+  ...(can(role, { catalog: ['update'] }) ? [{ label: 'Types de prix', href: '/admin/catalogue/types-de-prix' }] : []),
+];
+---
+
+<Tabs items={items} />

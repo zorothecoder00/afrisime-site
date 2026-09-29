@@ -29,6 +29,12 @@ export function parseProductForm(form: FormData) {
     };
     if (r.compareAtPrice) variant.compareAtPrice = Math.round(Number(r.compareAtPrice));
     if (r.proPrice) variant.proPrice = Math.round(Number(r.proPrice));
+    // Prix par type (colonnes « tp_<type> » du tableau des formats).
+    const prices = Object.entries(r)
+      .filter(([key, value]) => key.startsWith('tp_') && value)
+      .map(([key, value]) => [key.slice(3), Math.round(Number(value))] as const);
+    if (prices.some(([, value]) => !(value > 0))) errors.variants = `Format « ${r.label} » : les prix par type doivent être des montants positifs.`;
+    if (prices.length) variant.prices = Object.fromEntries(prices);
     if (!r.label || !Number.isFinite(price) || price < 0) errors.variants = `Format ${i + 1} : libellé et prix sont obligatoires.`;
     else if (seenVariantIds.has(id)) errors.variants = `Deux formats ont le même identifiant « ${id} ».`;
     else if (variant.compareAtPrice !== undefined && !(variant.compareAtPrice > variant.price)) errors.variants = `Format « ${r.label} » : le prix barré doit être supérieur au prix.`;

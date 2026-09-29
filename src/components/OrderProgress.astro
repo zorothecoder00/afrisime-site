@@ -9,7 +9,7 @@ interface Props {
 }
 const { status } = Astro.props;
 const STEPS: OrderStatus[] = ['confirmee', 'en-preparation', 'expediee', 'livree'];
-const current = status === 'en-attente-paiement' ? -1 : STEPS.indexOf(status);
+const current = STEPS.indexOf(status);
 ---
 
 {
@@ -30,3 +30,4 @@ const current = status === 'en-attente-paiement' ? -1 : STEPS.indexOf(status);
   )
 }
 {status === 'en-attente-paiement' && <p class="alert alert-info mt-3">Commande enregistrée, en attente de paiement.</p>}
+{status === 'a-valider' && <p class="alert alert-info mt-3">Commande enregistrée, en attente de validation par notre équipe : un conseiller vous contacte pour les conditions.</p>}

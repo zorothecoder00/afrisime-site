@@ -7,8 +7,11 @@ const statements = {
   ...defaultStatements, // user, session : gestion des comptes
   order: ['read', 'update'],
   lead: ['read', 'update'],
-  /** Produits, catégories, marques, prix, promotions, livraison et moyens de paiement. */
-  catalog: ['read', 'update'],
+  /**
+   * Produits, catégories, marques, prix, promotions, livraison et moyens de paiement.
+   * « structure » : catégories et marques seulement (sans les produits, prix et paramètres de vente).
+   */
+  catalog: ['read', 'update', 'structure'],
   /** Contenus, FAQ, médias. « publish » : publier sans validation. */
   content: ['read', 'update', 'publish'],
   /** Menus, redirections, SEO et mesure d'audience. */
@@ -32,7 +35,7 @@ export const roles = {
     ...adminAc.statements,
     order: ['read', 'update'],
     lead: ['read', 'update'],
-    catalog: ['read', 'update'],
+    catalog: ['read', 'update', 'structure'],
     content: ['read', 'update', 'publish'],
     seo: ['update'],
     pro: ['validate'],
@@ -40,8 +43,8 @@ export const roles = {
     audit: ['read'],
     settings: ['update'],
   }),
-  'admin-web': ac.newRole({ content: ['read', 'update', 'publish'], seo: ['update'], catalog: ['read'], report: ['read'] }),
-  ecommerce: ac.newRole({ order: ['read', 'update'], catalog: ['read', 'update'], content: ['read'], lead: ['read'], report: ['read'] }),
+  'admin-web': ac.newRole({ content: ['read', 'update', 'publish'], seo: ['update'], catalog: ['read', 'structure'], report: ['read'] }),
+  ecommerce: ac.newRole({ order: ['read', 'update'], catalog: ['read', 'update', 'structure'], content: ['read'], lead: ['read'], report: ['read'] }),
   commercial: ac.newRole({ lead: ['read', 'update'], pro: ['validate'], order: ['read'], catalog: ['read'], report: ['read'] }),
   'service-client': ac.newRole({ order: ['read', 'update'], lead: ['read', 'update'], content: ['read', 'update'] }),
   editeur: ac.newRole({ content: ['read', 'update'], catalog: ['read'] }),

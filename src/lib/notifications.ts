@@ -138,6 +138,7 @@ ${order.totals.discount ? `<tr><td>Remise</td><td align="right">− ${formatPric
 export async function notifyOrderPlaced(order: Order, accessToken: string) {
   const link = `${siteUrl()}/commande/confirmation?n=${encodeURIComponent(order.number)}&t=${accessToken}`;
   const awaitingPayment = order.status === 'en-attente-paiement';
+  const awaitingValidation = order.status === 'a-valider';
   await Promise.all([
     sendEmail({
       to: order.customer.email,
@@ -147,7 +148,8 @@ export async function notifyOrderPlaced(order: Order, accessToken: string) {
       html: layout(
         `Merci ${order.customer.name.split(' ')[0]}, votre commande est enregistrée`,
         `<p>Numéro de commande : <strong>${escape(order.number)}</strong></p>
-${awaitingPayment ? '<p>Votre paiement n’est pas encore confirmé. Vous pouvez le finaliser depuis le lien ci-dessous.</p>' : '<p>Un conseiller vous appelle pour confirmer la livraison.</p>'}
+${order.priceType ? `<p>Type de prix : <strong>${escape(order.priceType.label)}</strong></p>` : ''}
+${awaitingPayment ? '<p>Votre paiement n’est pas encore confirmé. Vous pouvez le finaliser depuis le lien ci-dessous.</p>' : awaitingValidation ? '<p>Votre commande doit être validée par notre équipe : un conseiller vous appelle pour convenir des conditions. Rien n’est à payer pour le moment.</p>' : '<p>Un conseiller vous appelle pour confirmer la livraison.</p>'}
 ${orderLinesHtml(order)}${button(link, awaitingPayment ? 'Finaliser le paiement' : 'Suivre ma commande')}`,
       ),
       text: `Commande ${order.number} enregistrée. Total : ${formatPrice(order.totals.total)}. Suivi : ${link}`,
@@ -165,7 +167,7 @@ ${orderLinesHtml(order)}${button(link, awaitingPayment ? 'Finaliser le paiement'
           template: 'equipe-nouvelle-commande',
           target: order.number,
           subject: `Nouvelle commande ${order.number} – ${formatPrice(order.totals.total)}`,
-          html: layout(`Nouvelle commande ${order.number}`, `<p>${escape(order.customer.name)} · ${escape(order.customer.phone)}</p>${orderLinesHtml(order)}${button(`${siteUrl()}/admin/commandes/${order.number}`, 'Ouvrir dans le back-office')}`),
+          html: layout(`Nouvelle commande ${order.number}`, `<p>${escape(order.customer.name)} · ${escape(order.customer.phone)}</p>${order.priceType ? `<p><strong>${escape(order.priceType.label)}</strong>${awaitingValidation ? ' — à valider : contacter le client' : ''}</p>` : ''}${orderLinesHtml(order)}${button(`${siteUrl()}/admin/commandes/${order.number}`, 'Ouvrir dans le back-office')}`),
           text: `Nouvelle commande ${order.number} de ${order.customer.name} (${order.customer.phone}) : ${formatPrice(order.totals.total)}.`,
         })
       : null,

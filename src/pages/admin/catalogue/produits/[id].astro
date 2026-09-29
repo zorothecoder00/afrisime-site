@@ -6,11 +6,12 @@ import AdminLayout from '../../../../components/AdminLayout.astro';
 import { products } from '../../../../db/schema';
 import { deny, str } from '../../../../lib/admin';
 import { audit } from '../../../../lib/audit';
-import { getCatalog, invalidateCatalog } from '../../../../lib/catalog';
+import { categoryPath, categoryTree, getCatalog, invalidateCatalog } from '../../../../lib/catalog';
 import { keptImages, parseProductForm, PRODUCT_BADGES } from '../../../../lib/catalog-admin';
 import { db } from '../../../../lib/db';
 import { BADGE_LABELS, STATUS_LABELS } from '../../../../lib/format';
 import { imageUrl, storeUpload, UploadError } from '../../../../lib/media';
+import { listPriceTypes } from '../../../../lib/price-types';
 import { addRedirect } from '../../../../lib/redirects';
 import { can } from '../../../../lib/roles';
 
@@ -76,6 +77,8 @@ if (Astro.request.method === 'POST') {
 }
 
 const { products: all, categories, brands } = await getCatalog({ includeUnpublished: true });
+// Une colonne par type de prix (Catalogue › Types de prix), y compris les types désactivés pour ne pas perdre leurs prix.
+const priceTypes = await listPriceTypes();
 const imageMeta = new Map(all.flatMap((p) => p.data.images).map((i) => [i.id, i]));
 const variants = draft.variants?.length ? draft.variants : [{ id: '', label: '', price: 0, unit: 'unité', weightKg: 0 }];
 const features = [...(draft.features ?? []), { label: '', value: '' }];
@@ -103,7 +106,7 @@ const title = isNew ? 'Nouveau produit' : (row?.name ?? 'Produit');
             <span class="label">Catégorie</span>
             <select name="categoryId" required class="input">
               <option value="">Choisir…</option>
-              {categories.map((c) => <option value={c.id} selected={c.id === draft.categoryId}>{c.data.name}</option>)}
+              {categoryTree(categories).map((c) => <option value={c.id} selected={c.id === draft.categoryId}>{categoryPath(categories, c)}</option>)}
             </select>
           </label>
           <label class="block">
@@ -126,11 +129,15 @@ const title = isNew ? 'Nouveau produit' : (row?.name ?? 'Produit');
 
         <section class:list={['card p-5', cardTint(1)]}>
           <h2 class="text-lg">Formats et prix (FCFA)</h2>
-          <p class="hint">Prix barré : ancien prix affiché barré (promotion). Prix pro : réservé aux comptes professionnels validés.</p>
+          <p class="hint">
+            Prix barré : ancien prix affiché barré (promotion). Prix pro : réservé aux comptes professionnels validés.
+            {priceTypes.length > 0 ? ' Colonnes suivantes : un prix par type de prix (vide = ce format n’est pas proposé à ce prix).' : ''}
+            {canEdit && <> Types de prix : <a href="/admin/catalogue/types-de-prix" class="font-semibold underline">Catalogue › Types de prix</a>.</>}
+          </p>
           <div class="mt-3 overflow-x-auto">
-            <table class="w-full min-w-[760px] text-sm">
+            <table class="w-full text-sm" style={`min-width:${760 + priceTypes.length * 120}px`}>
               <thead class="text-left text-muted">
-                <tr><th class="p-1">Libellé</th><th class="p-1">Identifiant</th><th class="p-1">Prix</th><th class="p-1">Prix barré</th><th class="p-1">Prix pro</th><th class="p-1">Unité</th><th class="p-1">Poids (kg)</th><th></th></tr>
+                <tr><th class="p-1">Libellé</th><th class="p-1">Identifiant</th><th class="p-1">Prix</th><th class="p-1">Prix barré</th><th class="p-1">Prix pro</th>{priceTypes.map((t) => <th class="p-1">{t.label}{!t.active && <span class="font-normal"> (désactivé)</span>}</th>)}<th class="p-1">Unité</th><th class="p-1">Poids (kg)</th><th></th></tr>
               </thead>
               <tbody data-rows="variants">
                 {variants.map((v, i) => (
@@ -140,6 +147,9 @@ const title = isNew ? 'Nouveau produit' : (row?.name ?? 'Produit');
                     <td class="p-1"><input name={`variants[${i}][price]`} value={v.price || ''} inputmode="numeric" class="input !py-2" /></td>
                     <td class="p-1"><input name={`variants[${i}][compareAtPrice]`} value={v.compareAtPrice ?? ''} inputmode="numeric" class="input !py-2" /></td>
                     <td class="p-1"><input name={`variants[${i}][proPrice]`} value={v.proPrice ?? ''} inputmode="numeric" class="input !py-2" /></td>
+                    {priceTypes.map((t) => (
+                      <td class="p-1"><input name={`variants[${i}][tp_${t.id}]`} value={v.prices?.[t.id] ?? ''} inputmode="numeric" class="input !py-2" aria-label={`${t.label} — ${v.label || 'nouveau format'}`} /></td>
+                    ))}
                     <td class="p-1"><input name={`variants[${i}][unit]`} value={v.unit} class="input !py-2" placeholder="sac" /></td>
                     <td class="p-1"><input name={`variants[${i}][weightKg]`} value={v.weightKg || ''} inputmode="decimal" class="input !py-2" /></td>
                     <td class="p-1"><button type="button" class="btn btn-ghost btn-sm text-danger" data-remove-row aria-label="Retirer ce format">✕</button></td>

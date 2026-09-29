@@ -7,7 +7,7 @@ import { cardTint } from '../../lib/tints';
 import OrderProgress from '../../components/OrderProgress.astro';
 import Icon from '../../components/ui/Icon.astro';
 import { audit } from '../../lib/audit';
-import { formatDate, formatPrice, ORDER_STATUS_LABELS } from '../../lib/format';
+import { formatDate, formatPrice, ORDER_STATUS_LABELS, PAYMENT_LABELS } from '../../lib/format';
 import { afterStatusChange, CUSTOMER_CANCELLABLE, findOrderByToken, setOrderStatus } from '../../lib/orders';
 import { listPaymentsForOrder, ONLINE_METHODS, onlinePaymentAvailable } from '../../lib/payments/service';
 import { rateLimit } from '../../lib/server';
@@ -75,7 +75,7 @@ Astro.response.headers.set('Referrer-Policy', 'same-origin');
               <Icon name={row.status === 'annulee' ? 'close' : 'check'} size={32} />
             </span>
             <h1 class="mt-5 text-3xl sm:text-4xl">
-              {row.status === 'annulee' ? 'Commande annulée' : awaitingOnline ? 'Commande enregistrée' : 'Merci, votre commande est confirmée !'}
+              {row.status === 'annulee' ? 'Commande annulée' : awaitingOnline || row.status === 'a-valider' ? 'Commande enregistrée' : 'Merci, votre commande est confirmée !'}
             </h1>
             <p class="mt-3 text-muted">Numéro de commande</p>
             <p class="mt-1 text-2xl font-extrabold tracking-wider text-brand-900">{row.number}</p>
@@ -142,7 +142,8 @@ Astro.response.headers.set('Referrer-Policy', 'same-origin');
             </dl>
             <dl class="mt-4 grid gap-3 border-t border-line pt-4 text-sm sm:grid-cols-2">
               <div><dt class="text-muted">Livraison</dt><dd class="font-semibold">{zone?.label ?? row.deliveryZone}</dd>{row.deliveryZone !== 'retrait' && <dd>{row.customer.address}, {row.customer.city}</dd>}</div>
-              <div><dt class="text-muted">Paiement</dt><dd class="font-semibold">{method?.label ?? row.paymentMethod}</dd>{row.paidAt && <dd>Payé le {formatDate(row.paidAt)}</dd>}</div>
+              <div><dt class="text-muted">Paiement</dt><dd class="font-semibold">{method?.label ?? PAYMENT_LABELS[row.paymentMethod] ?? row.paymentMethod}</dd>{row.paidAt && <dd>Payé le {formatDate(row.paidAt)}</dd>}</div>
+              {row.priceTypeLabel && <div><dt class="text-muted">Type de prix</dt><dd class="font-semibold">{row.priceTypeLabel}</dd></div>}
             </dl>
           </section>
 

@@ -27,11 +27,13 @@ export type OrderLine = { sku: string; productId: string; variantId: string; nam
 
 export type Order = {
   number: string;
-  status: 'en-attente-paiement' | 'confirmee' | 'en-preparation' | 'expediee' | 'livree' | 'annulee';
+  status: 'en-attente-paiement' | 'a-valider' | 'confirmee' | 'en-preparation' | 'expediee' | 'livree' | 'annulee';
   customer: { name: string; phone: string; email: string; city: string; address: string };
   lines: OrderLine[];
   deliveryZone: string;
   paymentMethod: string;
+  /** Type de prix choisi (ex. prix à crédit) ; absent : prix normal. */
+  priceType?: { id: string; label: string } | null;
   totals: { subtotal: number; discount: number; delivery: number; total: number };
   createdAt: string;
   paidAt?: string | null;

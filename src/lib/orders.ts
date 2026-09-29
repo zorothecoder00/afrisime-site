@@ -23,6 +23,7 @@ export function toOrder(row: OrderRow, lines: LineRow[]): Order {
     lines: lines.map(({ sku, productId, variantId, name, unitPrice, quantity }) => ({ sku, productId, variantId, name, unitPrice, quantity })),
     deliveryZone: row.deliveryZone,
     paymentMethod: row.paymentMethod,
+    priceType: row.priceType ? { id: row.priceType, label: row.priceTypeLabel ?? row.priceType } : null,
     totals: { subtotal: row.subtotal, discount: row.discount, delivery: row.delivery, total: row.total },
     createdAt: row.createdAt.toISOString(),
     paidAt: row.paidAt?.toISOString() ?? null,
@@ -69,6 +70,8 @@ export async function saveOrder(order: Order, idempotencyKey: string, userId: st
         customer: order.customer,
         deliveryZone: order.deliveryZone,
         paymentMethod: order.paymentMethod,
+        priceType: order.priceType?.id ?? null,
+        priceTypeLabel: order.priceType?.label ?? null,
         promoCode,
         ...order.totals,
         createdAt: new Date(order.createdAt),
@@ -90,12 +93,15 @@ export async function markOrderSynced(number: string) {
   await db.update(orders).set({ erpSyncedAt: new Date() }).where(eq(orders.number, number));
 }
 
+/** Commandes pas encore dues : ni transmises à l'ERP, ni comptées comme à préparer. */
+export const NOT_DUE_STATUSES: OrderStatus[] = ['en-attente-paiement', 'a-valider', 'annulee'];
+
 /**
- * Transmet à l'ERP une commande confirmée (payée ou payable à la livraison).
- * Une commande en attente de paiement n'est pas transmise : l'ERP ne prépare que ce qui est dû.
+ * Transmet à l'ERP une commande confirmée (payée, payable à la livraison ou validée par l'équipe).
+ * Une commande en attente de paiement ou de validation n'est pas transmise : l'ERP ne prépare que ce qui est dû.
  */
 export async function pushOrderToErp(row: OrderRow) {
-  if (row.status === 'en-attente-paiement' || row.status === 'annulee' || row.erpSyncedAt) return false;
+  if (NOT_DUE_STATUSES.includes(row.status) || row.erpSyncedAt) return false;
   const lines = await db.select().from(orderLines).where(eq(orderLines.orderId, row.id)).orderBy(asc(orderLines.id));
   try {
     if (await sendOrderToErp(toOrder(row, lines))) {
@@ -117,6 +123,7 @@ export async function listOrdersForUser(userId: string, limit = 50) {
 /** Étapes possibles depuis chaque statut (back-office). Livrée et annulée sont définitives. */
 export const ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   'en-attente-paiement': ['confirmee', 'annulee'],
+  'a-valider': ['confirmee', 'annulee'],
   confirmee: ['en-preparation', 'annulee'],
   'en-preparation': ['expediee', 'annulee'],
   expediee: ['livree'],
@@ -125,7 +132,7 @@ export const ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
 };
 
 /** Le client peut annuler lui-même tant que la préparation n'a pas commencé (CGV). */
-export const CUSTOMER_CANCELLABLE: OrderStatus[] = ['en-attente-paiement', 'confirmee'];
+export const CUSTOMER_CANCELLABLE: OrderStatus[] = ['en-attente-paiement', 'a-valider', 'confirmee'];
 
 const actor = alias(user, 'actor');
 
@@ -209,7 +216,7 @@ export async function findOrderForTracking(number: string, phone: string) {
 export async function listOrders(filters: { status?: string; erpPending?: boolean; q?: string; limit?: number; offset?: number }) {
   const where: SQL[] = [];
   if (filters.status) where.push(eq(orders.status, filters.status as OrderStatus));
-  if (filters.erpPending) where.push(isNull(orders.erpSyncedAt), notInArray(orders.status, ['en-attente-paiement', 'annulee']));
+  if (filters.erpPending) where.push(isNull(orders.erpSyncedAt), notInArray(orders.status, NOT_DUE_STATUSES));
   if (filters.q) {
     const term = `%${filters.q.replace(/[%_\\]/g, '\\$&')}%`;
     where.push(

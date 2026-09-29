@@ -1,7 +1,9 @@
-// Devis serveur d'un panier : prix du catalogue (prix pro pour les comptes validés),
-// code promo, frais de livraison. Utilisé par le panier, la page de commande et
+// Devis serveur d'un panier : prix du catalogue (prix pro pour les comptes validés, ou prix
+// du type de prix choisi, ex. crédit), code promo, frais de livraison. Utilisé par le panier, la page de commande et
 // l'enregistrement des commandes : un seul calcul fait foi.
+import type { ProductVariant } from '../db/schema';
 import { canBuyOnline, getCatalog, unitPriceFor } from './catalog';
+import { canUsePriceType, listPriceTypes, typedPrice } from './price-types';
 import { computeTotals } from './pricing';
 import { checkPromo } from './promotions';
 import { activeZones, getSettings } from './settings';
@@ -34,12 +36,15 @@ export async function quote(input: {
   items: unknown;
   zoneId?: unknown;
   promoCode?: unknown;
+  /** Type de prix choisi à la commande (identifiant) ; vide : prix normal. */
+  priceType?: unknown;
   user?: { accountType?: string | null; proStatus?: string | null } | null;
 }) {
-  const [{ products, categoryOf, brandOf }, settings] = await Promise.all([getCatalog(), getSettings()]);
+  const [{ products, categoryOf, brandOf }, settings, allPriceTypes] = await Promise.all([getCatalog(), getSettings(), listPriceTypes()]);
   const byId = new Map(products.map((p) => [p.id, p]));
   const pro = isValidatedPro(input.user);
   const lines: QuotedLine[] = [];
+  const variants: ProductVariant[] = [];
   const problems: string[] = [];
   let invalid = false;
 
@@ -72,7 +77,19 @@ export async function quote(input: {
       publicPrice: variant.price,
       quantity,
     });
+    variants.push(variant);
   }
+
+  // Types de prix proposés : ouverts à ce visiteur, et dont tous les articles du panier ont un prix.
+  const viewer = { loggedIn: !!input.user, pro };
+  const priceTypes = lines.length
+    ? allPriceTypes.filter((t) => canUsePriceType(t, viewer) && variants.every((v) => typedPrice(v, t.id) !== undefined))
+    : [];
+  const wanted = typeof input.priceType === 'string' ? input.priceType : '';
+  const priceType = wanted ? (priceTypes.find((t) => t.id === wanted) ?? null) : null;
+  // Type demandé mais plus disponible (panier modifié, type désactivé…) : le client doit le revoir.
+  const priceTypeUnavailable = !!wanted && !priceType;
+  if (priceType) lines.forEach((line, i) => (line.unitPrice = typedPrice(variants[i], priceType.id)!));
 
   const subtotal = lines.reduce((s, l) => s + l.unitPrice * l.quantity, 0);
   const promoCheck = await checkPromo(input.promoCode, subtotal);
@@ -90,6 +107,9 @@ export async function quote(input: {
     /** Au moins une ligne était inconnue ou mal formée (≠ simplement retirée de la vente). */
     invalid,
     pro,
+    priceTypes: priceTypes.map(({ id, label, description, validation }) => ({ id, label, description, validation })),
+    priceType: priceType ? { id: priceType.id, label: priceType.label, validation: priceType.validation } : null,
+    priceTypeUnavailable,
     zone,
     totals,
     freeThreshold: settings.delivery.freeThreshold,

@@ -34,8 +34,14 @@ export const ARTICLE_TYPE_LABELS = {
   communique: 'Communiqué',
 } as const;
 
+/** Moyens de paiement hors paramètres (commandes à valider par l'équipe). */
+export const PAYMENT_LABELS: Record<string, string> = {
+  'a-convenir': 'À convenir avec AfriSime',
+};
+
 export const ORDER_STATUS_LABELS = {
   'en-attente-paiement': 'En attente de paiement',
+  'a-valider': 'À valider',
   confirmee: 'Confirmée',
   'en-preparation': 'En préparation',
   expediee: 'Expédiée',

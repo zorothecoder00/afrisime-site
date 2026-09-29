@@ -12,8 +12,8 @@ Ce guide sert de support de formation pour l'équipe qui gère le site. Il est a
 | Rôle | Rubriques |
 | --- | --- |
 | Super administrateur | Tout, dont Clients & équipe (rôles, blocages), Paramètres (identité, coordonnées), Journal |
-| Administrateur web | Contenus (publication), Textes du site, FAQ, Programmes & projets, Médias, SEO & menus, Rapports |
-| E-commerce manager | Commandes, Catalogue, Promotions, Médias, Paramètres (livraison, paiement), Rapports |
+| Administrateur web | Contenus (publication), Textes du site, FAQ, Programmes & projets, Catalogue (catégories et marques), Médias, SEO & menus, Rapports |
+| E-commerce manager | Commandes, Catalogue (dont types de prix), Promotions, Médias, Paramètres (livraison, paiement), Rapports |
 | Commercial B2B | Leads, validation des comptes pro, Rapports |
 | Service client | Commandes, Leads (contact, réclamations), FAQ |
 | Éditeur | Contenus (brouillons à faire valider) |
@@ -26,7 +26,8 @@ Toutes les actions sensibles (connexion, changement de statut, publication, supp
 **Commandes** liste toutes les commandes ; filtrez par statut, cherchez par numéro, nom ou téléphone.
 
 - **En attente de paiement** : le client a choisi Mobile Money ou carte et n'a pas encore payé. Dès que le prestataire confirme le paiement, la commande passe seule à **Confirmée**. Sans paiement sous 72 h, elle est annulée automatiquement.
-- **Confirmée** : payée en ligne ou payable à la livraison. Elle est transmise à l'ERP.
+- **À valider** : le client a choisi un type de prix « à valider » (ex. prix à crédit, voir 5). Il n'a rien payé. Appelez-le pour convenir des conditions (dossier, échéancier…), puis passez la commande en **Confirmée** (ou **Annulée**). Elle n'est ni transmise à l'ERP ni annulée automatiquement tant qu'elle est à valider.
+- **Confirmée** : payée en ligne, payable à la livraison ou validée par l'équipe. Elle est transmise à l'ERP.
 - Faites avancer la commande : **En préparation › Expédiée › Livrée**. À chaque étape, le client est prévenu (e-mail, SMS/WhatsApp selon les prestataires configurés).
 - Une commande peut être **annulée** tant qu'elle n'est pas expédiée. Le client peut lui-même annuler tant que la préparation n'a pas commencé et qu'il n'a pas payé ; une commande déjà payée et annulée doit être remboursée (le journal le signale).
 - La fiche commande montre l'historique, les paiements et les notifications envoyées. « Vérifier auprès du prestataire » relit l'état d'un paiement resté en attente.
@@ -50,14 +51,23 @@ Un client qui s'inscrit comme « professionnel » est **à valider**. Dans **Cli
 **Catalogue › Produits › Nouveau produit** (ou cliquez un produit) :
 
 1. **Identité** : nom, référence (SKU unique), catégorie, marque, résumé, description.
-2. **Formats et prix** : une ligne par format (Sac 5 kg, Carton de 12…) avec son prix. *Prix barré* = ancien prix affiché barré (promotion). *Prix pro* = prix réservé aux comptes pro validés. L'identifiant du format sert à l'ERP (SKU du format = SKU produit + « - » + identifiant).
+2. **Formats et prix** : une ligne par format (Sac 5 kg, Carton de 12…) avec son prix. *Prix barré* = ancien prix affiché barré (promotion). *Prix pro* = prix réservé aux comptes pro validés. Une colonne supplémentaire par **type de prix** (ex. *Prix à crédit*) : laissez-la vide si le format n'est pas proposé à ce prix. L'identifiant du format sert à l'ERP (SKU du format = SKU produit + « - » + identifiant).
 3. **Photos** : JPG/PNG/WebP jusqu'à 8 Mo ; elles sont automatiquement redimensionnées et converties en WebP. La première est la photo principale. Renseignez le texte alternatif (accessibilité et référencement).
 4. **Publication** : « Visible sur le site », statut (Disponible, Sur commande, Temporairement indisponible, Sur devis), stock, badges.
 5. **SEO** : titre et description pour Google (facultatif).
 
 Les modifications sont visibles sur le site **en moins d'une minute**. Changer l'adresse d'un produit crée automatiquement une redirection depuis l'ancienne. Pour retirer un produit temporairement, décochez « Visible sur le site » plutôt que de le supprimer.
 
-**Catégories** et **Marques** : nom, ordre d'affichage, couleur et icône (catégories), logo (marques). Une catégorie ou une marque utilisée par des produits ne peut pas être supprimée.
+**Catégories** et **Marques** (super administrateur, e-commerce manager, administrateur web) : ajout, modification, suppression ; nom, ordre d'affichage, couleur, icône et image (catégories), logo (marques). L'image ou le logo peut être remplacé ou retiré (« Retirer »). Une catégorie peut être rangée dans un **rayon principal** (catégorie parente) : c'est une **sous-catégorie** (ex. Épicerie › Riz), sur un seul niveau. Dans la boutique, les pastilles de rayon montrent les rayons principaux, chaque rayon affiche aussi les produits de ses sous-catégories, et le filtre Catégories les présente en arborescence. Une catégorie ou une marque utilisée par des produits ne peut pas être supprimée, ni un rayon qui a des sous-catégories.
+
+**Types de prix** (super administrateur, e-commerce manager) : prix proposés en plus du prix normal, par exemple **Prix à crédit** ou **Prix de gros**. Pour chaque type :
+
+- **Visible par** : tout le monde, les clients connectés ou les comptes pro validés ;
+- **Conditions affichées au client** : texte court sur la fiche produit et à la commande (ex. « 3 mensualités après étude du dossier ») ;
+- **Commande à valider par l'équipe** : le client ne paie pas en ligne ; la commande arrive **À valider** (voir 2). À cocher pour le crédit ;
+- **Actif**, **ordre**.
+
+Les montants se saisissent ensuite dans chaque produit (colonne du type dans *Formats et prix*). Sur la fiche produit, le client voit les prix des types qui lui sont ouverts. À la commande, il choisit le type de prix si **tous** les articles de son panier ont ce prix ; le total est recalculé par le serveur. Le type choisi figure sur la commande, dans les e-mails et dans l'export CSV. Supprimer un type retire ses prix du site (les commandes passées gardent son nom).
 
 Si l'ERP est branché, il met à jour prix, statuts et stocks tout seul (webhook catalogue).
 

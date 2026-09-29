@@ -98,7 +98,14 @@ const block = 'rounded-2xl bg-white p-5 ring-1 ring-line sm:p-6';
         <!-- 3. Paiement -->
         <section class={block} aria-labelledby="etape-paiement">
           <h2 id="etape-paiement" class="flex items-center gap-3 text-lg font-bold !text-ink"><span class={step}>3</span>Mode de paiement</h2>
-          <fieldset class="mt-4">
+          <!-- Types de prix (ex. prix à crédit) : affichés si tous les articles du panier en ont un (devis serveur). -->
+          <fieldset class="mt-4" data-price-types hidden>
+            <legend class="text-sm font-bold text-ink">Type de prix</legend>
+            <div class="mt-2 space-y-2" data-price-type-options></div>
+            <p class="field-error" data-error-for="priceType" hidden></p>
+          </fieldset>
+          <p class="alert alert-info mt-4" data-validation-note hidden></p>
+          <fieldset class="mt-4" data-payment-methods>
             <legend class="sr-only">Moyen de paiement</legend>
             <div class="space-y-2">
               {
@@ -259,7 +266,38 @@ const block = 'rounded-2xl bg-white p-5 ring-1 ring-line sm:p-6';
     }
   }
 
-  const FIELDS = ['name', 'phone', 'email', 'deliveryZone', 'city', 'address', 'paymentMethod', 'cgv'];
+  const FIELDS = ['name', 'phone', 'email', 'deliveryZone', 'city', 'address', 'priceType', 'paymentMethod', 'cgv'];
+
+  // Type de prix choisi ('' : prix normal). Un type « à valider » remplace le paiement.
+  const priceTypeValue = () => (form.querySelector<HTMLInputElement>('input[name="priceType"]:checked')?.value ?? '');
+  const needsValidation = () => !!quote?.priceType?.validation;
+
+  function renderPriceTypes() {
+    const box = $('[data-price-types]');
+    const types = quote?.priceTypes ?? [];
+    box.hidden = types.length === 0;
+    const selected = quote?.priceType?.id ?? '';
+    const option = (id: string, label: string, description: string) => {
+      const wrapper = document.createElement('label');
+      wrapper.className = 'flex cursor-pointer items-start gap-3 rounded-xl border-2 border-line p-3.5 transition hover:border-brand-600 has-[:checked]:border-brand-700 has-[:checked]:bg-brand-50';
+      const input = Object.assign(document.createElement('input'), { type: 'radio', name: 'priceType', value: id, checked: id === selected, className: 'mt-0.5 size-4 accent-brand-700' });
+      const text = document.createElement('span');
+      text.className = 'min-w-0 flex-1';
+      text.append(Object.assign(document.createElement('span'), { className: 'block text-sm font-bold', textContent: label }));
+      if (description) text.append(Object.assign(document.createElement('span'), { className: 'block text-xs text-muted', textContent: description }));
+      wrapper.append(input, text);
+      return wrapper;
+    };
+    $('[data-price-type-options]').replaceChildren(
+      option('', 'Prix normal', 'Paiement comptant, selon le moyen choisi ci-dessous.'),
+      ...types.map((t) => option(t.id, t.label, t.description)),
+    );
+    const validation = needsValidation();
+    $('[data-payment-methods]').hidden = validation;
+    const note = $('[data-validation-note]');
+    note.hidden = !validation;
+    note.textContent = validation ? `${quote!.priceType!.label} : rien à payer maintenant. Votre commande sera validée par notre équipe, qui vous contacte pour convenir des conditions.` : '';
+  }
 
   function validate() {
     const e: Record<string, string> = {};
@@ -269,7 +307,7 @@ const block = 'rounded-2xl bg-white p-5 ring-1 ring-line sm:p-6';
     const zone = value('deliveryZone');
     if (!zone) e.deliveryZone = 'Choisissez une zone ou le retrait au dépôt.';
     if (zone && zone !== 'retrait' && value('address').length < 4) e.address = 'Indiquez une adresse ou un point de repère.';
-    if (!value('paymentMethod')) e.paymentMethod = 'Choisissez un moyen de paiement.';
+    if (!needsValidation() && !value('paymentMethod')) e.paymentMethod = 'Choisissez un moyen de paiement.';
     if (!(field('cgv') as HTMLInputElement).checked) e.cgv = 'Vous devez accepter les conditions de vente.';
     FIELDS.forEach((n) => setError(n, e[n] ?? null));
     focusFirst(e);
@@ -340,17 +378,22 @@ const block = 'rounded-2xl bg-white p-5 ring-1 ring-line sm:p-6';
     $('[data-total]').textContent = formatPrice(t.total);
     $('[data-total-mobile]').textContent = formatPrice(t.total);
     const note = $('[data-summary-note]');
-    const notes = [...quote.problems, ...(quote.promo && !quote.promo.applied ? [quote.promo.message] : []), ...(quote.pro ? ['Prix professionnels appliqués.'] : [])];
+    const notes = [
+      ...quote.problems,
+      ...(quote.promo && !quote.promo.applied ? [quote.promo.message] : []),
+      ...(quote.priceType ? [`${quote.priceType.label} appliqué.`] : quote.pro ? ['Prix professionnels appliqués.'] : []),
+    ];
     note.textContent = notes.join(' ');
     note.hidden = !notes.length;
   }
 
   async function refreshQuote() {
-    const q = await fetchQuote(items, { promoCode: getPromo(), zoneId: value('deliveryZone') || undefined });
+    const q = await fetchQuote(items, { promoCode: getPromo(), zoneId: value('deliveryZone') || undefined, priceType: priceTypeValue() });
     if (q) {
       quote = q;
       if (q.promo && !q.promo.applied) setPromo('');
     }
+    renderPriceTypes();
     renderItems();
     renderTotals();
   }
@@ -358,7 +401,7 @@ const block = 'rounded-2xl bg-white p-5 ring-1 ring-line sm:p-6';
   form.addEventListener('change', (e) => {
     const target = e.target as HTMLInputElement;
     if (target.name) setError(target.name, null);
-    if (target.name === 'deliveryZone') refreshQuote();
+    if (target.name === 'deliveryZone' || target.name === 'priceType') refreshQuote();
     else renderTotals();
   });
 
@@ -387,7 +430,8 @@ const block = 'rounded-2xl bg-white p-5 ring-1 ring-line sm:p-6';
           promoCode: getPromo(),
           customer: { name: value('name'), phone: value('phone'), email: value('email'), city: value('city'), address: value('address') },
           deliveryZone: value('deliveryZone'),
-          paymentMethod: value('paymentMethod'),
+          paymentMethod: needsValidation() ? undefined : value('paymentMethod'),
+          priceType: priceTypeValue() || undefined,
           items: items.map((i) => ({ productId: i.productId, variantId: i.variantId, quantity: i.quantity })),
         }),
       });
@@ -396,7 +440,8 @@ const block = 'rounded-2xl bg-white p-5 ring-1 ring-line sm:p-6';
         const errors: Record<string, string> = data.errors ?? {};
         Object.entries(errors).forEach(([n, m]) => setError(n, m));
         focusFirst(errors);
-        throw new Error(errors.items ?? errors.promoCode ?? data.error ?? "La commande n'a pas pu être validée.");
+        if (errors.priceType) refreshQuote();
+        throw new Error(errors.items ?? errors.promoCode ?? errors.priceType ?? data.error ?? "La commande n'a pas pu être validée.");
       }
       try {
         sessionStorage.removeItem('afs-checkout-key');

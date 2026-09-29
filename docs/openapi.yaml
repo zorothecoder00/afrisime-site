@@ -80,7 +80,7 @@ components:
         variantLabel: { type: string }
         slug: { type: string }
         image: { type: [string, 'null'] }
-        unitPrice: { type: integer, description: Prix appliqué (prix pro pour un compte pro validé). }
+        unitPrice: { type: integer, description: 'Prix appliqué : prix du type de prix choisi, sinon prix pro pour un compte pro validé, sinon prix public.' }
         publicPrice: { type: integer }
         quantity: { type: integer }
     Quote:
@@ -96,6 +96,24 @@ components:
             applied: { type: boolean }
             message: { type: string }
         pro: { type: boolean }
+        priceTypes:
+          type: array
+          description: Types de prix proposés pour ce panier (ouverts au visiteur, et dont tous les articles ont un prix).
+          items:
+            type: object
+            properties:
+              id: { type: string, example: prix_a_credit }
+              label: { type: string, example: Prix à crédit }
+              description: { type: string }
+              validation: { type: boolean, description: 'Commande « à valider » par l''équipe, sans paiement en ligne.' }
+        priceType:
+          type: [object, 'null']
+          description: Type de prix appliqué aux lignes ; null pour le prix normal.
+          properties:
+            id: { type: string }
+            label: { type: string }
+            validation: { type: boolean }
+        priceTypeUnavailable: { type: boolean, description: Le type de prix demandé n'est pas (ou plus) proposé pour ce panier. }
         freeThreshold: { type: integer }
     Customer:
       type: object
@@ -108,7 +126,8 @@ components:
         address: { type: string, description: Obligatoire sauf retrait au dépôt. }
     OrderStatus:
       type: string
-      enum: [en-attente-paiement, confirmee, en-preparation, expediee, livree, annulee]
+      enum: [en-attente-paiement, a-valider, confirmee, en-preparation, expediee, livree, annulee]
+      description: '`a-valider` : commande passée avec un type de prix à valider (ex. crédit), en attente de l''équipe.'
     Order:
       type: object
       properties:
@@ -127,7 +146,12 @@ components:
               unitPrice: { type: integer }
               quantity: { type: integer }
         deliveryZone: { type: string, example: lome-centre }
-        paymentMethod: { type: string, enum: [mobile-money, carte, livraison] }
+        paymentMethod: { type: string, enum: [mobile-money, carte, livraison, a-convenir], description: '`a-convenir` : commande à valider (type de prix à crédit…).' }
+        priceType:
+          type: [object, 'null']
+          properties:
+            id: { type: string }
+            label: { type: string }
         totals: { $ref: '#/components/schemas/Totals' }
         createdAt: { type: string, format: date-time }
         paidAt: { type: [string, 'null'], format: date-time }
@@ -203,6 +227,7 @@ paths:
                 items: { type: array, items: { $ref: '#/components/schemas/CartItem' } }
                 promoCode: { type: string }
                 zoneId: { type: string }
+                priceType: { type: string, description: Identifiant d'un type de prix (Quote.priceTypes) ; absent pour le prix normal. }
       responses:
         '200': { description: Devis, content: { application/json: { schema: { $ref: '#/components/schemas/Quote' } } } }
         '429': { $ref: '#/components/responses/TooMany' }
@@ -221,12 +246,13 @@ paths:
           application/json:
             schema:
               type: object
-              required: [idempotencyKey, customer, deliveryZone, paymentMethod, items]
+              required: [idempotencyKey, customer, deliveryZone, items]
               properties:
                 idempotencyKey: { type: string, maxLength: 80 }
                 customer: { $ref: '#/components/schemas/Customer' }
                 deliveryZone: { type: string }
-                paymentMethod: { type: string, enum: [mobile-money, carte, livraison] }
+                paymentMethod: { type: string, enum: [mobile-money, carte, livraison], description: Obligatoire sauf avec un type de prix à valider. }
+                priceType: { type: string, description: 'Type de prix choisi. S''il est « à valider », la commande est créée en statut `a-valider`, sans paiement. 422 (`errors.priceType`) s''il n''est plus proposé.' }
                 promoCode: { type: string }
                 items: { type: array, items: { $ref: '#/components/schemas/CartItem' }, maxItems: 100 }
       responses:

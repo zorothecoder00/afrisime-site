@@ -134,6 +134,8 @@ export const rateLimit = pgTable('rate_limit', {
 
 export const orderStatus = pgEnum('order_status', [
   'en-attente-paiement',
+  /** Commande passée avec un type de prix « à valider » (ex. crédit) : l'équipe recontacte le client. */
+  'a-valider',
   'confirmee',
   'en-preparation',
   'expediee',
@@ -154,6 +156,10 @@ export const orders = pgTable(
     deliveryZone: text('delivery_zone').notNull(),
     paymentMethod: text('payment_method').notNull(),
     promoCode: text('promo_code'),
+    /** Type de prix choisi à la commande (Catalogue › Types de prix) ; null : prix normal. */
+    priceType: text('price_type'),
+    /** Libellé du type de prix au moment de la commande (le type peut être renommé ou supprimé ensuite). */
+    priceTypeLabel: text('price_type_label'),
     subtotal: integer('subtotal').notNull(),
     discount: integer('discount').notNull(),
     delivery: integer('delivery').notNull(),
@@ -324,6 +330,8 @@ export type ProductVariant = {
   compareAtPrice?: number;
   /** Prix réservé aux comptes professionnels validés. */
   proPrice?: number;
+  /** Prix par type de prix (Catalogue › Types de prix), ex. { prix_a_credit: 27500 }. */
+  prices?: Record<string, number>;
   unit: string;
   weightKg: number;
 };
