@@ -143,3 +143,10 @@
     @apply animate-pulse rounded-lg bg-brand-100;
   }
 }
+
+/* En-tête : menu trop long pour la largeur de l'écran → menu burger (src/components/Header.astro).
+   Hors @layer pour passer devant les utilitaires lg:block / lg:hidden. */
+[data-header][data-compact] [data-desktop-nav] { display: none; }
+[data-header][data-compact] [data-menu-toggle] { display: inline-flex; }
+[data-header][data-compact] #menu-mobile:not([hidden]) { display: block; }
+[data-header][data-compact] > div > .ml-auto { margin-left: auto; }

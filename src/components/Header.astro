@@ -58,8 +58,8 @@ const isActive = (href: string) => {
     </a>
 
     <!-- Navigation desktop (dans la barre d'en-tête) -->
-    <nav aria-label="Navigation principale" class="hidden min-w-0 flex-1 lg:ml-4 lg:block xl:ml-6">
-      <!-- justify-center-safe : si le menu est trop long, il ne déborde jamais sur le logo. -->
+    <nav aria-label="Navigation principale" class="hidden min-w-0 flex-1 lg:ml-4 lg:block xl:ml-6" data-desktop-nav>
+      <!-- Si le menu ne tient pas sur la ligne, l'en-tête passe en menu burger (script plus bas). -->
       <ul class="flex items-center justify-center-safe gap-0.5">
         {
           NAV.map((item) => (
@@ -67,7 +67,7 @@ const isActive = (href: string) => {
               <a
                 href={item.href}
                 class:list={[
-                  'flex items-center gap-1 whitespace-nowrap rounded-lg px-1.5 py-2 text-sm font-semibold transition hover:bg-brand-50 hover:text-brand-700 xl:px-2.5',
+                  'flex items-center gap-1 whitespace-nowrap rounded-lg px-1.5 py-2 text-sm font-semibold transition hover:bg-brand-50 hover:text-brand-700 xl:px-2',
                   isActive(item.href) ? 'text-brand-700 shadow-[inset_0_-2px_0] shadow-brand-600' : 'text-ink',
                 ]}
                 aria-current={isActive(item.href) ? 'page' : undefined}
@@ -93,7 +93,8 @@ const isActive = (href: string) => {
     </nav>
 
     <div class="ml-auto flex shrink-0 items-center gap-1 sm:gap-2 lg:ml-0">
-      <a href="/b2b" class="btn btn-accent btn-sm hidden sm:inline-flex lg:hidden xl:inline-flex">{t.headerPro}</a>
+      <!-- Masqué sur ordinateur : l'onglet Solutions B2B mène déjà à cette page. -->
+      <a href="/b2b" class="btn btn-accent btn-sm hidden sm:inline-flex lg:hidden">{t.headerPro}</a>
       <a href="/compte" class="btn btn-ghost btn-sm" aria-label="Mon compte">
         <Icon name="user" size={22} />
       </a>
@@ -142,6 +143,23 @@ const isActive = (href: string) => {
     </ul>
   </nav>
 </header>
+
+<!-- Menu administrable (SEO & menus) : s'il est trop long pour la largeur de l'écran, l'en-tête
+     passe en menu burger au lieu de laisser les onglets se chevaucher. En ligne pour agir avant l'affichage. -->
+<script is:inline>
+  (() => {
+    const header = document.querySelector('[data-header]');
+    const nav = header && header.querySelector('[data-desktop-nav]');
+    if (!nav) return;
+    const fit = () => {
+      delete header.dataset.compact;
+      if (nav.offsetWidth > 0 && nav.querySelector('ul').scrollWidth > nav.clientWidth) header.dataset.compact = '';
+    };
+    fit();
+    addEventListener('resize', fit);
+    if (document.fonts) document.fonts.ready.then(fit);
+  })();
+</script>
 
 <script>
   import { showStaffLinks } from '../scripts/staff';

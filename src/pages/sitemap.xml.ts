@@ -4,7 +4,7 @@ import type { APIRoute } from 'astro';
 import { getCatalog, productUrl } from '../lib/catalog';
 import { listArticles, listPublishedPages } from '../lib/content';
 
-const STATIC_PAGES = ['/', '/afrisime', '/activites', '/boutique', '/b2b', '/partenaires', '/investir', '/carrieres', '/media', '/faq', '/contact'];
+const STATIC_PAGES = ['/', '/afrisime', '/activites', '/boutique', '/b2b', '/programmes', '/partenaires', '/investir', '/carrieres', '/media', '/faq', '/contact'];
 
 function escapeXml(value: string) {
   return value.replace(/[<>&'"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;' })[c]!);

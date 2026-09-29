@@ -54,6 +54,7 @@ export const NAV: NavItem[] = [
   },
   { label: 'Boutique', href: '/boutique' },
   { label: 'Solutions B2B', href: '/b2b' },
+  { label: 'Programmes et Projets', href: '/programmes' },
   { label: 'Partenaires', href: '/partenaires' },
   { label: 'Média', href: '/media' },
   { label: 'Contact', href: '/contact' },

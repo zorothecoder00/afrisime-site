@@ -1,13 +1,26 @@
 // Utilitaires des pages du back-office : contrôle des permissions, lecture des formulaires.
 // Les formulaires sont envoyés en POST sur la page elle-même ; Astro vérifie leur origine
 // (protection CSRF, security.checkOrigin).
-import { can, type Permissions } from './roles';
+import { can, isStaff, type Permissions } from './roles';
+import { isSameOrigin, json } from './server';
 
 type Me = { role?: string | null } | null | undefined;
 
 /** Réponse 403 si l'utilisateur n'a pas la permission, sinon null. */
 export function deny(me: Me, permissions: Permissions): Response | null {
   return can(me?.role, permissions) ? null : new Response('Accès refusé : votre rôle ne permet pas cette action.', { status: 403 });
+}
+
+/**
+ * Garde des API du back-office (/api/admin/…) : mêmes règles que les pages /admin
+ * (équipe, double authentification, permission du rôle), réponses JSON.
+ */
+export function denyApi(request: Request, me: (Me & { twoFactorEnabled?: boolean | null }) | null, permissions: Permissions): Response | null {
+  if (!isSameOrigin(request)) return json({ error: 'Origine non autorisée.' }, 403);
+  if (!me) return json({ error: 'Non connecté.' }, 401);
+  if (!isStaff(me.role) || !me.twoFactorEnabled) return json({ error: 'Accès réservé à l’équipe AfriSime (double authentification requise).' }, 403);
+  if (!can(me.role, permissions)) return json({ error: 'Votre rôle ne permet pas cette action.' }, 403);
+  return null;
 }
 
 export function str(form: FormData, name: string, max = 500): string {

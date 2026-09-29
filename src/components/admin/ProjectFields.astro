@@ -1,0 +1,47 @@
+---
+// Champs d'un programme ou projet (création et modification).
+import { imageUrl } from '../../lib/media';
+import { PROJECT_KINDS, PROJECT_STATUSES, type Project } from '../../lib/projects';
+
+interface Props {
+  p?: Project;
+  position?: number;
+}
+const { p, position } = Astro.props;
+---
+
+<label class="block">
+  <span class="label">Type</span>
+  <select name="kind" class="input !py-2">
+    {Object.entries(PROJECT_KINDS).map(([value, label]) => <option value={value} selected={(p?.kind ?? 'projet') === value}>{label}</option>)}
+  </select>
+</label>
+<label class="block sm:col-span-2"><span class="label">Titre</span><input name="title" value={p?.title ?? ''} required maxlength="140" class="input !py-2" placeholder="Ex. : Programme d'appui aux coopératives" /></label>
+<label class="block"><span class="label">Ordre</span><input name="position" value={p?.position ?? position ?? ''} inputmode="numeric" class="input !py-2" /></label>
+<label class="block">
+  <span class="label">Statut</span>
+  <select name="status" class="input !py-2">
+    {Object.entries(PROJECT_STATUSES).map(([value, label]) => <option value={value} selected={(p?.status ?? 'en-cours') === value}>{label}</option>)}
+  </select>
+</label>
+<label class="block sm:col-span-2"><span class="label">Lieu / zone</span><input name="place" value={p?.place ?? ''} maxlength="100" class="input !py-2" placeholder="Ex. : Région des Plateaux" /></label>
+<label class="block"><span class="label">Période</span><input name="period" value={p?.period ?? ''} maxlength="60" class="input !py-2" placeholder="Ex. : 2025 – 2027" /></label>
+<label class="block sm:col-span-4"><span class="label">Résumé</span><input name="summary" value={p?.summary ?? ''} maxlength="300" class="input !py-2" /></label>
+<label class="block sm:col-span-4">
+  <span class="label">Description</span>
+  <textarea name="text" rows="5" maxlength="4000" class="input">{p?.text ?? ''}</textarea>
+  <span class="hint block">Laissez une ligne vide entre deux paragraphes.</span>
+</label>
+<div class="sm:col-span-4">
+  <span class="label">Image</span>
+  {
+    p?.imageId && (
+      <div class="mb-2 flex items-center gap-3">
+        <img src={imageUrl(p.imageId, 'mini')} alt="" class="h-16 w-24 rounded-lg object-cover" />
+        <label class="flex items-center gap-2 text-sm text-danger"><input type="checkbox" name="removeImage" />Retirer</label>
+      </div>
+    )
+  }
+  <input type="file" name="image" accept="image/jpeg,image/png,image/webp" class="input" />
+</div>
+<label class="flex items-end gap-2 pb-2 text-sm"><input type="checkbox" name="published" checked={p ? p.published : true} />Publié</label>
