@@ -2,31 +2,29 @@
 import Layout from '../layouts/Layout.astro';
 import PageHero from '../components/PageHero.astro';
 import { imageUrl } from '../lib/media';
-import { listPublishedProjects, PROJECT_STATUSES, type ProjectKind } from '../lib/projects';
+import { getPageTexts } from '../lib/page-texts';
+import { listPublishedProjects, type ProjectKind } from '../lib/projects';
 import { cardTint } from '../lib/tints';
 
-// Programmes et projets gérés dans le back-office (Programmes & projets).
-const projects = await listPublishedProjects();
+// Programmes et projets gérés dans le back-office (Programmes & projets) ;
+// textes dans Textes du site › Programmes & Projets.
+const [projects, t] = await Promise.all([listPublishedProjects(), getPageTexts('programmes')]);
 const sections: { kind: ProjectKind; id: string; title: string }[] = [
-  { kind: 'programme', id: 'programmes', title: 'Nos programmes' },
-  { kind: 'projet', id: 'projets', title: 'Nos projets' },
+  { kind: 'programme', id: 'programmes', title: t.programmesTitle },
+  { kind: 'projet', id: 'projets', title: t.projetsTitle },
 ];
+const statusLabel = { 'a-venir': t.statusUpcoming, 'en-cours': t.statusOngoing, termine: t.statusDone };
 const statusBadge = { 'a-venir': 'badge-nouveau', 'en-cours': 'badge-populaire', termine: 'badge-sur-commande' } as const;
 ---
 
-<Layout title="Programmes & Projets" description="Les programmes et projets portés par AfriSime au Togo : filières locales, logistique, accompagnement des partenaires.">
-  <PageHero
-    eyebrow="Programmes & Projets"
-    title="Nos programmes et projets"
-    intro="AfriSime s'engage au-delà de la distribution : programmes structurants et projets concrets pour les filières, les partenaires et les communautés."
-    breadcrumbs={[{ label: 'Programmes & Projets' }]}
-  />
+<Layout title="Programmes & Projets" description={t.seoDescription}>
+  <PageHero eyebrow={t.heroEyebrow} title={t.heroTitle} intro={t.heroText} breadcrumbs={[{ label: 'Programmes & Projets' }]} />
 
   {
     projects.length === 0 && (
       <section class="section">
         <div class="container-page">
-          <p class:list={['card p-6 text-ink/75', cardTint(0)]}>Nos programmes et projets seront bientôt présentés ici.</p>
+          <p class:list={['card p-6 text-ink/75', cardTint(0)]}>{t.empty}</p>
         </div>
       </section>
     )
@@ -46,7 +44,7 @@ const statusBadge = { 'a-venir': 'badge-nouveau', 'en-cours': 'badge-populaire',
                     {p.imageId && <img src={imageUrl(p.imageId)} alt="" loading="lazy" class="aspect-[16/9] w-full object-cover" />}
                     <div class="flex flex-1 flex-col p-6">
                       <p class="flex flex-wrap items-center gap-2 text-sm text-muted">
-                        <span class:list={['badge', statusBadge[p.status]]}>{PROJECT_STATUSES[p.status]}</span>
+                        <span class:list={['badge', statusBadge[p.status]]}>{statusLabel[p.status]}</span>
                         {[p.place, p.period].filter(Boolean).join(' · ')}
                       </p>
                       <h3 class="mt-3 text-xl">{p.title}</h3>

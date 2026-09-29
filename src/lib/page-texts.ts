@@ -1,5 +1,5 @@
 // Textes des pages modifiables depuis le back-office (Textes du site) : accueil, pied de page,
-// Qui sommes-nous, contact, activités, B2B, carrières, investir, partenaires. Chaque page est une ligne `texts.<page>` de la table `settings`.
+// Qui sommes-nous, contact, activités, B2B, programmes, carrières, investir, partenaires. Chaque page est une ligne `texts.<page>` de la table `settings`.
 // Un champ laissé vide reprend le texte par défaut défini ici ; les listes à puces gardent
 // leur nombre d'éléments (chacun a son icône), les listes « une ligne par élément » sont libres.
 import { eq } from 'drizzle-orm';
@@ -231,6 +231,18 @@ export const DEFAULT_TEXTS = {
     consent: "J'accepte qu'AfriSime utilise ces informations pour me recontacter au sujet de ma demande.",
     submit: 'Envoyer ma demande de devis',
     success: 'Merci ! Votre demande de devis est enregistrée. Un commercial vous rappelle sous 24 h ouvrées.',
+  },
+  programmes: {
+    seoDescription: 'Les programmes et projets portés par AfriSime au Togo : filières locales, logistique, accompagnement des partenaires.',
+    heroEyebrow: 'Programmes & Projets',
+    heroTitle: 'Nos programmes et projets',
+    heroText: "AfriSime s'engage au-delà de la distribution : programmes structurants et projets concrets pour les filières, les partenaires et les communautés.",
+    programmesTitle: 'Nos programmes',
+    projetsTitle: 'Nos projets',
+    statusUpcoming: 'À venir',
+    statusOngoing: 'En cours',
+    statusDone: 'Terminé',
+    empty: 'Nos programmes et projets seront bientôt présentés ici.',
   },
   carrieres: {
     seoDescription: "Rejoignez AfriSime : offres d'emploi, culture d'entreprise et candidature spontanée.",
@@ -557,6 +569,25 @@ export const TEXT_PAGES: Record<TextPage, { label: string; path: string; section
         { key: 'frequencies', label: 'Choix « Fréquence »', kind: 'lines', max: 80, hint: ONE_PER_LINE },
         { key: 'budgets', label: 'Choix « Volume mensuel estimé »', kind: 'lines', max: 80, hint: ONE_PER_LINE },
       ]),
+      seo,
+    ],
+  },
+  programmes: {
+    label: 'Programmes & Projets',
+    path: '/programmes',
+    sections: [
+      hero,
+      {
+        title: 'Programmes et projets',
+        fields: [
+          text('programmesTitle', 'Titre de la section Programmes', 80, 'Les programmes et projets eux-mêmes se gèrent dans la rubrique Programmes & projets.'),
+          text('projetsTitle', 'Titre de la section Projets', 80),
+          text('statusUpcoming', 'Statut « À venir »', 30),
+          text('statusOngoing', 'Statut « En cours »', 30),
+          text('statusDone', 'Statut « Terminé »', 30),
+          area('empty', 'Message quand rien n’est publié', 300),
+        ],
+      },
       seo,
     ],
   },
