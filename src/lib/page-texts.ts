@@ -86,7 +86,7 @@ export const DEFAULT_TEXTS = {
       },
       {
         title: 'AfriSime',
-        links: ['Qui sommes-nous | /afrisime', 'Nos activités | /activites', 'Média | /media', 'Carrières | /carrieres', 'FAQ | /faq'].join('\n'),
+        links: ['Qui sommes-nous | /afrisime', 'Nos activités | /activites', 'Programmes & Projets | /programmes', 'Média | /media', 'Carrières | /carrieres', 'FAQ | /faq'].join('\n'),
       },
     ],
     legalLinks: [
