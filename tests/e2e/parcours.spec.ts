@@ -14,11 +14,29 @@ test('REC-01 navigation : les menus principaux mènent aux pages @mobile', async
     await page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('link', { name: 'Boutique', exact: true }).click();
   }
   await expect(page).toHaveURL(/\/boutique/);
-  for (const path of ['/afrisime', '/activites', '/b2b', '/partenaires', '/media', '/faq', '/contact', '/legal/cgv']) {
+  for (const path of ['/afrisime', '/activites', '/b2b', '/programmes', '/partenaires', '/media', '/faq', '/contact', '/legal/cgv']) {
     const res = await page.goto(path);
     expect(res?.status(), path).toBe(200);
   }
   expect((await page.goto('/page-inexistante'))?.status()).toBe(404);
+});
+
+test('Programmes & Projets : onglet du menu, lien du pied de page, page publique @mobile', async ({ page, isMobile }) => {
+  await page.goto('/');
+  await dismissConsent(page);
+  if (isMobile) {
+    await page.getByRole('button', { name: 'Ouvrir le menu' }).click();
+    await page.locator('#menu-mobile').getByRole('link', { name: 'Programmes et Projets' }).click();
+  } else {
+    const nav = page.getByRole('navigation', { name: 'Navigation principale' });
+    // L'onglet est entre Solutions B2B et Partenaires, et le menu tient sur une ligne (pas de menu burger).
+    await expect(nav.getByRole('link')).toContainText(['Solutions B2B', 'Programmes et Projets', 'Partenaires']);
+    await expect(page.getByRole('button', { name: 'Ouvrir le menu' })).toBeHidden();
+    await nav.getByRole('link', { name: 'Programmes et Projets' }).click();
+  }
+  await expect(page).toHaveURL(/\/programmes$/);
+  await expect(page.locator('main h1')).toBeVisible();
+  await expect(page.getByRole('contentinfo').getByRole('link', { name: 'Programmes & Projets' })).toHaveAttribute('href', '/programmes');
 });
 
 test('REC-02 recherche : produit trouvé malgré une faute, état utile sans résultat', async ({ page }) => {

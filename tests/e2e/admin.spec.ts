@@ -34,6 +34,7 @@ const ADMIN_PAGES = [
   '/admin/contenus',
   '/admin/faq',
   '/admin/offres-emploi',
+  '/admin/programmes',
   '/admin/medias',
   '/admin/diaporamas',
   '/admin/textes',
@@ -137,6 +138,61 @@ test('REC-09 back-office : double authentification, alerte de sécurité, toutes
   await expect(page.locator('.alert-success')).toBeVisible();
   await expect(page.locator('details', { hasText: job })).toHaveCount(0);
 
+  // Programmes & projets : une fiche créée dans le back-office s'affiche dans sa section, change de statut,
+  // disparaît une fois masquée, puis est supprimée.
+  const programme = `Programme E2E ${Date.now()}`;
+  await page.goto('/admin/programmes');
+  const newProject = page.locator('form', { has: page.getByRole('button', { name: 'Ajouter', exact: true }) });
+  await newProject.locator('select[name="kind"]').selectOption('programme');
+  await newProject.locator('input[name="title"]').fill(programme);
+  await newProject.locator('input[name="place"]').fill('Région des Plateaux');
+  await newProject.locator('input[name="summary"]').fill('Résumé du programme E2E');
+  await newProject.getByRole('button', { name: 'Ajouter', exact: true }).click();
+  await expect(page.locator('.alert-success')).toBeVisible();
+
+  await page.goto('/programmes');
+  const card = page.locator('#programmes article', { has: page.getByRole('heading', { name: programme }) });
+  await expect(card).toContainText('En cours');
+  await expect(card).toContainText('Région des Plateaux');
+
+  await page.goto('/admin/programmes');
+  const fiche = page.locator('details', { hasText: programme });
+  await fiche.locator('summary').click();
+  await fiche.locator('select[name="status"]').selectOption('termine');
+  await fiche.getByRole('button', { name: 'Enregistrer' }).click();
+  await expect(page.locator('.alert-success')).toBeVisible();
+  await page.goto('/programmes');
+  await expect(page.locator('#programmes article', { has: page.getByRole('heading', { name: programme }) })).toContainText('Terminé');
+
+  await page.goto('/admin/programmes');
+  await fiche.locator('summary').click();
+  await fiche.locator('input[name="published"]').uncheck();
+  await fiche.getByRole('button', { name: 'Enregistrer' }).click();
+  await expect(page.locator('.alert-success')).toBeVisible();
+  await page.goto('/programmes');
+  await expect(page.getByRole('heading', { name: programme })).toHaveCount(0);
+
+  await page.goto('/admin/programmes');
+  await fiche.locator('summary').click();
+  page.once('dialog', (d) => d.accept());
+  await fiche.getByRole('button', { name: 'Supprimer' }).click();
+  await expect(page.locator('.alert-success')).toBeVisible();
+  await expect(page.locator('details', { hasText: programme })).toHaveCount(0);
+
+  // API du back-office (même session) : création, lecture, modification partielle, suppression.
+  const api = page.request;
+  const created = await api.post('/api/admin/programmes', { data: { kind: 'projet', title: `Projet API E2E ${Date.now()}`, status: 'a-venir' } });
+  expect(created.status()).toBe(201);
+  const { item: apiProject } = await created.json();
+  expect(apiProject).toMatchObject({ kind: 'projet', status: 'a-venir', published: true });
+  expect((await api.post('/api/admin/programmes', { data: { title: 'AB' } })).status()).toBe(422);
+  expect((await (await api.get('/api/admin/programmes')).json()).items.some((p: { id: string }) => p.id === apiProject.id)).toBe(true);
+  const patched = await api.patch(`/api/admin/programmes/${apiProject.id}`, { data: { status: 'en-cours', published: false } });
+  expect((await patched.json()).item).toMatchObject({ id: apiProject.id, title: apiProject.title, status: 'en-cours', published: false });
+  // Comme un navigateur : un DELETE sans Origin ni Content-Type est refusé par la protection CSRF d'Astro.
+  expect((await api.delete(`/api/admin/programmes/${apiProject.id}`, { headers: { origin: new URL(page.url()).origin } })).status()).toBe(200);
+  expect((await api.get(`/api/admin/programmes/${apiProject.id}`)).status()).toBe(404);
+
   // Diaporamas : deux images envoyées, affichées sur Carrières en défilement automatique, puis supprimées.
   const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
   const show = `Diaporama E2E ${Date.now()}`;
@@ -178,7 +234,10 @@ test('REC-09 back-office : double authentification, alerte de sécurité, toutes
   // Les images de test sont retirées de la médiathèque (elles ne sont plus utilisées).
   for (const name of ['e2e-1.png', 'e2e-2.png', 'e2e-a.png', 'e2e-b.png', 'e2e-c.png']) {
     page.once('dialog', (d) => d.accept());
+    // Attendre le rechargement : le message de succès de la suppression précédente est encore affiché.
+    const reloaded = page.waitForEvent('load');
     await page.locator('li', { hasText: name }).first().getByRole('button', { name: 'Supprimer' }).click();
+    await reloaded;
     await expect(page.locator('.alert-success')).toBeVisible();
   }
 });

@@ -474,6 +474,7 @@ paths:
     delete:
       tags: [Back-office]
       summary: Supprimer un programme ou projet
+      description: 'Sans corps : envoyer l''en-tête `Origin` du site (les navigateurs le font), sinon la protection CSRF d''Astro répond 403.'
       security: [{ staffSession: [] }]
       responses:
         '200': { description: Supprimé, content: { application/json: { schema: { type: object, properties: { ok: { type: boolean, const: true } } } } } }

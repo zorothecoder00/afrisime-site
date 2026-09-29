@@ -181,7 +181,8 @@ const ok = Astro.url.searchParams.get('ok');
       data.set('alt', alt);
       data.append('files', file);
       try {
-        const res = await fetch(form.action || location.pathname, { method: 'POST', body: data });
+        // getAttribute : form.action désignerait le champ caché nommé « action ».
+        const res = await fetch(form.getAttribute('action') || location.pathname, { method: 'POST', body: data });
         // Succès : le serveur redirige vers ?ok=upload ; sinon il renvoie la page avec le message d'erreur.
         if (res.ok && res.redirected && res.url.includes('ok=upload')) {
           sent++;
