@@ -22,20 +22,20 @@ Avec `PAYMENT_PROVIDER=simulation` (développement), le paiement en ligne passe 
 | [docs/guide-administrateur.md](docs/guide-administrateur.md) | Guide et support de formation de l'équipe (aussi dans le back-office : « Aide ») |
 | [docs/deploiement.md](docs/deploiement.md) | Environnements dev / staging / production, variables, paiement FedaPay, cron, mises à jour |
 | [docs/sauvegarde-restauration.md](docs/sauvegarde-restauration.md) | Plan de sauvegarde, restauration et test trimestriel |
-| [docs/openapi.yaml](docs/openapi.yaml) | API du site, webhooks ERP/paiement, contrats sortants ERP/CRM (OpenAPI 3.1) |
+| [docs/openapi.yaml](docs/openapi.yaml) | API du site, API du back-office (programmes et projets), webhooks ERP/paiement, contrats sortants ERP/CRM (OpenAPI 3.1) |
 | `/design-system` | UI kit : couleurs, typographies, composants, états (page non indexée) |
 
 ## Organisation
 
 | Dossier | Contenu |
 | --- | --- |
-| `src/pages/` | Pages publiques (rendues par le serveur, mises en cache 60 s par le CDN) |
-| `src/pages/admin/` | Back-office : tableau de bord, commandes, leads, clients & équipe, catalogue, promotions, contenus, FAQ, médias, SEO & menus, paramètres, rapports, journal |
+| `src/pages/` | Pages publiques (rendues par le serveur, mises en cache 60 s par le CDN), dont `programmes.astro` (Programmes & Projets, fiches gérées dans le back-office) |
+| `src/pages/admin/` | Back-office : tableau de bord, commandes, leads, clients & équipe, catalogue, promotions, contenus, FAQ, programmes & projets, médias, SEO & menus, paramètres, rapports, journal |
 | `src/pages/compte/` | Espace client : connexion, inscription, double authentification, commandes (recommander), favoris, adresses, profil |
 | `src/pages/commande/` | Commande, paiement (prestataire ou simulation), page de confirmation / suivi par lien secret |
-| `src/pages/api/` | `orders`, `checkout/quote`, `leads` (avec documents), `cart`, `favorites`, `pro-prices`, `erp/*` (webhooks ERP), `payments/webhook/*`, `cron/sync` |
+| `src/pages/api/` | `orders`, `checkout/quote`, `leads` (avec documents), `cart`, `favorites`, `pro-prices`, `erp/*` (webhooks ERP), `payments/webhook/*`, `cron/sync`, `admin/programmes` (gestion des programmes et projets par l'équipe) |
 | `src/db/` | Schéma PostgreSQL (Drizzle) ; migrations SQL dans `drizzle/` |
-| `src/lib/` | Logique serveur : catalogue, devis et prix, promotions, contenus, médias, paiements, notifications, intégrations, rôles, rapports |
+| `src/lib/` | Logique serveur : catalogue, devis et prix, promotions, contenus, programmes et projets, médias, paiements, notifications, intégrations, rôles, rapports |
 | `src/data/site.ts` | Valeurs par défaut des paramètres (modifiables dans le back-office) |
 | `scripts/` | `create-admin.ts`, `import-content.ts` ; contenu de départ dans `scripts/seed/` |
 | `tests/` | Tests unitaires (Vitest) et de bout en bout (Playwright) |
