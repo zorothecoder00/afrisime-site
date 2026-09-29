@@ -13,6 +13,7 @@ export const SLIDESHOW_PLACEMENTS = [
   { id: 'entete-afrisime', label: 'Qui sommes-nous — en-tête, à droite du titre', path: '/afrisime', hero: true },
   { id: 'entete-activites', label: 'Activités — en-tête, à droite du titre', path: '/activites', hero: true },
   { id: 'entete-b2b', label: 'Solutions B2B — en-tête, à droite du titre', path: '/b2b', hero: true },
+  { id: 'entete-programmes', label: 'Programmes & Projets — en-tête, à droite du titre', path: '/programmes', hero: true },
   { id: 'entete-partenaires', label: 'Partenaires — en-tête, à droite du titre', path: '/partenaires', hero: true },
   { id: 'entete-media', label: 'Média — en-tête, à droite du titre', path: '/media', hero: true },
   { id: 'entete-contact', label: 'Contact — en-tête, à droite du titre', path: '/contact', hero: true },
