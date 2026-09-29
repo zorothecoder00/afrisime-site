@@ -27,7 +27,10 @@ const tone = { brouillon: 'badge-sur-commande', 'a-valider': 'badge-promotion', 
 ---
 
 <AdminLayout title="Contenus">
-  <Tabs items={[{ label: 'Articles & médias', href: '/admin/contenus' }, { label: 'Pages', href: '/admin/contenus?type=page' }]} />
+  <Tabs
+    items={[{ label: 'Articles & médias', href: '/admin/contenus' }, { label: 'Pages', href: '/admin/contenus?type=page' }]}
+    current={pages ? '/admin/contenus?type=page' : '/admin/contenus'}
+  />
   {Astro.url.searchParams.get('ok') === 'supprime' && <p class="alert alert-success mb-4">Contenu supprimé.</p>}
 
   <div class="flex flex-wrap items-end justify-between gap-3">
