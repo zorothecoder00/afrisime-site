@@ -3,7 +3,7 @@
 // Le compte de test est créé directement en base avant le test et supprimé après :
 // uniquement sur une base locale ou de CI.
 import 'dotenv/config';
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { createOTP } from '@better-auth/utils/otp';
 import { hashPassword, symmetricEncrypt } from 'better-auth/crypto';
 import { randomBytes, randomUUID } from 'node:crypto';
@@ -30,6 +30,7 @@ const ADMIN_PAGES = [
   '/admin/catalogue',
   '/admin/catalogue/categories',
   '/admin/catalogue/marques',
+  '/admin/catalogue/types-de-prix',
   '/admin/promotions',
   '/admin/contenus',
   '/admin/faq',
@@ -57,6 +58,23 @@ test.beforeAll(async () => {
             values (${randomUUID()}, ${await symmetricEncrypt({ key: SECRET, data: totpSecret })},
                     ${await symmetricEncrypt({ key: SECRET, data: '[]' })}, ${USER_ID}, true)`;
 });
+
+/** Connexion du compte de test (mot de passe puis code de double authentification). */
+async function signIn(page: Page) {
+  // Compteurs de limitation de débit : le test précédent a déjà fait des tentatives.
+  await sql`delete from rate_limit where key like '%/sign-in/email' or key like '%/two-factor/%'`;
+  await page.goto('/admin');
+  await dismissConsent(page);
+  const login = page.locator('form[data-login][data-ready]');
+  await login.getByLabel('Adresse e-mail').fill(EMAIL);
+  await login.getByLabel('Mot de passe').fill(password);
+  await login.getByRole('button', { name: 'Se connecter' }).click();
+  await expect(page).toHaveURL(/\/compte\/verification/);
+  const verify = page.locator('form[data-verify][data-ready]');
+  await verify.getByLabel('Code à 6 chiffres').fill(await createOTP(totpSecret, { period: 30, digits: 6 }).totp());
+  await verify.getByRole('button', { name: 'Valider' }).click();
+  await expect(page).toHaveURL(/\/admin\/?$/);
+}
 
 test.afterAll(async () => {
   await sql`delete from audit_log where target = ${USER_ID}`;
@@ -239,5 +257,113 @@ test('REC-09 back-office : double authentification, alerte de sécurité, toutes
     await page.locator('li', { hasText: name }).first().getByRole('button', { name: 'Supprimer' }).click();
     await reloaded;
     await expect(page.locator('.alert-success')).toBeVisible();
+  }
+});
+
+// Types de prix (Catalogue › Types de prix) : un type « à valider » créé et modifié dans le back-office,
+// ses montants saisis sur un produit, affichés sur la fiche, choisis à la commande (total recalculé,
+// pas de paiement), commande « À valider » dans le back-office puis annulée ; tout est retiré à la fin.
+test('Types de prix : création, prix du produit, fiche, commande à valider, suppression', async ({ page }) => {
+  test.setTimeout(120_000);
+  const [product] = await sql<{ id: string; slug: string; variants: { id: string; price: number }[] }[]>`
+    select id, slug, variants from products
+    where published and status in ('disponible', 'sur-commande') order by name limit 1`;
+  const label = `Crédit E2E ${Date.now()}`;
+  // Identifiant tiré du nom, comme src/lib/price-types.ts (priceTypeId).
+  const typeId = label
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+
+  try {
+    await signIn(page);
+
+    // 1. Création puis modification du type de prix.
+    await page.goto('/admin/catalogue/types-de-prix');
+    const create = page.locator('form', { has: page.getByRole('button', { name: 'Ajouter le type de prix' }) });
+    await create.locator('input[name="label"]').fill(label);
+    await create.locator('textarea[name="description"]').fill('Paiement en 3 fois.');
+    await create.locator('input[name="validation"]').check();
+    await create.getByRole('button', { name: 'Ajouter le type de prix' }).click();
+    await expect(page.locator('.alert-success')).toBeVisible();
+
+    const type = page.locator('details', { hasText: label });
+    await type.locator('summary').click();
+    await type.locator('textarea[name="description"]').fill('Paiement en 3 mensualités après étude du dossier.');
+    await type.getByRole('button', { name: 'Enregistrer' }).click();
+    await expect(page.locator('.alert-success')).toBeVisible();
+    await expect(page.locator('details', { hasText: label }).locator('summary')).toContainText('commande à valider');
+
+    // 2. Montants saisis sur chaque format du produit (colonne du type).
+    await page.goto(`/admin/catalogue/produits/${product.id}`);
+    for (const [i, v] of product.variants.entries()) await page.locator(`input[name="variants[${i}][tp_${typeId}]"]`).fill(String(v.price + 1000));
+    await page.getByRole('button', { name: 'Enregistrer', exact: true }).click();
+    await expect(page.locator('.alert-success')).toBeVisible();
+    const [saved] = await sql<{ variants: { prices?: Record<string, number> }[] }[]>`select variants from products where id = ${product.id}`;
+    expect(saved.variants.map((v) => v.prices?.[typeId])).toEqual(product.variants.map((v) => v.price + 1000));
+
+    // 3. Fiche produit : le prix du type et ses conditions sont affichés.
+    await page.goto(`/boutique/${product.slug}`);
+    const typePrices = page.locator('[data-type-prices-box]');
+    await expect(typePrices).toBeVisible();
+    await expect(typePrices).toContainText(label);
+    await expect(typePrices).toContainText('3 mensualités');
+
+    // 4. Commande : le type est proposé, le total est recalculé et le paiement disparaît.
+    await page.getByRole('button', { name: 'Ajouter au panier' }).click();
+    await expect(page.locator('#afs-toast')).toContainText('ajouté');
+    await page.goto('/commande');
+    const form = page.locator('form[data-checkout-form]');
+    const typeChoice = form.getByRole('radio', { name: new RegExp(label) });
+    await expect(typeChoice).toBeVisible();
+    const total = page.locator('[data-total]');
+    await expect(total).not.toBeEmpty();
+    const normalTotal = await total.innerText();
+    await typeChoice.check();
+    await expect(total).not.toHaveText(normalTotal);
+    await expect(form.locator('[data-payment-methods]')).toBeHidden();
+    await expect(form.locator('[data-validation-note]')).toContainText('rien à payer');
+
+    await form.getByLabel('Nom complet').fill('Client Crédit E2E');
+    await form.getByLabel('Téléphone').fill('90 11 22 33');
+    await form.getByLabel('E-mail').fill('e2e-credit@exemple.tg');
+    await form.getByRole('radio', { name: /Retrait au dépôt/ }).check();
+    await form.getByLabel(/J'accepte les conditions générales de vente/).check();
+    await page.locator('[data-submit]:visible').last().click();
+
+    await expect(page).toHaveURL(/\/commande\/confirmation\?n=AFS-/);
+    await expect(page.getByRole('heading', { name: 'Commande enregistrée' })).toBeVisible();
+    await expect(page.getByText(label)).toBeVisible();
+    await expect(page.getByText('À convenir avec AfriSime')).toBeVisible();
+    const number = new URL(page.url()).searchParams.get('n')!;
+    const cheapest = Math.min(...product.variants.map((v) => v.price));
+    const [order] = await sql<{ status: string; price_type: string; total: number }[]>`select status, price_type, total from orders where number = ${number}`;
+    expect(order).toMatchObject({ status: 'a-valider', price_type: typeId, total: cheapest + 1000 });
+
+    // 5. Back-office : commande « À valider » avec son type de prix, puis annulée.
+    await page.goto(`/admin/commandes/${number}`);
+    await expect(page.locator('main')).toContainText(label);
+    await expect(page.locator('main')).toContainText('À valider');
+    await page.locator('select[name="status"]').selectOption('annulee');
+    await page.locator('form', { has: page.locator('select[name="status"]') }).getByRole('button', { name: 'Enregistrer' }).click();
+    await expect.poll(async () => (await sql`select status from orders where number = ${number}`)[0].status).toBe('annulee');
+
+    // 6. Suppression du type : il disparaît du back-office et de la fiche produit.
+    await page.goto('/admin/catalogue/types-de-prix');
+    const item = page.locator('details', { hasText: label });
+    await item.locator('summary').click();
+    page.once('dialog', (d) => d.accept());
+    await item.getByRole('button', { name: 'Supprimer' }).click();
+    await expect(page.locator('.alert-success')).toBeVisible();
+    await expect(page.locator('details', { hasText: label })).toHaveCount(0);
+    await page.goto(`/boutique/${product.slug}`);
+    await expect(page.locator('[data-type-prices-box]')).toBeHidden();
+  } finally {
+    // Base locale remise en état même si le test échoue : formats du produit et type de prix.
+    await sql`update products set variants = ${sql.json(product.variants)} where id = ${product.id}`;
+    const [row] = await sql<{ value: { id: string }[] }[]>`select value from settings where key = 'price-types'`;
+    if (row) await sql`update settings set value = ${sql.json(row.value.filter((t) => t.id !== typeId))} where key = 'price-types'`;
   }
 });

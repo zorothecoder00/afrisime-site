@@ -264,7 +264,7 @@ for (const f of p.features) {
                   </p>
                 )}
                 {priceTypes.length > 0 && (
-                  <div class="mt-3 space-y-1.5" data-type-prices hidden>
+                  <div class="mt-3 space-y-1.5" data-type-prices-box hidden>
                     <ul class="space-y-1.5" data-type-prices-list />
                     <p class="text-xs text-muted">Choisissez ce prix à l'étape de la commande.</p>
                   </div>
@@ -491,7 +491,7 @@ for (const f of p.features) {
   type TypePrice = { label: string; price: number; description: string };
   // Types de prix réservés (clients connectés, comptes pro), chargés à part.
   let restrictedTypes: Record<string, TypePrice[]> = {};
-  const typesBox = document.querySelector<HTMLElement>('[data-type-prices]');
+  const typesBox = document.querySelector<HTMLElement>('[data-type-prices-box]');
 
   const selectedVariant = () => form.querySelector<HTMLInputElement>('input[name="variante"]:checked')!;
 
