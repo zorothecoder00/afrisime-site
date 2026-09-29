@@ -10,5 +10,6 @@
   { "id": "gratuite", "group": "livraison", "question": "La livraison est-elle gratuite ?", "answer": "Elle est offerte à Lomé à partir de 50 000 FCFA d'achat. Le retrait au dépôt est toujours gratuit." },
   { "id": "prix-gros", "group": "b2b", "question": "Proposez-vous des prix de gros ?", "answer": "Oui. Les commerçants, revendeurs, restaurants et entreprises bénéficient de prix volume. Faites une demande de devis depuis la page Solutions B2B." },
   { "id": "livraison-reguliere", "group": "b2b", "question": "Pouvez-vous livrer régulièrement mon établissement ?", "answer": "Oui, nous mettons en place des livraisons hebdomadaires ou mensuelles avec un commercial dédié." },
-  { "id": "fournisseur", "group": "b2b", "question": "Je suis producteur, comment devenir fournisseur ?", "answer": "Remplissez le formulaire de la page Partenaires. Notre équipe achats étudie chaque proposition et vous recontacte." }
+  { "id": "fournisseur", "group": "b2b", "question": "Je suis producteur, comment devenir fournisseur ?", "answer": "Remplissez le formulaire de la page Partenaires. Notre équipe achats étudie chaque proposition et vous recontacte." },
+  { "id": "programmes", "group": "programmes", "question": "Quels programmes et projets porte AfriSime ?", "answer": "Au-delà de la distribution, AfriSime mène des programmes et des projets pour les filières locales, ses partenaires et les communautés. Retrouvez-les, avec leur statut et leur zone d'intervention, sur la page Programmes & Projets." }
 ]

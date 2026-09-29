@@ -22,6 +22,7 @@ export const FAQ_GROUPS = [
   { id: 'commande', title: 'Commande & paiement' },
   { id: 'livraison', title: 'Livraison' },
   { id: 'b2b', title: 'Professionnels (B2B)' },
+  { id: 'programmes', title: 'Programmes & projets' },
 ] as const;
 
 /** Publié et dont la date de publication est passée. */

@@ -427,7 +427,7 @@ export const contents = pgTable(
 
 export const faqItems = pgTable('faq_items', {
   id: text('id').primaryKey(),
-  group: text('group').notNull(), // general | commande | livraison | b2b
+  group: text('group').notNull(), // general | commande | livraison | b2b | programmes
   question: text('question').notNull(),
   answer: text('answer').notNull(),
   position: integer('position').notNull().default(0),

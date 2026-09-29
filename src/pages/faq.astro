@@ -1,5 +1,5 @@
 ---
-import { FAQ_GROUPS as groups, listFaq } from '../lib/content';
+import { FAQ_GROUPS as allGroups, listFaq } from '../lib/content';
 import Layout from '../layouts/Layout.astro';
 import PageHero from '../components/PageHero.astro';
 import Icon from '../components/ui/Icon.astro';
@@ -10,6 +10,8 @@ import { contactLinks, getSettings } from '../lib/settings';
 // Questions : rubrique FAQ ; titres et encadré final : Textes du site › FAQ.
 const [faq, settings, t] = await Promise.all([listFaq(), getSettings(), getPageTexts('faq')]);
 const links = contactLinks(settings.contact);
+// Rubriques sans question publiée masquées.
+const groups = allGroups.filter((g) => faq.some((q) => q.group === g.id));
 
 const jsonLd = {
   '@context': 'https://schema.org',
