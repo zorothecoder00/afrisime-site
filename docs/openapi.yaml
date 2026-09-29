@@ -8,6 +8,8 @@ info:
     - **Endpoints du site** (`/api/...`) : appelés par le navigateur. Protégés par la vérification d'origine
       (CSRF), la limitation de débit et, pour les données de compte, la session (cookie Better Auth).
     - **Webhooks entrants** (`/api/erp/...`, `/api/payments/webhook/...`) : appelés par l'ERP et le prestataire de paiement.
+    - **API du back-office** (`/api/admin/...`) : réservée à l'équipe AfriSime connectée (double authentification
+      activée), selon les droits du rôle, avec la même vérification d'origine.
     - **Webhooks sortants** (section `webhooks`) : appels faits par le site vers l'ERP, le CRM et la passerelle SMS/WhatsApp.
 
     Tous les montants sont des entiers en francs CFA (XOF). Toutes les dates sont en ISO 8601 (UTC).
@@ -26,6 +28,8 @@ tags:
   - name: ERP
   - name: Paiement
   - name: Exploitation
+  - name: Back-office
+    description: Gestion des contenus du site par l'équipe (mêmes opérations que les pages /admin).
 
 components:
   securitySchemes:
@@ -34,6 +38,14 @@ components:
       in: cookie
       name: better-auth.session_token
       description: Session d'un client connecté (définie par /api/auth/*).
+    staffSession:
+      type: apiKey
+      in: cookie
+      name: better-auth.session_token
+      description: |
+        Session d'un membre de l'équipe AfriSime, double authentification activée.
+        Lecture : rôle avec le droit « contenus : lecture » ; écriture : « contenus : modification »
+        (super administrateur, administrateur web, éditeur, service client).
     erpSecret:
       type: http
       scheme: bearer
@@ -133,6 +145,27 @@ components:
         details: { type: object, additionalProperties: { type: string }, description: 'Champs propres au formulaire (secteur, fréquence, RCCM…).' }
         consent: { type: boolean }
         createdAt: { type: string, format: date-time }
+    ProjectFields:
+      type: object
+      description: Champs d'un programme ou projet. Les textes trop longs sont tronqués à la longueur indiquée.
+      properties:
+        kind: { type: string, enum: [programme, projet], description: 'Section de la page où la fiche apparaît.', default: projet }
+        title: { type: string, minLength: 3, maxLength: 140, example: "Programme d'appui aux coopératives" }
+        summary: { type: string, maxLength: 300 }
+        text: { type: string, maxLength: 4000, description: Description ; une ligne vide sépare deux paragraphes. }
+        status: { type: string, enum: [a-venir, en-cours, termine], default: en-cours }
+        place: { type: string, maxLength: 100, example: Région des Plateaux }
+        period: { type: string, maxLength: 60, example: 2025 – 2027 }
+        imageId: { type: string, maxLength: 80, description: "Identifiant d'une image de la médiathèque ; vide : pas d'image." }
+        position: { type: integer, minimum: 0, description: "Ordre d'affichage (croissant). À la création : à la suite des fiches existantes." }
+        published: { type: boolean, default: true, description: Affichée sur la page publique /programmes. }
+    Project:
+      allOf:
+        - type: object
+          required: [id, kind, title, summary, text, status, place, period, imageId, position, published]
+          properties:
+            id: { type: string, format: uuid }
+        - $ref: '#/components/schemas/ProjectFields'
     Error:
       type: object
       properties:
@@ -147,6 +180,12 @@ components:
       content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
     Unauthorized:
       description: Non connecté ou secret invalide
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    Forbidden:
+      description: Origine non autorisée, compte hors équipe, double authentification non activée ou rôle insuffisant
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    NotFound:
+      description: Ressource introuvable
       content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
 
 paths:
@@ -378,17 +417,81 @@ paths:
         '200': { description: Compte rendu des opérations }
         '401': { $ref: '#/components/responses/Unauthorized' }
 
+  /api/admin/programmes:
+    get:
+      tags: [Back-office]
+      summary: Programmes et projets (publiés et masqués), par ordre d'affichage
+      security: [{ staffSession: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object, properties: { items: { type: array, items: { $ref: '#/components/schemas/Project' } } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Back-office]
+      summary: Créer un programme ou projet
+      security: [{ staffSession: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - { $ref: '#/components/schemas/ProjectFields' }
+                - { required: [title] }
+      responses:
+        '201': { description: Créé, content: { application/json: { schema: { type: object, properties: { item: { $ref: '#/components/schemas/Project' } } } } } }
+        '400': { description: Corps JSON manquant ou invalide, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/Invalid' }
+
+  /api/admin/programmes/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      tags: [Back-office]
+      summary: Détail d'un programme ou projet
+      security: [{ staffSession: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object, properties: { item: { $ref: '#/components/schemas/Project' } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [Back-office]
+      summary: Modifier un programme ou projet (seuls les champs envoyés changent)
+      security: [{ staffSession: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/ProjectFields' }, example: { status: termine, published: true } } }
+      responses:
+        '200': { description: Modifié, content: { application/json: { schema: { type: object, properties: { item: { $ref: '#/components/schemas/Project' } } } } } }
+        '400': { description: Corps JSON manquant ou invalide, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/Invalid' }
+    delete:
+      tags: [Back-office]
+      summary: Supprimer un programme ou projet
+      security: [{ staffSession: [] }]
+      responses:
+        '200': { description: Supprimé, content: { application/json: { schema: { type: object, properties: { ok: { type: boolean, const: true } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
 webhooks:
   erpOrder:
     post:
       summary: 'Site → ERP : POST {ERP_API_URL}/orders'
-      description: Commande confirmée (payée ou payable à la livraison). En-tête `Authorization: Bearer {ERP_API_TOKEN}`. Réponse 2xx attendue ; sinon renvoi automatique.
+      description: 'Commande confirmée (payée ou payable à la livraison). En-tête `Authorization: Bearer {ERP_API_TOKEN}`. Réponse 2xx attendue ; sinon renvoi automatique.'
       requestBody: { content: { application/json: { schema: { $ref: '#/components/schemas/Order' } } } }
       responses: { '200': { description: Reçue } }
   crmLead:
     post:
       summary: 'Site → CRM : POST {CRM_API_URL}/leads'
-      description: Nouvelle demande, avec source, besoin et consentement. En-tête `Authorization: Bearer {CRM_API_TOKEN}`.
+      description: 'Nouvelle demande, avec source, besoin et consentement. En-tête `Authorization: Bearer {CRM_API_TOKEN}`.'
       requestBody: { content: { application/json: { schema: { $ref: '#/components/schemas/Lead' } } } }
       responses: { '200': { description: Reçu } }
   notification:
