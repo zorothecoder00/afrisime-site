@@ -20,6 +20,7 @@ Avec `PAYMENT_PROVIDER=simulation` (développement), le paiement en ligne passe 
 | Document | Contenu |
 | --- | --- |
 | [docs/guide-administrateur.md](docs/guide-administrateur.md) | Guide et support de formation de l'équipe (aussi dans le back-office : « Aide ») |
+| [docs/guide-visuel.html](docs/guide-visuel.html) | Documentation visuelle de bout en bout pour la direction et les non-développeurs (ouvrir dans un navigateur) |
 | [docs/deploiement.md](docs/deploiement.md) | Environnements dev / staging / production, variables, paiement FedaPay, cron, mises à jour |
 | [docs/sauvegarde-restauration.md](docs/sauvegarde-restauration.md) | Plan de sauvegarde, restauration et test trimestriel |
 | [docs/openapi.yaml](docs/openapi.yaml) | API du site, API du back-office (programmes et projets), webhooks ERP/paiement, contrats sortants ERP/CRM (OpenAPI 3.1) |
