@@ -9,9 +9,5 @@ const html = renderMarkdown(guide.replace(/^# .*\r?\n/, ''));
 ---
 
 <AdminLayout title="Guide de l'administrateur">
-  <p class="alert alert-info mb-6 max-w-4xl">
-    Vue d'ensemble du site de bout en bout (parcours d'achat, statuts, rôles, automatismes) :
-    <a href="/admin/guide-visuel" target="_blank" rel="noopener" class="font-bold underline">ouvrir la documentation visuelle ↗</a>
-  </p>
   <div class:list={['card prose-afs max-w-4xl p-6 sm:p-10 [&_table]:w-full [&_table]:text-sm [&_td]:border-t [&_td]:border-line [&_td]:py-2 [&_td]:pr-3 [&_th]:py-2 [&_th]:pr-3 [&_th]:text-left', cardTint(0)]} set:html={html} />
 </AdminLayout>
