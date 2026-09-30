@@ -30,6 +30,8 @@ const nav = [
   { label: 'Paramètres', href: '/admin/parametres', show: can(me.role, { settings: ['update'] }) || can(me.role, { catalog: ['update'] }) || can(me.role, { content: ['publish'] }) },
   { label: 'Rapports', href: '/admin/rapports', show: can(me.role, { report: ['read'] }) },
   { label: 'Journal', href: '/admin/journal', show: can(me.role, { audit: ['read'] }) },
+  // Documentation (docs/guide-visuel.html), ouverte dans un nouvel onglet.
+  { label: 'Guide visuel ↗', href: '/admin/guide-visuel', show: true, external: true },
 ].filter((item) => item.show);
 const isActive = (href: string) => (href === '/admin' ? path === '/admin' || path === '/admin/' : path.startsWith(href));
 ---
@@ -53,6 +55,8 @@ const isActive = (href: string) => (href === '/admin' ? path === '/admin' || pat
         nav.map((item) => (
           <a
             href={item.href}
+            target={item.external ? '_blank' : undefined}
+            rel={item.external ? 'noopener' : undefined}
             class:list={[
               'whitespace-nowrap rounded-lg px-3.5 py-2 text-sm font-semibold',
               isActive(item.href) ? 'bg-white text-brand-900' : 'text-brand-100 hover:bg-brand-800',
